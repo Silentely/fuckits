@@ -49,6 +49,15 @@
 *   **智能上下文**: 自动检测操作系统、包管理器等信息，为 AI 提供更准确的上下文。
 *   **轻松卸载**: 一条命令即可将脚本从你的系统中完全移除。
 
+## 🔧 重构亮点
+
+* `~/.fuck/config.sh` 配置文件：支持自定义 API 入口、命令别名、自动执行、超时时间等。
+* 新增 `fuck config` 命令：一键定位配置文件并查看可用开关。
+* 自动执行模式：`FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
+* 自定义别名：通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
+* CLI 与 Worker 构建脚本重构：`npm run build` 自动嵌入最新的安装脚本。
+* 一键部署：`npm run one-click-deploy` 帮你完成依赖、登录、构建、部署全流程。
+
 ---
 
 ## 快速安装
@@ -102,6 +111,21 @@ fuck install git
 fuck uninstall git
 ```
 
+### 配置脚本
+
+查看配置文件位置和可用选项：
+
+```bash
+fuck config
+```
+
+配置文件位于 `~/.fuck/config.sh`，你可以在其中自定义：
+- 自定义 API 端点（用于自建 Worker）
+- 自动执行模式（跳过确认）
+- 请求超时时间
+- 调试模式
+- 自定义别名
+
 ### 卸载脚本
 
 如果你不想用我了，随时可以滚蛋：
@@ -147,6 +171,35 @@ curl -sS https://fuckit.sh | bash -s "find all files larger than 10MB"
 
 ---
 
+## ☁️ 一键部署
+
+只需一条命令即可完成依赖安装、Worker 构建和部署：
+
+```bash
+npm run one-click-deploy
+```
+
+脚本会引导你完成 Cloudflare 登录、设置 OpenAI Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./DEPLOY.md#简体中文)。
+
+---
+
+## ⚙️ 配置说明
+
+`~/.fuck/config.sh` 是你的专属开关面板。无论是安装版还是临时运行模式都支持该配置。
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | 自建或自定义 Worker 地址 |
+| `FUCK_ALIAS` | `fuck` | 额外别名（不会影响默认别名，除非关闭） |
+| `FUCK_AUTO_EXEC` | `false` | 自动执行命令，跳过确认（危险操作请慎用） |
+| `FUCK_TIMEOUT` | `30` | `curl` 请求超时时间（秒） |
+| `FUCK_DEBUG` | `false` | 输出调试日志，便于排查问题 |
+| `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | 若设为 `true`，将不会自动注入 `fuck` 别名 |
+
+通过 `fuck config` 可以快速查看文件路径并创建默认示例。
+
+---
+
 ## 开发者指南
 
 如果你想自己部署这个项目，或者想对它进行修改，请遵循以下步骤。
@@ -154,59 +207,73 @@ curl -sS https://fuckit.sh | bash -s "find all files larger than 10MB"
 ### 环境要求
 
 *   [Cloudflare](https://www.cloudflare.com/) 账号
-*   [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-*   OpenAI API 密钥 (或其他兼容 OpenAI 格式的 API 服务) **(仅在自行部署时需要)**
+*   Node.js (>= 18.0.0)
+*   npm
+*   OpenAI API 密钥 (或其他兼容 OpenAI 格式的 API 服务)
 
-### 部署步骤
+### 快速部署
 
-1.  **克隆仓库**
+**一键部署（推荐）：**
 
-    ```bash
-    git clone https://github.com/faithleysath/fuckit.sh.git
-    cd fuckit.sh
-    ```
+```bash
+git clone https://github.com/faithleysath/fuckit.sh.git
+cd fuckit.sh
+npm run one-click-deploy
+```
 
-2.  **配置 `wrangler.toml`**
+**手动部署：**
 
-    你可以根据需要修改 `wrangler.toml` 文件中的 Worker 名称和路由。
+```bash
+git clone https://github.com/faithleysath/fuckit.sh.git
+cd fuckit.sh
 
-3.  **配置环境变量**
+# 安装依赖
+npm install
 
-    你需要将你的 OpenAI API 密钥配置到 Cloudflare Worker 的环境变量中。
+# 登录 Cloudflare
+npx wrangler login
 
-    ```bash
-    npx wrangler secret put OPENAI_API_KEY
-    ```
+# 设置 OpenAI API Key
+npx wrangler secret put OPENAI_API_KEY
 
-    你还可以设置可选的环境变量：
-    *   `OPENAI_API_MODEL`: 指定使用的模型，默认为 `gpt-4-turbo`。
-    *   `OPENAI_API_BASE`: 指定 API 的基础 URL，默认为 `https://api.openai.com/v1`。
+# 构建并部署
+npm run deploy
+```
 
-4.  **构建 `worker.js`**
+### 可用的 npm 脚本
 
-    `worker.js` 文件需要将 `main.sh` 和 `zh_main.sh` 的内容以 Base64 编码的形式嵌入。我们提供了一个构建命令来自动完成这个过程。
+- `npm run build` - 构建 Worker（将脚本嵌入 worker.js）
+- `npm run deploy` - 构建并部署到 Cloudflare
+- `npm run one-click-deploy` - 一键完成所有配置和部署
+- `npm run setup` - 交互式设置向导
+- `npm run dev` - 本地开发模式
 
-    **macOS:**
-    ```bash
-    B64_EN=$(base64 -i main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT =.*#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js && \
-    B64_ZH=$(base64 -i zh_main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT_ZH =.*#const INSTALLER_SCRIPT_ZH = b64_to_utf8(\`${B64_ZH}\`);#" worker.js && \
-    rm worker.js.bak
-    ```
+### 自定义配置
 
-    **Linux:**
-    ```bash
-    B64_EN=$(base64 -w 0 main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT =.*#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js && \
-    B64_ZH=$(base64 -w 0 zh_main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT_ZH =.*#const INSTALLER_SCRIPT_ZH = b64_to_utf8(\`${B64_ZH}\`);#" worker.js && \
-    rm worker.js.bak
-    ```
+在 `wrangler.toml` 中修改 Worker 名称和路由：
 
-5.  **发布 Worker**
+```toml
+name = "your-worker-name"
+```
 
-    ```bash
-    npx wrangler deploy
-    ```
+配置环境变量（可选）：
+- `OPENAI_API_MODEL`: AI 模型（默认：`gpt-4-turbo`）
+- `OPENAI_API_BASE`: API 基础 URL（默认：`https://api.openai.com/v1`）
 
-部署成功后，你的 Worker 就会在你配置的域名上运行。
+详细部署说明请参阅 [DEPLOY.md](./DEPLOY.md)。
+
+---
+
+## 🧠 头脑风暴
+
+* Amber 版本重构：用 Amber 语言实现跨平台 CLI 与 UI。
+* 多模型路由：在 OpenAI、Anthropic、DeepSeek、硅基流动等模型之间自动切换。
+* 命令历史 & 收藏：支持 `fuck history`、一键回放常用命令。
+* 场景模板：内置运维、开发、数据等场景的提示词模板。
+* UI 皮肤：猫娘/御姐/严肃模式随心切换，提供更多人设。
+* 团队模式：共享自定义 alias、API key、调优模板。
+
+欢迎在 Issue 中继续脑暴更多好玩的点子。
 
 ---
 
