@@ -1,20 +1,20 @@
 #!/bin/bash
 #
-# This script is the installer and temporary runner for fuckit.sh
+# This script is the installer and temporary runner for fuckits
 #
 # --- RECOMMENDED SECURE USAGE ---
 #
 # 1. Download:
-#    curl -o fuckit.sh https://fuckits.25500552.xyz
+#    curl -o fuckits https://fuckits.25500552.xyz
 #
 # 2. Inspect:
-#    less fuckit.sh
+#    less fuckits
 #
 # 3. Run (Install):
-#    bash fuckit.sh
+#    bash fuckits
 #
 # 4. Run (Temporary):
-#    bash fuckit.sh "your prompt"
+#    bash fuckits "your prompt"
 #
 
 set -euo pipefail
@@ -47,7 +47,7 @@ readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
 # --- Core Logic (Embedded as a string) ---
 read -r -d '' CORE_LOGIC <<'EOF' || true
 
-# --- Begin Core Logic for fuckit.sh ---
+# --- Begin Core Logic for fuckits ---
 
 # --- Color Definitions ---
 # Only define colors if they haven't been defined yet (for temp mode)
@@ -64,12 +64,10 @@ if [ -z "${C_RESET:-}" ]; then
     # --- FUCK! ---
     readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
     readonly FCKN="${C_RED}F*CKING${C_RESET}"
+fi
 
-    # --- Configuration ---
+if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}" ]; then
     if [ -z "${HOME:-}" ]; then
-        # This part is for the temporary runner, which doesn't install,
-        # but we need the variables defined to avoid unbound errors.
-        # The install check will happen in the installer part of the script.
         readonly INSTALL_DIR="/tmp/.fuck"
         readonly MAIN_SH="/tmp/.fuck/main.sh"
         readonly CONFIG_FILE="/tmp/.fuck/config.sh"
@@ -194,7 +192,7 @@ _fuck_ensure_config_exists() {
 
     mkdir -p "$(dirname "$CONFIG_FILE")"
     cat <<'CFG' > "$CONFIG_FILE"
-# fuckit.sh configuration
+# fuckits configuration
 # Toggle the exports below to customise your experience.
 
 # Custom API endpoint that points to your self-hosted worker
@@ -223,7 +221,7 @@ _fuck_show_config_help() {
     if [ -n "${EDITOR:-}" ]; then
         echo -e "${C_YELLOW}Edit with:${C_RESET} ${C_CYAN}${EDITOR} \"$CONFIG_FILE\"${C_RESET}"
     else
-        echo -e "${C_YELLOW}Open this file in your favourite editor to customise fuckit.sh.${C_RESET}"
+        echo -e "${C_YELLOW}Open this file in your favourite editor to customise fuckits.${C_RESET}"
     fi
     echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG"
 }
@@ -240,8 +238,15 @@ _uninstall_script() {
     if [ "$profile_file" != "unknown_profile" ] && [ -f "$profile_file" ]; then
         if grep -qF "$source_line" "$profile_file"; then
             # Use sed to remove the lines. Create a backup.
-            sed -i.bak "|$source_line|d" "$profile_file"
-            sed -i.bak "|# Added by fuckit.sh installer|d" "$profile_file"
+            if sed --version >/dev/null 2>&1; then
+                # GNU sed (Linux)
+                sed -i.bak "\|$source_line\|d" "$profile_file"
+                sed -i.bak "\|# Added by fuckits installer\|d" "$profile_file"
+            else
+                # BSD/macOS sed requires argument letter after -i
+                sed -i.bak "" -e "\|$source_line\|d" "$profile_file"
+                sed -i.bak "" -e "\|# Added by fuckits installer\|d" "$profile_file"
+            fi
         fi
     else
         echo -e "${C_YELLOW}Could not find a shell profile file to modify. Your problem now.${C_RESET}"
@@ -309,7 +314,7 @@ _fuck_execute_prompt() {
     
     # Call API in background
     (
-        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+        curl -fsS --max-time "$curl_timeout" -X POST "$api_url" \
             -H "Content-Type: application/json" \
             -d "$payload" > "$tmp_response" 2>&1
     ) &    local pid=$!
@@ -451,7 +456,7 @@ _install_script() {
     # Create a default config file if it doesn't exist
     if [ ! -f "$CONFIG_FILE" ]; then
         cat <<'CFG' > "$CONFIG_FILE"
-# fuckit.sh configuration
+# fuckits configuration
 # Toggle the exports below to customise your experience.
 
 # Custom API endpoint that points to your self-hosted worker
@@ -485,7 +490,7 @@ CFG
         if [ -n "$(tail -c1 "$profile_file")" ]; then
             echo "" >> "$profile_file"
         fi
-        echo "# Added by fuckit.sh installer" >> "$profile_file"
+        echo "# Added by fuckits installer" >> "$profile_file"
         echo "$source_line" >> "$profile_file"
         echo -e "$FUCK ${C_GREEN}It's installed. Now get to work.${C_RESET}"
         echo -e "${C_YELLOW}Restart your shell, or run ${C_BOLD}source $profile_file${C_YELLOW} to start.${C_RESET}"

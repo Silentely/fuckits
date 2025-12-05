@@ -5,17 +5,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/faithleysath/fuckit.sh/stargazers">
-    <img src="https://img.shields.io/github/stars/faithleysath/fuckit.sh?style=social" alt="GitHub Stars">
+  <a href="https://github.com/Silentely/fuckits/stargazers">
+    <img src="https://img.shields.io/github/stars/faithleysath/fuckits?style=social" alt="GitHub Stars">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/network/members">
-    <img src="https://img.shields.io/github/forks/faithleysath/fuckit.sh?style=social" alt="GitHub Forks">
+  <a href="https://github.com/Silentely/fuckits/network/members">
+    <img src="https://img.shields.io/github/forks/faithleysath/fuckits?style=social" alt="GitHub Forks">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/commits/main">
-    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckit.sh" alt="GitHub last commit">
+  <a href="https://github.com/Silentely/fuckits/commits/main">
+    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckits" alt="GitHub last commit">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/faithleysath/fuckit.sh" alt="License">
+  <a href="https://github.com/Silentely/fuckits/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/faithleysath/fuckits" alt="License">
   </a>
 </p>
 
@@ -70,9 +70,9 @@ curl -sS https://fuckits.25500552.xyz | bash
 > **Security Notice (As if you care)**
 > 
 > If you don't trust piping scripts directly into `bash`, you can do it step-by-step:
-> 1.  **Download**: `curl -o fuckit.sh https://fuckits.25500552.xyz`
-> 2.  **Inspect**: `less fuckit.sh`
-> 3.  **Run**: `bash fuckit.sh`
+> 1.  **Download**: `curl -o fuckits https://fuckits.25500552.xyz`
+> 2.  **Inspect**: `less fuckits`
+> 3.  **Run**: `bash fuckits`
 > Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
@@ -221,16 +221,16 @@ If you want to deploy this project yourself or modify it, follow these steps.
 **One-click (recommended):**
 
 ```bash
-git clone https://github.com/faithleysath/fuckit.sh.git
-cd fuckit.sh
+git clone https://github.com/Silentely/fuckits.git
+cd fuckits
 npm run one-click-deploy
 ```
 
 **Manual:**
 
 ```bash
-git clone https://github.com/faithleysath/fuckit.sh.git
-cd fuckit.sh
+git clone https://github.com/Silentely/fuckits.git
+cd fuckits
 
 # Install dependencies
 npm install
@@ -290,7 +290,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Star History
 
-[![Star History Chart](https://app.repohistory.com/api/svg?repo=faithleysath/fuckit.sh&type=Date&background=FFFFFF&color=f86262)](https://app.repohistory.com/star-history)
+[![Star History Chart](https://app.repohistory.com/api/svg?repo=faithleysath/fuckits&type=Date&background=FFFFFF&color=f86262)](https://app.repohistory.com/star-history)
 
 ## Stargazers over time
-[![Stargazers over time](https://starchart.cc/faithleysath/fuckit.sh.svg?background=%23FFFFFF&axis=%23333333&line=%23e76060)](https://starchart.cc/faithleysath/fuckit.sh)
+[![Stargazers over time](https://starchart.cc/faithleysath/fuckits.svg?background=%23FFFFFF&axis=%23333333&line=%23e76060)](https://starchart.cc/faithleysath/fuckits)

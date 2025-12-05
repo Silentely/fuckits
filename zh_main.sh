@@ -1,21 +1,21 @@
 #!/bin/bash
 #
-# 这是 fuckit.sh 的安装和临时运行脚本
+# 这是 fuckits 的安装和临时运行脚本
 # 欢迎使用
 #
 # --- 安全使用方法 ---
 #
 # 1. 下载:
-#    curl -o fuckit.sh https://fuckits.25500552.xyz/zh
+#    curl -o fuckits https://fuckits.25500552.xyz/zh
 #
 # 2. 查看代码:
-#    less fuckit.sh
+#    less fuckits
 #
 # 3. 运行 (安装):
-#    bash fuckit.sh
+#    bash fuckits
 #
 # 4. 运行 (临时使用):
-#    bash fuckit.sh "你的命令"
+#    bash fuckits "你的命令"
 #
 
 set -euo pipefail
@@ -48,7 +48,7 @@ readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
 # --- 核心逻辑 (塞进一个字符串里) ---
 read -r -d '' CORE_LOGIC <<'EOF' || true
 
-# --- fuckit.sh 核心逻辑开始 ---
+# --- fuckits 核心逻辑开始 ---
 
 # --- 颜色定义 ---
 # 只有在没定义过颜色的情况下才定义 (临时模式用)
@@ -169,19 +169,19 @@ _fuck_debug() {
 _fuck_spinner() {
     local pid=$1
     local delay=0.1
-    local spinstr='|/-\'
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     
     # 隐藏光标
     tput civis 2>/dev/null || printf "\033[?25l"
 
     while kill -0 "$pid" 2>/dev/null; do
         local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
+        printf " %c " "$spinstr"
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
-        printf "\b\b\b\b\b\b"
+        printf "\b\b\b"
     done
-    printf "    \b\b\b\b"
+    printf "   \b\b\b"
     
     # 恢复光标
     tput cnorm 2>/dev/null || printf "\033[?25h"
@@ -195,7 +195,7 @@ _fuck_ensure_config_exists() {
 
     mkdir -p "$(dirname "$CONFIG_FILE")"
     cat <<'CFG' > "$CONFIG_FILE"
-# fuckit.sh 配置文件示例
+# fuckits 配置文件示例
 # 去掉行首的 # 并修改为你想要的值即可。
 
 # 自定义 API 入口（如自建 Worker）
@@ -242,8 +242,13 @@ _uninstall_script() {
     if [ "$profile_file" != "unknown_profile" ] && [ -f "$profile_file" ]; then
         if grep -qF "$source_line" "$profile_file"; then
             # 用 sed 把那几行删了，顺便备个份
-            sed -i.bak "|$source_line|d" "$profile_file"
-            sed -i.bak "|# Added by fuckit.sh installer|d" "$profile_file"
+            if sed --version >/dev/null 2>&1; then
+                sed -i.bak "\|$source_line\|d" "$profile_file"
+                sed -i.bak "\|# Added by fuckits installer\|d" "$profile_file"
+            else
+                sed -i.bak "" -e "\|$source_line\|d" "$profile_file"
+                sed -i.bak "" -e "\|# Added by fuckits installer\|d" "$profile_file"
+            fi
         fi
     else
         echo -e "${C_YELLOW}找不到 shell 配置文件，您可以手动删除相关配置。${C_RESET}"
@@ -317,27 +322,42 @@ _fuck_execute_prompt() {
     # 使用配置的 API 地址或默认地址
     local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
 
-    _fuck_debug "API 地址: $api_url"
-    _fuck_debug "请求体: $payload"
+    _fuck_debug "----------------------------------------"
+    _fuck_debug "API URL: $api_url"
+    _fuck_debug "Payload: $payload"
+    _fuck_debug "Timeout: $curl_timeout"
 
     echo -ne "${C_YELLOW}思考中...${C_RESET} "
     
     local tmp_response
     tmp_response=$(mktemp)
     
+    # 保存当前的 shell 选项
+    local old_opts="$-"
+    # 如果开启了 monitor 模式 (m)，则临时关闭，防止后台任务结束时打印 job control 信息
+    if [[ "$old_opts" == *"m"* ]]; then
+        set +m
+    fi
+
     # 后台执行 curl
     (
-        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+        curl -fsS --max-time "$curl_timeout" -X POST "$api_url" \
             -H "Content-Type: application/json" \
             -d "$payload" > "$tmp_response" 2>&1
     ) &
     local pid=$!
     
     _fuck_spinner "$pid"
+    
     if wait "$pid"; then
         exit_code=0
     else
         exit_code=$?
+    fi
+    
+    # 恢复 monitor 模式
+    if [[ "$old_opts" == *"m"* ]]; then
+        set -m
     fi
     
     echo "" # Newline
@@ -350,9 +370,18 @@ _fuck_execute_prompt() {
         response=""
     fi
 
+    _fuck_debug "Exit Code: $exit_code"
+    _fuck_debug "Response Raw:\n$response"
+    _fuck_debug "----------------------------------------"
+
     if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
         echo -e "$FUCK ${C_RED}无法连接到 AI 服务或无响应。${C_RESET}" >&2
-        [ -n "$response" ] && echo -e "${C_DIM}$response${C_RESET}" >&2
+        if _fuck_truthy "${FUCK_DEBUG:-0}"; then
+            echo -e "${C_DIM}[DEBUG] 详细错误信息:${C_RESET}" >&2
+            echo -e "${C_DIM}$response${C_RESET}" >&2
+        elif [ -n "$response" ]; then
+             echo -e "${C_DIM}错误详情: $response${C_RESET}" >&2
+        fi
         return 1
     fi
 
@@ -453,7 +482,7 @@ _installer_detect_profile() {
 
 # 主安装函数
 _install_script() {
-    echo -e "${C_BOLD}开始安装 fuckit.sh...${C_RESET}"
+    echo -e "${C_BOLD}开始安装 fuckits...${C_RESET}"
     mkdir -p "$INSTALL_DIR"
     
     # 把核心逻辑写进 main.sh
@@ -467,7 +496,7 @@ _install_script() {
     # 如果没有配置文件则生成一个示例
     if [ ! -f "$CONFIG_FILE" ]; then
         cat <<'CFG' > "$CONFIG_FILE"
-# fuckit.sh 配置文件示例
+# fuckits 配置文件示例
 # 去掉行首的 # 并修改为你想要的值即可。
 
 # 自定义 API 入口（如自建 Worker）
@@ -501,7 +530,7 @@ CFG
         if [ -n "$(tail -c1 "$profile_file")" ]; then
             echo "" >> "$profile_file"
         fi
-        echo "# Added by fuckit.sh installer" >> "$profile_file"
+        echo "# Added by fuckits installer" >> "$profile_file"
         echo "$source_line" >> "$profile_file"
         echo -e "${C_GREEN}安装完成！${C_RESET}"
         echo -e "${C_YELLOW}请重启终端或执行 ${C_BOLD}source $profile_file${C_YELLOW} 以使更改生效。${C_RESET}"
@@ -511,7 +540,7 @@ CFG
         echo -e "  ${C_CYAN}fuck install git${C_RESET}"
         echo -e "  ${C_CYAN}fuck uninstall git${C_RESET}"
         echo -e "  ${C_CYAN}fuck 找出当前目录所有大于10MB的文件${C_RESET}"
-        echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# 卸载 fuckit.sh${C_RESET}"
+        echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# 卸载 fuckits${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# 显示配置帮助${C_RESET}"
         echo -e "\n${C_YELLOW}记得重启终端以使用新命令！${C_RESET}"
     else

@@ -81,8 +81,8 @@ npm run dev                # 本地开发模式
 
 ### 完全自动化部署：
 ```bash
-git clone https://github.com/faithleysath/fuckit.sh.git
-cd fuckit.sh
+git clone https://github.com/Silentely/fuckits.git
+cd fuckits
 npm run one-click-deploy
 ```
 

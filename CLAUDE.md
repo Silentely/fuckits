@@ -342,7 +342,7 @@ export FUCK_DISABLE_DEFAULT_ALIAS=false
 
 ## 相关资源
 
-- **GitHub**: https://github.com/faithleysath/fuckit.sh
+- **GitHub**: https://github.com/Silentely/fuckits
 - **官网**: https://fuckits.25500552.xyz
 - **中文站**: https://fuckits.25500552.xyz/zh
 - **许可证**: MIT

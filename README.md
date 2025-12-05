@@ -5,17 +5,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/faithleysath/fuckit.sh/stargazers">
-    <img src="https://img.shields.io/github/stars/faithleysath/fuckit.sh?style=social" alt="GitHub Stars">
+  <a href="https://github.com/Silentely/fuckits/stargazers">
+    <img src="https://img.shields.io/github/stars/faithleysath/fuckits?style=social" alt="GitHub Stars">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/network/members">
-    <img src="https://img.shields.io/github/forks/faithleysath/fuckit.sh?style=social" alt="GitHub Forks">
+  <a href="https://github.com/Silentely/fuckits/network/members">
+    <img src="https://img.shields.io/github/forks/faithleysath/fuckits?style=social" alt="GitHub Forks">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/commits/main">
-    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckit.sh" alt="GitHub last commit">
+  <a href="https://github.com/Silentely/fuckits/commits/main">
+    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckits" alt="GitHub last commit">
   </a>
-  <a href="https://github.com/faithleysath/fuckit.sh/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/faithleysath/fuckit.sh" alt="License">
+  <a href="https://github.com/Silentely/fuckits/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/faithleysath/fuckits" alt="License">
   </a>
 </p>
 
@@ -84,9 +84,9 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 > **安全提示**
 > 
 > 如果你不信任直接在 `| bash` 中运行脚本，可以分步操作：
-> 1.  **下载**: `curl -o fuckit.sh https://fuckits.25500552.xyz`
-> 2.  **瞅一眼**: `less fuckit.sh`
-> 3.  **运行**: `bash fuckit.sh`
+> 1.  **下载**: `curl -o fuckits https://fuckits.25500552.xyz`
+> 2.  **瞅一眼**: `less fuckits`
+> 3.  **运行**: `bash fuckits`
 
 安装完成后，请重启你的终端或运行 `source ~/.bashrc` / `source ~/.zshrc` 来让命令生效。
 
@@ -241,16 +241,16 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 **一键部署（推荐）：**
 
 ```bash
-git clone https://github.com/faithleysath/fuckit.sh.git
-cd fuckit.sh
+git clone https://github.com/Silentely/fuckits.git
+cd fuckits
 npm run one-click-deploy
 ```
 
 **手动部署：**
 
 ```bash
-git clone https://github.com/faithleysath/fuckit.sh.git
-cd fuckit.sh
+git clone https://github.com/Silentely/fuckits.git
+cd fuckits
 
 # 安装依赖
 npm install
@@ -310,7 +310,7 @@ name = "your-worker-name"
 
 ## Star History
 
-[![Star History Chart](https://app.repohistory.com/api/svg?repo=faithleysath/fuckit.sh&type=Date&background=FFFFFF&color=f86262)](https://app.repohistory.com/star-history)
+[![Star History Chart](https://app.repohistory.com/api/svg?repo=faithleysath/fuckits&type=Date&background=FFFFFF&color=f86262)](https://app.repohistory.com/star-history)
 
 ## Stargazers over time
-[![Stargazers over time](https://starchart.cc/faithleysath/fuckit.sh.svg?background=%23FFFFFF&axis=%23333333&line=%23e76060)](https://starchart.cc/faithleysath/fuckit.sh)
+[![Stargazers over time](https://starchart.cc/faithleysath/fuckits.svg?background=%23FFFFFF&axis=%23333333&line=%23e76060)](https://starchart.cc/faithleysath/fuckits)
