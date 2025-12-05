@@ -6,6 +6,12 @@
 
 set -euo pipefail
 
+# Ensure we're in the project root
+if [ ! -f "worker.js" ] || [ ! -f "main.sh" ]; then
+    echo -e "\033[0;31mError: This script must be run from the project root\033[0m"
+    exit 1
+fi
+
 # Colors
 readonly C_GREEN='\033[0;32m'
 readonly C_RED='\033[0;31m'

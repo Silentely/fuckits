@@ -123,17 +123,17 @@ npm run deploy
 
 ### 故障排查
 
-**问题：构建失败**
+### 问题：构建失败
 
 确保 `main.sh` 和 `zh_main.sh` 文件存在且可读。
 
-**问题：部署失败**
+### 问题：部署失败
 
 1. 检查是否已登录 Cloudflare：`npx wrangler whoami`
 2. 确认 `wrangler.toml` 配置正确
 3. 检查网络连接
 
-**问题：API 调用失败**
+### 问题：API 调用失败
 
 1. 确认已设置 `OPENAI_API_KEY`
 2. 检查 API 密钥是否有效
@@ -260,17 +260,17 @@ Environment variables configured in Cloudflare Workers:
 
 ### Troubleshooting
 
-**Issue: Build fails**
+### Issue: Build fails
 
 Make sure `main.sh` and `zh_main.sh` files exist and are readable.
 
-**Issue: Deploy fails**
+### Issue: Deploy fails
 
 1. Check if logged in to Cloudflare: `npx wrangler whoami`
 2. Verify `wrangler.toml` configuration
 3. Check network connection
 
-**Issue: API calls fail**
+### Issue: API calls fail
 
 1. Confirm `OPENAI_API_KEY` is set
 2. Verify API key is valid

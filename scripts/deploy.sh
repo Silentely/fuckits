@@ -14,7 +14,12 @@ readonly C_CYAN='\033[0;36m'
 readonly C_RESET='\033[0m'
 
 # Ensure wrangler is installed
-if ! command -v wrangler > /dev/null && ! command -v npx > /dev/null; then
+if ! command -v npx > /dev/null; then
+    echo -e "${C_RED}npx not found. Please install Node.js${C_RESET}"
+    exit 1
+fi
+
+if ! npx wrangler --version > /dev/null 2>&1; then
     echo -e "${C_YELLOW}⚠️ wrangler not found. Installing locally...${C_RESET}"
     npm install wrangler --save-dev
 fi

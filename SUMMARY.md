@@ -100,6 +100,7 @@ npm run one-click-deploy
 位置：`~/.fuck/config.sh`
 
 ### 支持的配置项
+
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | 自定义 API 端点 |
@@ -157,7 +158,7 @@ pls install git
 
 ## 📊 项目结构
 
-```
+```bash
 fuckit.sh/
 ├── .gitignore                  # Git 忽略文件
 ├── CHANGELOG.md                # 更新日志
@@ -178,7 +179,7 @@ fuckit.sh/
     ├── deploy.sh               # 部署脚本
     ├── one-click-deploy.sh     # 一键部署脚本
     └── setup.sh                # 设置向导
-```
+```bash
 
 ## ✅ 技术特性
 
