@@ -14,6 +14,51 @@ readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
 readonly C_RESET='\033[0m'
 
+update_wrangler_var() {
+    local key="$1"
+    local value="$2"
+
+    if [ -z "$value" ]; then
+        echo -e "${C_YELLOW}⚠️ Skipping ${key}: empty value${C_RESET}"
+        return
+    fi
+
+    if ! command -v python3 > /dev/null; then
+        echo -e "${C_RED}❌ python3 is required to edit wrangler.toml vars${C_RESET}"
+        echo -e "${C_YELLOW}Please install python3 or edit wrangler.toml manually.${C_RESET}"
+        return 1
+    fi
+
+    python3 - "$key" "$value" <<'PY'
+import re, sys
+from pathlib import Path
+
+key = sys.argv[1]
+value = sys.argv[2]
+escaped = value.replace('\\', '\\\\').replace('"', '\\"')
+path = Path('wrangler.toml')
+text = path.read_text()
+
+if '[vars]' not in text:
+    text = text.rstrip() + '\n\n[vars]\n'
+
+pattern = rf'(?m)^\s*{re.escape(key)}\s*=.*$'
+if re.search(pattern, text):
+    text = re.sub(pattern, f'{key} = "{escaped}"', text, count=1)
+else:
+    match = re.search(r'(\[vars\]\s*\n)', text)
+    if match:
+        start = match.end()
+        text = text[:start] + f'{key} = "{escaped}"\n' + text[start:]
+    else:
+        text = text.rstrip() + f'\n\n[vars]\n{key} = "{escaped}"\n'
+
+path.write_text(text)
+PY
+
+    echo -e "${C_GREEN}✅ Updated ${key} in wrangler.toml${C_RESET}"
+}
+
 echo -e "${C_CYAN}${C_BOLD}🚀 fuckits Setup Script${C_RESET}"
 echo -e "${C_CYAN}================================${C_RESET}\n"
 
@@ -60,9 +105,13 @@ echo -e "${C_YELLOW}You need to set your OpenAI API key as a secret${C_RESET}"
 read -p "Do you want to set your OpenAI API key now? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${C_CYAN}Enter your OpenAI API key:${C_RESET}"
-    npx wrangler secret put OPENAI_API_KEY
-    echo -e "${C_GREEN}✅ API key configured${C_RESET}"
+    read -p "Enter your OpenAI API key (input will be visible): " OPENAI_API_KEY_VALUE
+    if [ -n "$OPENAI_API_KEY_VALUE" ]; then
+        printf '%s' "$OPENAI_API_KEY_VALUE" | npx wrangler secret put OPENAI_API_KEY
+        echo -e "${C_GREEN}✅ API key configured${C_RESET}"
+    else
+        echo -e "${C_YELLOW}⚠️ Skipped API key because no value was provided${C_RESET}"
+    fi
 fi
 
 # Optional: Configure custom model
@@ -71,9 +120,8 @@ echo -e "${C_YELLOW}Default model: gpt-4-turbo${C_RESET}"
 read -p "Do you want to set a custom model? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${C_CYAN}Enter the model name (e.g., gpt-4, gpt-3.5-turbo):${C_RESET}"
-    npx wrangler secret put OPENAI_API_MODEL
-    echo -e "${C_GREEN}✅ Custom model configured${C_RESET}"
+    read -p "Enter the model name (e.g., gpt-4o, gpt-4.1-mini): " CUSTOM_MODEL
+    update_wrangler_var "OPENAI_API_MODEL" "$CUSTOM_MODEL"
 fi
 
 # Optional: Configure custom API base
@@ -82,9 +130,8 @@ echo -e "${C_YELLOW}Default: https://api.openai.com/v1${C_RESET}"
 read -p "Do you want to set a custom API base URL? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${C_CYAN}Enter the API base URL:${C_RESET}"
-    npx wrangler secret put OPENAI_API_BASE
-    echo -e "${C_GREEN}✅ Custom API base configured${C_RESET}"
+    read -p "Enter the API base URL: " CUSTOM_BASE
+    update_wrangler_var "OPENAI_API_BASE" "$CUSTOM_BASE"
 fi
 
 # Make scripts executable

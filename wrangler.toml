@@ -5,3 +5,7 @@ compatibility_date = "2025-10-26" # 使用一个近期的日期
 [[routes]]
 pattern = "fuckits.25500552.xyz"
 custom_domain = true
+
+[vars]
+OPENAI_API_MODEL = "gpt-4-turbo"
+OPENAI_API_BASE = "https://api.openai.com/v1"
