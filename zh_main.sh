@@ -86,7 +86,9 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
-readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/zh"
+if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
+    readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/zh"
+fi
 
 # 找用户 shell 配置文件的辅助函数
 _installer_detect_profile() {

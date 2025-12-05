@@ -85,7 +85,9 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
-readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
+if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
+    readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
+fi
 
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
