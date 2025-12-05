@@ -5,7 +5,7 @@
 # --- RECOMMENDED SECURE USAGE ---
 #
 # 1. Download:
-#    curl -o fuckit.sh https://fuckit.sh
+#    curl -o fuckit.sh https://fuckits.25500552.xyz
 #
 # 2. Inspect:
 #    less fuckit.sh
@@ -27,6 +27,7 @@ readonly C_GREEN='\033[0;32m'
 readonly C_YELLOW='\033[0;33m'
 readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
+readonly C_DIM='\033[2m'
 
 # --- FUCK! ---
 readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
@@ -41,11 +42,10 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
-readonly DEFAULT_API_ENDPOINT="https://fuckit.sh/"
 
 
 # --- Core Logic (Embedded as a string) ---
-CORE_LOGIC=$(cat <<'EOF'
+read -r -d '' CORE_LOGIC <<'EOF' || true
 
 # --- Begin Core Logic for fuckit.sh ---
 
@@ -59,6 +59,7 @@ if [ -z "${C_RESET:-}" ]; then
     readonly C_YELLOW='\033[0;33m'
     readonly C_CYAN='\033[0;36m'
     readonly C_BOLD='\033[1m'
+    readonly C_DIM='\033[2m'
 
     # --- FUCK! ---
     readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
@@ -84,7 +85,7 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
-readonly DEFAULT_API_ENDPOINT="https://fuckit.sh/"
+readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
 
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
@@ -136,7 +137,7 @@ _fuck_collect_sysinfo_string() {
 # Escapes a string for use in a JSON payload
 _fuck_json_escape() {
     # Basic escape for quotes, backslashes, and control characters
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
 # Simple helper to parse boolean-like values
@@ -157,8 +158,30 @@ _fuck_truthy() {
 # Debug helper
 _fuck_debug() {
     if _fuck_truthy "${FUCK_DEBUG:-0}"; then
-        echo -e "${C_CYAN}[debug] $*${C_RESET}" >&2
+        echo -e "${C_DIM}[debug] $*${C_RESET}" >&2
     fi
+}
+
+# Spinner animation
+_fuck_spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    # Hide cursor
+    tput civis 2>/dev/null || printf "\033[?25l"
+
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+    
+    # Show cursor
+    tput cnorm 2>/dev/null || printf "\033[?25h"
 }
 
 # Ensure a config file exists to help users tweak the behaviour
@@ -215,8 +238,8 @@ _uninstall_script() {
     if [ "$profile_file" != "unknown_profile" ] && [ -f "$profile_file" ]; then
         if grep -qF "$source_line" "$profile_file"; then
             # Use sed to remove the lines. Create a backup.
-            sed -i.bak "\|$source_line|d" "$profile_file"
-            sed -i.bak "\|# Added by fuckit.sh installer|d" "$profile_file"
+            sed -i.bak "|$source_line|d" "$profile_file"
+            sed -i.bak "|# Added by fuckit.sh installer|d" "$profile_file"
         fi
     else
         echo -e "${C_YELLOW}Could not find a shell profile file to modify. Your problem now.${C_RESET}"
@@ -277,56 +300,93 @@ _fuck_execute_prompt() {
     _fuck_debug "API URL: $api_url"
     _fuck_debug "Payload: $payload"
 
+    echo -ne "${C_YELLOW}Thinking...${C_RESET}"
+    
+    local tmp_response
+    tmp_response=$(mktemp)
+    
+    # Call API in background
+    (
+        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "$payload" > "$tmp_response" 2>&1
+    ) &    local pid=$!
+    
+    _fuck_spinner "$pid"
+    if wait "$pid"; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+    
+    echo "" # Newline after spinner
+
     local response
-    if ! response=$(curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
-        -H "Content-Type: application/json" \
-        -d "$payload"); then
-        echo -e "$FUCK ${C_RED}Couldn't reach the AI service at $api_url.${C_RESET}" >&2
-        return 1
+    if [ -f "$tmp_response" ]; then
+        response=$(cat "$tmp_response")
+        rm -f "$tmp_response"
+    else
+        response=""
     fi
 
-    if [ -z "$response" ]; then
-        echo -e "$FUCK ${C_RED}The AI is ghosting me. Got nothing back.${C_RESET}" >&2
+    if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
+        echo -e "$FUCK ${C_RED}Couldn't reach the AI service or got empty response.${C_RESET}" >&2
+        [ -n "$response" ] && echo -e "${C_DIM}$response${C_RESET}" >&2
         return 1
     fi
 
     # --- User Confirmation (as requested) ---
-    echo -e "${C_YELLOW}--- The AI mumbled this, hope it's right ---${C_RESET}"
-    echo -e "${C_CYAN}$response${C_RESET}"
-    echo -e "${C_YELLOW}------------------------------------------${C_RESET}"
+    echo -e "${C_CYAN}Here is what I came up with:${C_RESET}"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    echo -e "${C_GREEN}${response}${C_RESET}"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
     
     # Check if auto-exec mode is enabled
     local should_exec=false
     if _fuck_truthy "$auto_mode"; then
-        echo -e "${C_YELLOW}⚡ Auto-exec mode enabled, executing immediately...${C_RESET}"
+        echo -e "${C_YELLOW}⚡ Auto-exec enabled. Running...${C_RESET}"
         should_exec=true
     else
-        # Secondary confirmation prompt
-        printf "$FCKN ${C_BOLD}${C_YELLOW}execute it? [y/N]${C_RESET} "
-        local confirmation
-        if [ -r /dev/tty ]; then
-            read -r confirmation < /dev/tty
-        else
-            echo -e "$FUCK ${C_RED}No TTY available for confirmation. Aborting.${C_RESET}" >&2
-            return 1
-        fi
+        # Interactive confirmation
+        while true; do
+            printf "${C_BOLD}Execute? [Y/n] ${C_RESET}"
+            local confirmation
+            if [ -r /dev/tty ]; then
+                read -r -n 1 confirmation < /dev/tty
+                echo "" # Newline
+            else
+                # Fallback for no TTY
+                read -r confirmation
+            fi
 
-        if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
-            should_exec=true
-        fi
+            case "$confirmation" in
+                [yY]|"")
+                    should_exec=true
+                    break
+                    ;;
+                [nN])
+                    should_exec=false
+                    break
+                    ;;
+                *)
+                    # Loop again
+                    ;;
+            esac
+        done
     fi
 
     if [ "$should_exec" = "true" ]; then
-        echo -e "$FUCK ${C_RED_BOLD}IT,${C_CYAN} WE DO IT LIVE!${C_RESET}" >&2
         # Execute the response from the server and check its exit code
         if eval "$response"; then
-            echo -e "$FUCK ${C_GREEN}It's done. Probably.${C_RESET}"
+            echo -e "${C_GREEN}Done.${C_RESET}"
         else
             local exit_code=$?
-            echo -e "$FUCK ${C_RED}That shit failed with exit code $exit_code. Not my problem.${C_RESET}" >&2
+            echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
+            return $exit_code
         fi
     else
-        echo -e "$FUCK ${C_RED}Fine, do it yourself.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Aborted.${C_RESET}" >&2
+        return 1
     fi
 }
 
@@ -347,7 +407,7 @@ _fuck_define_aliases
 
 # --- End Core Logic ---
 EOF
-)
+
 # --- End of Core Logic Heredoc ---
 
 

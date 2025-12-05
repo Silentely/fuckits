@@ -74,17 +74,17 @@ graph TD
 
 **安装（英文版）**：
 ```bash
-curl -sS https://fuckit.sh | bash
+curl -sS https://fuckits.25500552.xyz | bash
 ```
 
 **安装（中文版）**：
 ```bash
-curl -sS https://zh.fuckit.sh | bash
+curl -sS https://fuckits.25500552.xyz/zh | bash
 ```
 
 **临时使用**：
 ```bash
-curl -sS https://fuckit.sh | bash -s "your command prompt"
+curl -sS https://fuckits.25500552.xyz | bash -s "your command prompt"
 ```
 
 **使用示例**：
@@ -199,6 +199,7 @@ npm run dev
 ### worker.js
 Cloudflare Worker 主文件，处理：
 - GET 请求：根据 User-Agent 返回安装脚本或重定向到 GitHub
+- GET `/health`：返回 JSON 健康检查（含 hasApiKey）供部署自检
 - POST 请求：接收用户提示词，调用 OpenAI API，返回生成的命令
 
 **关键函数**：
@@ -220,7 +221,7 @@ Cloudflare Worker 主文件，处理：
 ### wrangler.toml
 Cloudflare Workers 配置文件：
 - Worker 名称：`fuckit-sh`
-- 路由配置：`fuckit.sh` 和 `zh.fuckit.sh`
+- 路由配置：`fuckits.25500552.xyz/*`（英文）+ `/zh` 路径（中文）
 - 兼容日期：2025-10-26
 
 ### package.json
@@ -342,7 +343,7 @@ export FUCK_DISABLE_DEFAULT_ALIAS=false
 ## 相关资源
 
 - **GitHub**: https://github.com/faithleysath/fuckit.sh
-- **官网**: https://fuckit.sh
-- **中文站**: https://zh.fuckit.sh
+- **官网**: https://fuckits.25500552.xyz
+- **中文站**: https://fuckits.25500552.xyz/zh
 - **许可证**: MIT
 - **作者**: faithleysath

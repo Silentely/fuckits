@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# One-Click Deploy Script for fuckit.sh
+# One-Click Deploy Script for fuckits
 # This script automates the entire deployment process
 #
 
@@ -146,7 +146,18 @@ if confirm "Do you want to set a custom API base URL?"; then
 fi
 
 echo -e "\n${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
-echo -e "${C_CYAN}Step 5: Build Worker${C_RESET}"
+echo -e "${C_CYAN}Step 5: Works Custom Domain${C_RESET}"
+echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
+
+DEFAULT_DOMAIN="fuckits.25500552.xyz"
+read -p "Enter your Works custom domain [${DEFAULT_DOMAIN}]: " CUSTOM_DOMAIN
+CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-$DEFAULT_DOMAIN}"
+
+echo -e "${C_CYAN}👉 Bind ${CUSTOM_DOMAIN} (and ${CUSTOM_DOMAIN}/zh) to this Worker inside the Cloudflare Dashboard after deployment.${C_RESET}"
+echo -e "${C_YELLOW}DNS/SSL propagation may take a few minutes. You can verify with curl https://${CUSTOM_DOMAIN}/health later.${C_RESET}\n"
+
+echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_CYAN}Step 6: Build Worker${C_RESET}"
 echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
 
 echo -e "${C_YELLOW}🔨 Building worker with embedded scripts...${C_RESET}"
@@ -154,23 +165,40 @@ chmod +x scripts/build.sh
 bash scripts/build.sh
 
 echo -e "\n${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
-echo -e "${C_CYAN}Step 6: Deploy to Cloudflare${C_RESET}"
+echo -e "${C_CYAN}Step 7: Deploy to Cloudflare${C_RESET}"
 echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
 
 echo -e "${C_YELLOW}☁️ Deploying to Cloudflare Workers...${C_RESET}"
 npx wrangler deploy
+
+echo -e "\n${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_CYAN}Step 8: Verify Health Endpoint${C_RESET}"
+echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
+
+if confirm "Run curl health-check against https://${CUSTOM_DOMAIN}/health now?"; then
+    if curl -sSf --max-time 15 "https://${CUSTOM_DOMAIN}/health" >/tmp/fuckits-health.json; then
+        echo -e "${C_GREEN}✅ Health endpoint responded:${C_RESET}"
+        cat /tmp/fuckits-health.json
+    else
+        echo -e "${C_RED}⚠️ Health check failed. Verify DNS/SSL and make sure the domain points to this Worker.${C_RESET}"
+    fi
+    rm -f /tmp/fuckits-health.json
+else
+    echo -e "${C_YELLOW}Skipping automatic check. Remember to curl https://${CUSTOM_DOMAIN}/health manually once DNS propagates.${C_RESET}"
+fi
 
 echo -e "\n${C_GREEN}${C_BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}✨ Deployment Successful!${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
 
 echo -e "${C_CYAN}${C_BOLD}📝 Next Steps:${C_RESET}\n"
-echo -e "${C_YELLOW}1. Configure your custom domains in Cloudflare Dashboard:${C_RESET}"
-echo -e "   • ${C_CYAN}fuckit.sh${C_RESET} (English version)"
-echo -e "   • ${C_CYAN}zh.fuckit.sh${C_RESET} (Chinese version)\n"
+echo -e "${C_YELLOW}1. Configure your Works custom domain:${C_RESET}"
+echo -e "   • ${C_CYAN}${CUSTOM_DOMAIN}${C_RESET} (primary)"
+echo -e "   • ${C_CYAN}${CUSTOM_DOMAIN}/zh${C_RESET} (Chinese endpoint via path)\n"
 
 echo -e "${C_YELLOW}2. Test your deployment:${C_RESET}"
-echo -e "   ${C_CYAN}curl -sS https://fuckit.sh | bash${C_RESET}\n"
+echo -e "   ${C_CYAN}curl -sS https://${CUSTOM_DOMAIN} | bash${C_RESET}"
+echo -e "   ${C_CYAN}curl -sS https://${CUSTOM_DOMAIN}/zh | bash${C_RESET}\n"
 
 echo -e "${C_YELLOW}3. For local development:${C_RESET}"
 echo -e "   ${C_CYAN}npm run dev${C_RESET}\n"

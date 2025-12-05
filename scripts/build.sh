@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Build script for fuckit.sh
+# Build script for fuckits (Cloudflare Worker)
 # This script embeds main.sh and zh_main.sh into worker.js as base64 strings
 #
 
@@ -19,7 +19,7 @@ readonly C_YELLOW='\033[0;33m'
 readonly C_CYAN='\033[0;36m'
 readonly C_RESET='\033[0m'
 
-echo -e "${C_CYAN}🔨 Building fuckit.sh worker...${C_RESET}"
+echo -e "${C_CYAN}🔨 Building fuckits worker...${C_RESET}"
 
 # Check if required files exist
 if [ ! -f "main.sh" ]; then

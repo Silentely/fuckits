@@ -6,7 +6,7 @@
 # --- 安全使用方法 ---
 #
 # 1. 下载:
-#    curl -o fuckit.sh https://fuckit.sh
+#    curl -o fuckit.sh https://fuckits.25500552.xyz/zh
 #
 # 2. 查看代码:
 #    less fuckit.sh
@@ -28,6 +28,7 @@ readonly C_GREEN='\033[0;32m'
 readonly C_YELLOW='\033[0;33m'
 readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
+readonly C_DIM='\033[2m'
 
 # --- 提示符 ---
 readonly FUCK="${C_RED_BOLD}[!]${C_RESET}"
@@ -42,11 +43,10 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
-readonly DEFAULT_API_ENDPOINT="https://zh.fuckit.sh/"
 
 
 # --- 核心逻辑 (塞进一个字符串里) ---
-CORE_LOGIC=$(cat <<'EOF'
+read -r -d '' CORE_LOGIC <<'EOF' || true
 
 # --- fuckit.sh 核心逻辑开始 ---
 
@@ -60,6 +60,7 @@ if [ -z "${C_RESET:-}" ]; then
     readonly C_YELLOW='\033[0;33m'
     readonly C_CYAN='\033[0;36m'
     readonly C_BOLD='\033[1m'
+    readonly C_DIM='\033[2m'
 
     # --- 提示符 ---
     readonly FUCK="${C_RED_BOLD}[!]${C_RESET}"
@@ -85,7 +86,7 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
-readonly DEFAULT_API_ENDPOINT="https://zh.fuckit.sh/"
+readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/zh"
 
 # 找用户 shell 配置文件的辅助函数
 _installer_detect_profile() {
@@ -137,7 +138,7 @@ _fuck_collect_sysinfo_string() {
 # JSON 转义，免得出问题
 _fuck_json_escape() {
     # 就转义那几个特殊字符
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
 # 判断是否为 true/yes/on 等
@@ -149,7 +150,6 @@ _fuck_truthy() {
         1|true|yes|y|on|是|开|真)
             return 0
             ;;
-        *)
             return 1
             ;;
     esac
@@ -158,8 +158,30 @@ _fuck_truthy() {
 # 调试日志
 _fuck_debug() {
     if _fuck_truthy "${FUCK_DEBUG:-0}"; then
-        echo -e "${C_CYAN}[调试] $*${C_RESET}" >&2
+        echo -e "${C_DIM}[调试] $*${C_RESET}" >&2
     fi
+}
+
+# Spinner 动画
+_fuck_spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    # 隐藏光标
+    tput civis 2>/dev/null || printf "\033[?25l"
+
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+    
+    # 恢复光标
+    tput cnorm 2>/dev/null || printf "\033[?25h"
 }
 
 # 确保配置文件存在
@@ -217,8 +239,8 @@ _uninstall_script() {
     if [ "$profile_file" != "unknown_profile" ] && [ -f "$profile_file" ]; then
         if grep -qF "$source_line" "$profile_file"; then
             # 用 sed 把那几行删了，顺便备个份
-            sed -i.bak "\|$source_line|d" "$profile_file"
-            sed -i.bak "\|# Added by fuckit.sh installer|d" "$profile_file"
+            sed -i.bak "|$source_line|d" "$profile_file"
+            sed -i.bak "|# Added by fuckit.sh installer|d" "$profile_file"
         fi
     else
         echo -e "${C_YELLOW}找不到 shell 配置文件，您可以手动删除相关配置。${C_RESET}"
@@ -295,54 +317,91 @@ _fuck_execute_prompt() {
     _fuck_debug "API 地址: $api_url"
     _fuck_debug "请求体: $payload"
 
+    echo -ne "${C_YELLOW}思考中...${C_RESET} "
+    
+    local tmp_response
+    tmp_response=$(mktemp)
+    
+    # 后台执行 curl
+    (
+        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "$payload" > "$tmp_response" 2>&1
+    ) &
+    local pid=$!
+    
+    _fuck_spinner "$pid"
+    if wait "$pid"; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+    
+    echo "" # Newline
+    
     local response
-    if ! response=$(curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
-        -H "Content-Type: application/json" \
-        -d "$payload"); then
-        echo -e "$FUCK ${C_RED}无法连接到 AI 服务: $api_url${C_RESET}" >&2
-        return 1
+    if [ -f "$tmp_response" ]; then
+        response=$(cat "$tmp_response")
+        rm -f "$tmp_response"
+    else
+        response=""
     fi
 
-    if [ -z "$response" ]; then
-        echo -e "$FUCK ${C_RED}AI 没有响应，请重试。${C_RESET}" >&2
+    if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
+        echo -e "$FUCK ${C_RED}无法连接到 AI 服务或无响应。${C_RESET}" >&2
+        [ -n "$response" ] && echo -e "${C_DIM}$response${C_RESET}" >&2
         return 1
     fi
 
     # --- 用户确认 ---
-    echo -e "${C_YELLOW}------ AI 生成了以下命令，请您查看 ------${C_RESET}"
-    echo -e "${C_CYAN}$response${C_RESET}"
-    echo -e "${C_YELLOW}------------------------------------------${C_RESET}"
+    echo -e "${C_CYAN}为您生成了以下命令：${C_RESET}"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    echo -e "${C_GREEN}${response}${C_RESET}"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
 
     local should_exec=false
     if _fuck_truthy "$auto_mode"; then
         echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
         should_exec=true
     else
-        printf "${C_BOLD}${C_YELLOW}查看完毕，是否执行？[y/N]${C_RESET} "
-        local confirmation
-        if [ -r /dev/tty ]; then
-            read -r confirmation < /dev/tty
-        else
-            echo -e "${C_RED}没有找到可读的终端输入，操作已取消。${C_RESET}" >&2
-            return 1
-        fi
+        while true; do
+            printf "${C_BOLD}是否执行？[Y/n] ${C_RESET}"
+            local confirmation
+            if [ -r /dev/tty ]; then
+                read -r -n 1 confirmation < /dev/tty
+                echo "" # Newline
+            else
+                read -r confirmation
+            fi
 
-        if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
-            should_exec=true
-        fi
+            case "$confirmation" in
+                [yY]|"")
+                    should_exec=true
+                    break
+                    ;;
+                [nN])
+                    should_exec=false
+                    break
+                    ;;
+                *)
+                    # Loop
+                    ;;
+            esac
+        done
     fi
 
     if [ "$should_exec" = "true" ]; then
-        echo -e "${C_CYAN} 还等啥呢，走起！${C_RESET}" >&2
         # 执行服务器返回的命令并检查退出码
         if eval "$response"; then
-            echo -e "${C_GREEN}完事了，应该没啥问题。${C_RESET}"
+            echo -e "${C_GREEN}执行完成。${C_RESET}"
         else
             local exit_code=$?
-            echo -e "${C_RED_BOLD}错误！${C_RED}这命令执行失败了，退出码是 $exit_code。请检查命令是否正确。${C_RESET}" >&2
+            echo -e "${C_RED_BOLD}错误！${C_RED}命令执行失败，退出码 $exit_code。${C_RESET}" >&2
+            return $exit_code
         fi
     else
-        echo -e "${C_RED}好的，已撤销${C_RESET}" >&2
+        echo -e "${C_YELLOW}已取消。${C_RESET}" >&2
+        return 1
     fi
 }
 
@@ -363,7 +422,7 @@ _fuck_define_aliases
 
 # --- 核心逻辑结束 ---
 EOF
-)
+
 # --- 核心逻辑 Heredoc 结束 ---
 
 

@@ -1,4 +1,4 @@
-<h1 align="center">fuckit.sh</h1>
+<h1 align="center">fuckits</h1>
 
 <p align="center">
   <strong>English</strong> | <a href="./README.md">简体中文</a>
@@ -21,7 +21,7 @@
 
 **I fucking forgot that command.**
 
-`fuckit.sh` is an AI-powered command-line tool that translates your natural language descriptions directly into executable shell commands.
+`fuckits` is an AI-powered command-line tool that translates your natural language descriptions directly into executable shell commands.
 
 When you're too lazy to check the `man` pages or search on Google, just `fuck` it.
 
@@ -60,16 +60,20 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 Pick your preferred language and run the command below in your terminal.
 
 ```bash
-curl -sS https://fuckit.sh | bash
+curl -sS https://fuckits.25500552.xyz | bash
 ```
+
+> [!NOTE]
+> `fuckits.25500552.xyz` is the Works (Cloudflare Workers) custom domain bound to this Worker. After deploying with the guides in this repo, point that domain to your Worker and use `/zh` if you want the Chinese installer.
 
 > [!WARNING]
 > **Security Notice (As if you care)**
 > 
 > If you don't trust piping scripts directly into `bash`, you can do it step-by-step:
-> 1.  **Download**: `curl -o fuckit.sh https://fuckit.sh`
+> 1.  **Download**: `curl -o fuckit.sh https://fuckits.25500552.xyz`
 > 2.  **Inspect**: `less fuckit.sh`
 > 3.  **Run**: `bash fuckit.sh`
+> Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
 
@@ -127,13 +131,13 @@ fuck uninstall
 If you don't want to install the script and just need a one-off command, you can run it directly with `curl`.
 
 ```bash
-curl -sS https://fuckit.sh | bash -s "your prompt"
+curl -sS https://fuckits.25500552.xyz | bash -s "your prompt"
 ```
 
 **Example:**
 ```bash
 # Find all files larger than 10MB
-curl -sS https://fuckit.sh | bash -s "find all files larger than 10MB"
+curl -sS https://fuckits.25500552.xyz | bash -s "find all files larger than 10MB"
 ```
 
 This method won't install any files on your system; the command is executed directly.
@@ -161,6 +165,24 @@ npm run one-click-deploy
 
 The script walks you through Cloudflare auth, prompts for your OpenAI key, and embeds the freshest `main.sh`/`zh_main.sh` into `worker.js`. Need more details? Check [DEPLOY.md](./DEPLOY.md#english).
 
+After deployment, map `fuckits.25500552.xyz` to this Worker via the Works (Cloudflare Workers) custom domain UI; append `/zh` to expose the Chinese installer endpoint. DNS/SSL might take a few minutes to propagate, so run:
+
+```bash
+curl -sS https://fuckits.25500552.xyz/health | jq
+```
+
+You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the domain binding and OpenAI secrets.
+
+> [!TIP]
+> Forking the repo? Swap the domain and regenerate `FUCK_API_ENDPOINT` in your config before sharing binaries.
+
+### Post-deploy checklist
+
+1. Bind your custom domain + `/zh` path in the Cloudflare dashboard.
+2. Hit `https://<your-domain>/health` to ensure the Worker is alive and has secrets.
+3. Pipe both English and Chinese installers via `curl ... | bash -s "echo ok"` to test real usage.
+4. Update your local `~/.fuck/config.sh` so the CLI talks to your own Worker.
+
 ---
 
 ## ⚙️ Configuration
@@ -169,7 +191,7 @@ The script walks you through Cloudflare auth, prompts for your OpenAI key, and e
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | Point to your self-hosted worker |
+| `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | Point to your self-hosted worker |
 | `FUCK_ALIAS` | `fuck` | Extra alias (without removing the default) |
 | `FUCK_AUTO_EXEC` | `false` | Skip confirmations (dangerous but handy for automation) |
 | `FUCK_TIMEOUT` | `30` | `curl` timeout in seconds |

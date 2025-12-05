@@ -89,9 +89,17 @@ npx wrangler deploy
 
 #### 7. 配置自定义域名
 
-在 Cloudflare Dashboard 中配置自定义域名：
-- `fuckit.sh` → 英文版本
-- `zh.fuckit.sh` → 中文版本
+在 Works（Cloudflare Workers）Dashboard 中绑定自定义域名：
+- `fuckits.25500552.xyz` → 主入口（英文）
+- `fuckits.25500552.xyz/zh` → 通过路径提供中文版本（无需额外域名）
+
+绑定后，运行以下命令确认 Worker 已正常响应：
+
+```bash
+curl -sS https://fuckits.25500552.xyz/health | jq
+```
+
+如果返回 `status: ok` 且 `hasApiKey: true`，说明 DNS 与 secret 均已正确配置。
 
 ### 开发模式
 
@@ -226,9 +234,17 @@ npx wrangler deploy
 
 #### 7. Configure Custom Domains
 
-Set up custom domains in Cloudflare Dashboard:
-- `fuckit.sh` → English version
-- `zh.fuckit.sh` → Chinese version
+Set up your Works (Cloudflare Workers) custom domain:
+- `fuckits.25500552.xyz` → primary endpoint (English)
+- `fuckits.25500552.xyz/zh` → Chinese endpoint exposed via the `/zh` path
+
+Use the health endpoint to verify DNS/SSL propagation:
+
+```bash
+curl -sS https://fuckits.25500552.xyz/health | jq
+```
+
+Expect `status: ok` and `hasApiKey: true`.
 
 ### Development Mode
 

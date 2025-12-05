@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Deploy script for fuckit.sh
+# Deploy script for fuckits
 # This script builds the worker and deploys it to Cloudflare Workers using wrangler
 #
 

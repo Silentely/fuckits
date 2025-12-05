@@ -8,6 +8,7 @@
 - **`scripts/build.sh`**: 自动将 `main.sh` 和 `zh_main.sh` 编码并嵌入 `worker.js`
 - **`scripts/deploy.sh`**: 简化的部署脚本
 - **`scripts/setup.sh`**: 交互式设置向导
+- Worker 新增 `/health` JSON 健康检查端点，用于 DNS/secret 自检
 
 ### 2. 🔧 配置系统重构
 添加了完整的配置管理功能：
@@ -103,7 +104,7 @@ npm run one-click-deploy
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | 自定义 API 端点 |
+| `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自定义 API 端点 |
 | `FUCK_ALIAS` | - | 额外别名（不影响默认 fuck） |
 | `FUCK_AUTO_EXEC` | `false` | 跳过确认自动执行 |
 | `FUCK_TIMEOUT` | `30` | curl 超时时间（秒） |
@@ -159,7 +160,7 @@ pls install git
 ## 📊 项目结构
 
 ```bash
-fuckit.sh/
+fuckits/
 ├── .gitignore                  # Git 忽略文件
 ├── CHANGELOG.md                # 更新日志
 ├── DEPLOY.md                   # 部署指南

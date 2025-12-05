@@ -1,4 +1,4 @@
-<h1 align="center">fuckit.sh</h1>
+<h1 align="center">fuckits</h1>
 
 <p align="center">
   <a href="./README.en.md">English</a> | <strong>简体中文</strong>
@@ -26,7 +26,7 @@
 
 **我他妈忘了那条命令了。**
 
-`fuckit.sh` 是一个基于 AI 的命令行工具，它能将你的自然语言描述直接转换成可执行的 Shell 命令。
+`fuckits` 是一个基于 AI 的命令行工具，它能将你的自然语言描述直接转换成可执行的 Shell 命令。
 
 当你懒得去查 `man` 手册或者在 Google 上搜索时，直接 `fuck` 就完事了。
 
@@ -64,23 +64,27 @@
 
 选择你喜欢的语言版本，在终端里运行以下命令即可。
 
-### 英文版 (fuckit.sh)
+### 英文端点 (fuckits.25500552.xyz)
 
 ```bash
-curl -sS https://fuckit.sh | bash
+curl -sS https://fuckits.25500552.xyz | bash
 ```
 
-### 中文版 (zh.fuckit.sh)
+### 中文端点 (fuckits.25500552.xyz/zh)
 
 ```bash
-curl -sS https://zh.fuckit.sh | bash
+curl -sS https://fuckits.25500552.xyz/zh | bash
 ```
+
+> [!NOTE]
+> `fuckits.25500552.xyz` 通过 Works 自定义域映射到你部署的 Worker。按照本文档或 [DEPLOY.md](./DEPLOY.md#简体中文) 中的步骤重新部署后，域名会自动指向你的实例，中文脚本使用 `/zh` 路径。
+> 自行部署时请在 `~/.fuck/config.sh` 中把 `FUCK_API_ENDPOINT` 改成你自己的域名，避免所有请求仍指向默认演示服务。
 
 > [!WARNING]
 > **安全提示**
 > 
 > 如果你不信任直接在 `| bash` 中运行脚本，可以分步操作：
-> 1.  **下载**: `curl -o fuckit.sh https://fuckit.sh`
+> 1.  **下载**: `curl -o fuckit.sh https://fuckits.25500552.xyz`
 > 2.  **瞅一眼**: `less fuckit.sh`
 > 3.  **运行**: `bash fuckit.sh`
 
@@ -142,18 +146,18 @@ fuck uninstall
 
 **英文版:**
 ```bash
-curl -sS https://fuckit.sh | bash -s "你的需求"
+curl -sS https://fuckits.25500552.xyz | bash -s "你的需求"
 ```
 
 **中文版:**
 ```bash
-curl -sS https://zh.fuckit.sh | bash -s "你的需求"
+curl -sS https://fuckits.25500552.xyz/zh | bash -s "你的需求"
 ```
 
 **示例:**
 ```bash
 # 查找所有大于 10MB 的文件
-curl -sS https://fuckit.sh | bash -s "find all files larger than 10MB"
+curl -sS https://fuckits.25500552.xyz | bash -s "find all files larger than 10MB"
 ```
 
 这种方式不会在你的系统上安装任何文件，命令会直接执行。
@@ -181,6 +185,24 @@ npm run one-click-deploy
 
 脚本会引导你完成 Cloudflare 登录、设置 OpenAI Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./DEPLOY.md#简体中文)。
 
+部署完成后，请在 Works（Cloudflare Workers）控制台中将 `fuckits.25500552.xyz` 绑定到该 Worker（中文版本通过 `/zh` 路径提供）。DNS/SSL 生效可能需要几分钟，可使用健康检查确保域名已指向你自己的 Worker：
+
+```bash
+curl -sS https://fuckits.25500552.xyz/health | jq
+```
+
+若返回 `status: "ok"` 且 `hasApiKey: true`，说明 Worker 能正确调用 OpenAI。否则请检查自定义域与 secret 设置。
+
+> [!TIP]
+> Fork 本项目时，自定义域名和 `FUCK_API_ENDPOINT` 也要替换成你自己的值。
+
+### 部署后自检
+
+1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。
+2. 运行 `curl -sS https://<你的域>/health | jq`，确认 Status 与 `hasApiKey` 返回正常。
+3. 使用 `curl -sS https://<你的域> | bash -s "echo ok"` 以及 `/zh` 版本做一次真实 round-trip。
+4. 最后再运行 `fuck config`，把本地 CLI 的 `FUCK_API_ENDPOINT` 更新为新域。
+
 ---
 
 ## ⚙️ 配置说明
@@ -189,7 +211,7 @@ npm run one-click-deploy
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | 自建或自定义 Worker 地址 |
+| `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自建或自定义 Worker 地址 |
 | `FUCK_ALIAS` | `fuck` | 额外别名（不会影响默认别名，除非关闭） |
 | `FUCK_AUTO_EXEC` | `false` | 自动执行命令，跳过确认（危险操作请慎用） |
 | `FUCK_TIMEOUT` | `30` | `curl` 请求超时时间（秒） |

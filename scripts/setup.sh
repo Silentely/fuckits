@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Setup script for fuckit.sh
+# Setup script for fuckits
 # This script helps configure the environment and set up secrets for deployment
 #
 
@@ -14,7 +14,7 @@ readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
 readonly C_RESET='\033[0m'
 
-echo -e "${C_CYAN}${C_BOLD}🚀 fuckit.sh Setup Script${C_RESET}"
+echo -e "${C_CYAN}${C_BOLD}🚀 fuckits Setup Script${C_RESET}"
 echo -e "${C_CYAN}================================${C_RESET}\n"
 
 # Check for Node.js

@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Example configuration file for fuckit.sh
+# Example configuration file for fuckits
 # Copy or symlink this file to ~/.fuck/config.sh and customize it.
 #
 
-# Custom API endpoint (default: https://fuckit.sh/)
+# Custom API endpoint (default: https://fuckits.25500552.xyz/)
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
 
 # Extra alias besides the default 'fuck'
