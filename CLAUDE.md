@@ -220,7 +220,7 @@ Cloudflare Worker 主文件，处理：
 
 ### wrangler.toml
 Cloudflare Workers 配置文件：
-- Worker 名称：`fuckit-sh`
+- Worker 名称：`fuckits`
 - 路由配置：`fuckits.25500552.xyz/*`（英文）+ `/zh` 路径（中文）
 - 兼容日期：2025-10-26
 
