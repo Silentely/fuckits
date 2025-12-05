@@ -40,8 +40,8 @@ if [ -z "${HOME:-}" ]; then
 fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
-# The API endpoint for the Cloudflare Edge Function
-readonly API_ENDPOINT="https://fuckit.sh/"
+readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+readonly DEFAULT_API_ENDPOINT="https://fuckit.sh/"
 
 
 # --- Core Logic (Embedded as a string) ---
@@ -71,11 +71,20 @@ if [ -z "${C_RESET:-}" ]; then
         # The install check will happen in the installer part of the script.
         readonly INSTALL_DIR="/tmp/.fuck"
         readonly MAIN_SH="/tmp/.fuck/main.sh"
+        readonly CONFIG_FILE="/tmp/.fuck/config.sh"
     else
         readonly INSTALL_DIR="$HOME/.fuck"
         readonly MAIN_SH="$INSTALL_DIR/main.sh"
+        readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
     fi
 fi
+
+# Load user configuration if it exists
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+readonly DEFAULT_API_ENDPOINT="https://fuckit.sh/"
 
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
@@ -130,6 +139,70 @@ _fuck_json_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
+# Simple helper to parse boolean-like values
+_fuck_truthy() {
+    local value="${1:-}"
+    local normalized
+    normalized=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+    case "$normalized" in
+        1|true|yes|y|on)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Debug helper
+_fuck_debug() {
+    if _fuck_truthy "${FUCK_DEBUG:-0}"; then
+        echo -e "${C_CYAN}[debug] $*${C_RESET}" >&2
+    fi
+}
+
+# Ensure a config file exists to help users tweak the behaviour
+_fuck_ensure_config_exists() {
+    if [ -f "$CONFIG_FILE" ]; then
+        return
+    fi
+
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    cat <<'CFG' > "$CONFIG_FILE"
+# fuckit.sh configuration
+# Toggle the exports below to customise your experience.
+
+# Custom API endpoint that points to your self-hosted worker
+# export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# Add an extra alias besides the default 'fuck'
+# export FUCK_ALIAS="pls"
+
+# Skip confirmation prompts (use with caution!)
+# export FUCK_AUTO_EXEC=false
+
+# Override curl timeout (seconds)
+# export FUCK_TIMEOUT=30
+
+# Enable verbose debug logs
+# export FUCK_DEBUG=false
+
+# Disable the built-in 'fuck' alias
+# export FUCK_DISABLE_DEFAULT_ALIAS=false
+CFG
+}
+
+_fuck_show_config_help() {
+    _fuck_ensure_config_exists
+    echo -e "${C_YELLOW}Configuration file:${C_RESET} ${C_CYAN}$CONFIG_FILE${C_RESET}"
+    if [ -n "${EDITOR:-}" ]; then
+        echo -e "${C_YELLOW}Edit with:${C_RESET} ${C_CYAN}${EDITOR} \"$CONFIG_FILE\"${C_RESET}"
+    else
+        echo -e "${C_YELLOW}Open this file in your favourite editor to customise fuckit.sh.${C_RESET}"
+    fi
+    echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG"
+}
+
 # Uninstalls the script
 _uninstall_script() {
     echo -e "$FUCK ${C_YELLOW}So you're kicking me out? Fine.${C_RESET}"
@@ -166,6 +239,12 @@ _fuck_execute_prompt() {
         return 0
     fi
 
+    # If the user types "fuck config"
+    if [ "$1" = "config" ] && [ "$#" -eq 1 ]; then
+        _fuck_show_config_help
+        return 0
+    fi
+
     if ! command -v curl &> /dev/null; then
         echo -e "$FUCK ${C_RED}'fuck' command needs 'curl'. Please install it.${C_RESET}" >&2
         return 1
@@ -177,6 +256,8 @@ _fuck_execute_prompt() {
     fi
 
     local prompt="$*"
+    local auto_mode="${FUCK_AUTO_EXEC:-0}"
+    local curl_timeout="${FUCK_TIMEOUT:-30}"
     local sysinfo_string
     sysinfo_string=$(_fuck_collect_sysinfo_string)
     
@@ -190,13 +271,19 @@ _fuck_execute_prompt() {
     local payload
     payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' "$escaped_sysinfo" "$escaped_prompt")
 
-    # API_ENDPOINT must be hardcoded here for the logic to be portable
-    local api_url="https://fuckit.sh/"
+    # Use configured API endpoint or default
+    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
+
+    _fuck_debug "API URL: $api_url"
+    _fuck_debug "Payload: $payload"
 
     local response
-    response=$(curl -s -X POST "$api_url" \
+    if ! response=$(curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
         -H "Content-Type: application/json" \
-        -d "$payload")
+        -d "$payload"); then
+        echo -e "$FUCK ${C_RED}Couldn't reach the AI service at $api_url.${C_RESET}" >&2
+        return 1
+    fi
 
     if [ -z "$response" ]; then
         echo -e "$FUCK ${C_RED}The AI is ghosting me. Got nothing back.${C_RESET}" >&2
@@ -205,16 +292,31 @@ _fuck_execute_prompt() {
 
     # --- User Confirmation (as requested) ---
     echo -e "${C_YELLOW}--- The AI mumbled this, hope it's right ---${C_RESET}"
-    # Direct output, no 'more'
     echo -e "${C_CYAN}$response${C_RESET}"
     echo -e "${C_YELLOW}------------------------------------------${C_RESET}"
     
-    # Secondary confirmation prompt
-    printf "$FCKN ${C_BOLD}${C_YELLOW}execute it? [y/N]${C_RESET} "
-    local confirmation
-    read -r confirmation < /dev/tty
+    # Check if auto-exec mode is enabled
+    local should_exec=false
+    if _fuck_truthy "$auto_mode"; then
+        echo -e "${C_YELLOW}⚡ Auto-exec mode enabled, executing immediately...${C_RESET}"
+        should_exec=true
+    else
+        # Secondary confirmation prompt
+        printf "$FCKN ${C_BOLD}${C_YELLOW}execute it? [y/N]${C_RESET} "
+        local confirmation
+        if [ -r /dev/tty ]; then
+            read -r confirmation < /dev/tty
+        else
+            echo -e "$FUCK ${C_RED}No TTY available for confirmation. Aborting.${C_RESET}" >&2
+            return 1
+        fi
 
-    if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
+        if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
+            should_exec=true
+        fi
+    fi
+
+    if [ "$should_exec" = "true" ]; then
         echo -e "$FUCK ${C_RED_BOLD}IT,${C_CYAN} WE DO IT LIVE!${C_RESET}" >&2
         # Execute the response from the server and check its exit code
         if eval "$response"; then
@@ -228,8 +330,20 @@ _fuck_execute_prompt() {
     fi
 }
 
-# Define the alias for interactive use
-alias fuck='_fuck_execute_prompt'
+# Define the alias for interactive use (supports custom aliases)
+_fuck_define_aliases() {
+    local default_alias="fuck"
+
+    if ! _fuck_truthy "${FUCK_DISABLE_DEFAULT_ALIAS:-0}"; then
+        alias "$default_alias"='_fuck_execute_prompt'
+    fi
+
+    if [ -n "${FUCK_ALIAS:-}" ] && [ "$FUCK_ALIAS" != "$default_alias" ]; then
+        alias "$FUCK_ALIAS"='_fuck_execute_prompt'
+    fi
+}
+
+_fuck_define_aliases
 
 # --- End Core Logic ---
 EOF
@@ -272,6 +386,26 @@ _install_script() {
         return 1
     fi
 
+    # Create a default config file if it doesn't exist
+    if [ ! -f "$CONFIG_FILE" ]; then
+        cat <<'CFG' > "$CONFIG_FILE"
+# fuckit.sh configuration
+# Toggle the exports below to customise your experience.
+
+# Custom API endpoint that points to your self-hosted worker
+# export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# Skip confirmation prompts (use with caution!)
+# export FUCK_AUTO_EXEC=0
+
+# Override curl timeout (seconds)
+# export FUCK_TIMEOUT=30
+
+# Enable verbose debug logs
+# export FUCK_DEBUG=0
+CFG
+    fi
+
     # Add source line to shell profile
     local profile_file
     profile_file=$(_installer_detect_profile)
@@ -300,6 +434,7 @@ _install_script() {
         echo -e "  ${C_CYAN}fuck uninstall git${C_RESET}"
         echo -e "  ${C_CYAN}fuck find all files larger than 10MB in the current directory${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# Uninstalls ${C_RESET}${C_RED}fuck${C_RESET}${C_GREEN} itself${C_RESET}"
+        echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# Show configuration help${C_RESET}"
         echo -e "\n${C_YELLOW}Remember to restart your shell to begin!${C_RESET}"
     else
         echo -e "$FUCK ${C_YELLOW}It's already installed, genius. Just updated the script for you.${C_RESET}"

@@ -44,6 +44,15 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 *   **Smart Context**: Automatically detects OS, package manager, and other info to provide better context to the AI.
 *   **Easy Uninstall**: A single command completely removes the script from your system.
 
+## 🔧 What's New
+
+* Per-user config file (`~/.fuck/config.sh`) with custom API endpoints, aliases, auto-exec, timeouts, and debug flags.
+* `fuck config` helper that tells you where the config lives and auto-generates a starter file.
+* Auto-exec mode controlled via `FUCK_AUTO_EXEC=true` for non-interactive workflows.
+* Custom aliases via `FUCK_ALIAS="pls"` while keeping the OG `fuck` command.
+* Rebuilt build/deploy workflow: `npm run build` now injects the latest installers into `worker.js`.
+* One-click deploy workflow via `npm run one-click-deploy`.
+
 ---
 
 ## Quick Install
@@ -89,6 +98,20 @@ fuck install git
 fuck uninstall git
 ```
 
+### Configure
+
+See where the config file lives and generate a starter template:
+
+```bash
+fuck config
+```
+
+The config file lives at `~/.fuck/config.sh`. You can tweak:
+- Custom API endpoints for self-hosted workers
+- Auto-exec mode to skip confirmations
+- Request timeouts and debug output
+- Extra aliases (while keeping the default `fuck` command)
+
 ### Uninstall
 
 If you want to get rid of me, you can kick me out anytime:
@@ -128,6 +151,35 @@ This method won't install any files on your system; the command is executed dire
 
 ---
 
+## ☁️ One-Click Deploy
+
+One command handles dependencies, Cloudflare login, secrets, build, and deploy:
+
+```bash
+npm run one-click-deploy
+```
+
+The script walks you through Cloudflare auth, prompts for your OpenAI key, and embeds the freshest `main.sh`/`zh_main.sh` into `worker.js`. Need more details? Check [DEPLOY.md](./DEPLOY.md#english).
+
+---
+
+## ⚙️ Configuration
+
+`~/.fuck/config.sh` is your control center. Both installed and temporary modes respect it.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `FUCK_API_ENDPOINT` | `https://fuckit.sh/` | Point to your self-hosted worker |
+| `FUCK_ALIAS` | `fuck` | Extra alias (without removing the default) |
+| `FUCK_AUTO_EXEC` | `false` | Skip confirmations (dangerous but handy for automation) |
+| `FUCK_TIMEOUT` | `30` | `curl` timeout in seconds |
+| `FUCK_DEBUG` | `false` | Verbose debug logs |
+| `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | Don’t automatically inject the `fuck` alias |
+
+Run `fuck config` to print the file path and auto-generate a starter template.
+
+---
+
 ## Developer Guide (For tinkerers)
 
 If you want to deploy this project yourself or modify it, follow these steps.
@@ -135,59 +187,73 @@ If you want to deploy this project yourself or modify it, follow these steps.
 ### Prerequisites
 
 *   A [Cloudflare](https://www.cloudflare.com/) account
-*   [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-*   An OpenAI API key (or another OpenAI-compatible API service) **(only required if you self-host)**
+*   Node.js (>= 18.0.0)
+*   npm
+*   An OpenAI API key (or another OpenAI-compatible API service)
 
-### Deployment Steps
+### Quick Deploy
 
-1.  **Clone the repository**
+**One-click (recommended):**
 
-    ```bash
-    git clone https://github.com/faithleysath/fuckit.sh.git
-    cd fuckit.sh
-    ```
+```bash
+git clone https://github.com/faithleysath/fuckit.sh.git
+cd fuckit.sh
+npm run one-click-deploy
+```
 
-2.  **Configure `wrangler.toml`**
+**Manual:**
 
-    You can modify the worker name and routes in the `wrangler.toml` file as needed.
+```bash
+git clone https://github.com/faithleysath/fuckit.sh.git
+cd fuckit.sh
 
-3.  **Configure Secrets**
+# Install dependencies
+npm install
 
-    You need to add your OpenAI API key as a secret to your Cloudflare Worker.
+# Login to Cloudflare
+npx wrangler login
 
-    ```bash
-    npx wrangler secret put OPENAI_API_KEY
-    ```
+# Set OpenAI API Key
+npx wrangler secret put OPENAI_API_KEY
 
-    You can also set optional environment variables:
-    *   `OPENAI_API_MODEL`: Specify the model to use, defaults to `gpt-4-turbo`.
-    *   `OPENAI_API_BASE`: Specify the API base URL, defaults to `https://api.openai.com/v1`.
+# Build and deploy
+npm run deploy
+```
 
-4.  **Build `worker.js`**
+### Available npm Scripts
 
-    The `worker.js` file needs the contents of `main.sh` and `zh_main.sh` to be embedded as Base64 strings. A build command is provided to automate this.
+- `npm run build` - Build the worker (embed scripts into worker.js)
+- `npm run deploy` - Build and deploy to Cloudflare
+- `npm run one-click-deploy` - Complete all setup and deployment automatically
+- `npm run setup` - Interactive setup wizard
+- `npm run dev` - Local development mode
 
-    **macOS:**
-    ```bash
-    B64_EN=$(base64 -i main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT =.*#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js && \
-    B64_ZH=$(base64 -i zh_main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT_ZH =.*#const INSTALLER_SCRIPT_ZH = b64_to_utf8(\`${B64_ZH}\`);#" worker.js && \
-    rm worker.js.bak
-    ```
+### Custom Configuration
 
-    **Linux:**
-    ```bash
-    B64_EN=$(base64 -w 0 main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT =.*#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js && \
-    B64_ZH=$(base64 -w 0 zh_main.sh) && sed -i.bak "s#^const INSTALLER_SCRIPT_ZH =.*#const INSTALLER_SCRIPT_ZH = b64_to_utf8(\`${B64_ZH}\`);#" worker.js && \
-    rm worker.js.bak
-    ```
+Edit worker name and routes in `wrangler.toml`:
 
-5.  **Deploy the Worker**
+```toml
+name = "your-worker-name"
+```
 
-    ```bash
-    npx wrangler deploy
-    ```
+**Optional environment variables:**
+- `OPENAI_API_MODEL`: AI model (default: `gpt-4-turbo`)
+- `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com/v1`)
 
-After a successful deployment, your worker will be live at your configured domain.
+For detailed deployment instructions, see [DEPLOY.md](./DEPLOY.md).
+
+---
+
+## 🧠 Brainstorming
+
+* Amber-lang rewrite: Cross-platform CLI + UI powered by Amber.
+* Multi-model routing: Seamlessly switch between OpenAI, Anthropic, DeepSeek, and other providers.
+* Command history & favorites: `fuck history`, one-click replay of common commands.
+* Scenario templates: Built-in prompt templates for ops, dev, data, etc.
+* UI skins: Cat-girl, professional, serious modes and more personalities.
+* Team mode: Share custom aliases, API keys, and tuned templates.
+
+Drop your ideas in the Issues—let's brainstorm more fun features together.
 
 ---
 

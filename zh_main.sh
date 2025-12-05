@@ -41,8 +41,8 @@ if [ -z "${HOME:-}" ]; then
 fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
-# Cloudflare Edge Function 的 API 地址
-readonly API_ENDPOINT="https://fuckit.sh/"
+readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+readonly DEFAULT_API_ENDPOINT="https://zh.fuckit.sh/"
 
 
 # --- 核心逻辑 (塞进一个字符串里) ---
@@ -72,11 +72,20 @@ if [ -z "${C_RESET:-}" ]; then
         # 安装程序部分会进行真正的检查
         readonly INSTALL_DIR="/tmp/.fuck"
         readonly MAIN_SH="/tmp/.fuck/main.sh"
+        readonly CONFIG_FILE="/tmp/.fuck/config.sh"
     else
         readonly INSTALL_DIR="$HOME/.fuck"
         readonly MAIN_SH="$INSTALL_DIR/main.sh"
+        readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
     fi
 fi
+
+# 如果存在配置文件则加载
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+readonly DEFAULT_API_ENDPOINT="https://zh.fuckit.sh/"
 
 # 找用户 shell 配置文件的辅助函数
 _installer_detect_profile() {
@@ -131,6 +140,71 @@ _fuck_json_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
+# 判断是否为 true/yes/on 等
+_fuck_truthy() {
+    local value="${1:-}"
+    local normalized
+    normalized=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+    case "$normalized" in
+        1|true|yes|y|on|是|开|真)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# 调试日志
+_fuck_debug() {
+    if _fuck_truthy "${FUCK_DEBUG:-0}"; then
+        echo -e "${C_CYAN}[调试] $*${C_RESET}" >&2
+    fi
+}
+
+# 确保配置文件存在
+_fuck_ensure_config_exists() {
+    if [ -f "$CONFIG_FILE" ]; then
+        return
+    fi
+
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    cat <<'CFG' > "$CONFIG_FILE"
+# fuckit.sh 配置文件示例
+# 去掉行首的 # 并修改为你想要的值即可。
+
+# 自定义 API 入口（如自建 Worker）
+# export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# 额外别名（默认提供 fuck）
+# export FUCK_ALIAS="运行"
+
+# 自动执行返回的命令，跳过确认（谨慎开启）
+# export FUCK_AUTO_EXEC=false
+
+# 请求超时时间（秒）
+# export FUCK_TIMEOUT=30
+
+# 是否打印调试信息
+# export FUCK_DEBUG=false
+
+# 不再自动注入默认别名
+# export FUCK_DISABLE_DEFAULT_ALIAS=false
+CFG
+}
+
+# 显示配置提示
+_fuck_show_config_help() {
+    _fuck_ensure_config_exists
+    echo -e "${C_YELLOW}配置文件：${C_RESET} ${C_CYAN}$CONFIG_FILE${C_RESET}"
+    if [ -n "${EDITOR:-}" ]; then
+        echo -e "${C_YELLOW}可以使用：${C_RESET} ${C_CYAN}${EDITOR} $CONFIG_FILE${C_RESET}"
+    else
+        echo -e "${C_YELLOW}用任意编辑器打开该文件即可修改配置。${C_RESET}"
+    fi
+    echo -e "${C_CYAN}可用选项：${C_RESET}FUCK_API_ENDPOINT, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG"
+}
+
 # 卸载脚本
 _uninstall_script() {
     echo -e "${C_RED_BOLD}好好好！${C_RESET}${C_YELLOW}怎么着，要卸磨杀驴啊？行啊你个老六，我真谢谢你了。${C_RESET}"
@@ -183,6 +257,12 @@ _fuck_execute_prompt() {
         return 0
     fi
 
+    # 如果用户输入 "fuck config"
+    if [ "$1" = "config" ] && [ "$#" -eq 1 ]; then
+        _fuck_show_config_help
+        return 0
+    fi
+
     if ! command -v curl &> /dev/null; then
         echo -e "$FUCK ${C_RED}'fuck' 命令需要 'curl'，请先安装 curl。${C_RESET}" >&2
         return 1
@@ -194,6 +274,8 @@ _fuck_execute_prompt() {
     fi
 
     local prompt="$*"
+    local auto_mode="${FUCK_AUTO_EXEC:-0}"
+    local curl_timeout="${FUCK_TIMEOUT:-30}"
     local sysinfo_string
     sysinfo_string=$(_fuck_collect_sysinfo_string)
     
@@ -207,13 +289,19 @@ _fuck_execute_prompt() {
     local payload
     payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' "$escaped_sysinfo" "$escaped_prompt")
 
-    # API 地址必须写在这儿，不然没法用
-    local api_url="https://fuckit.sh/"
+    # 使用配置的 API 地址或默认地址
+    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
+
+    _fuck_debug "API 地址: $api_url"
+    _fuck_debug "请求体: $payload"
 
     local response
-    response=$(curl -s -X POST "$api_url" \
+    if ! response=$(curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
         -H "Content-Type: application/json" \
-        -d "$payload")
+        -d "$payload"); then
+        echo -e "$FUCK ${C_RED}无法连接到 AI 服务: $api_url${C_RESET}" >&2
+        return 1
+    fi
 
     if [ -z "$response" ]; then
         echo -e "$FUCK ${C_RED}AI 没有响应，请重试。${C_RESET}" >&2
@@ -222,14 +310,29 @@ _fuck_execute_prompt() {
 
     # --- 用户确认 ---
     echo -e "${C_YELLOW}------ AI 生成了以下命令，请您查看 ------${C_RESET}"
-    # 直接输出
     echo -e "${C_CYAN}$response${C_RESET}"
     echo -e "${C_YELLOW}------------------------------------------${C_RESET}"
-    printf "${C_BOLD}${C_YELLOW}查看完毕，是否执行？[y/N]${C_RESET} "
-    local confirmation
-    read -r confirmation < /dev/tty
 
-    if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
+    local should_exec=false
+    if _fuck_truthy "$auto_mode"; then
+        echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
+        should_exec=true
+    else
+        printf "${C_BOLD}${C_YELLOW}查看完毕，是否执行？[y/N]${C_RESET} "
+        local confirmation
+        if [ -r /dev/tty ]; then
+            read -r confirmation < /dev/tty
+        else
+            echo -e "${C_RED}没有找到可读的终端输入，操作已取消。${C_RESET}" >&2
+            return 1
+        fi
+
+        if [[ "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
+            should_exec=true
+        fi
+    fi
+
+    if [ "$should_exec" = "true" ]; then
         echo -e "${C_CYAN} 还等啥呢，走起！${C_RESET}" >&2
         # 执行服务器返回的命令并检查退出码
         if eval "$response"; then
@@ -243,8 +346,20 @@ _fuck_execute_prompt() {
     fi
 }
 
-# 定义别名
-alias fuck='_fuck_execute_prompt'
+# 定义别名（支持自定义别名）
+_fuck_define_aliases() {
+    local default_alias="fuck"
+
+    if ! _fuck_truthy "${FUCK_DISABLE_DEFAULT_ALIAS:-0}"; then
+        alias "$default_alias"='_fuck_execute_prompt'
+    fi
+
+    if [ -n "${FUCK_ALIAS:-}" ] && [ "$FUCK_ALIAS" != "$default_alias" ]; then
+        alias "$FUCK_ALIAS"='_fuck_execute_prompt'
+    fi
+}
+
+_fuck_define_aliases
 
 # --- 核心逻辑结束 ---
 EOF
@@ -287,6 +402,26 @@ _install_script() {
         return 1
     fi
 
+    # 如果没有配置文件则生成一个示例
+    if [ ! -f "$CONFIG_FILE" ]; then
+        cat <<'CFG' > "$CONFIG_FILE"
+# fuckit.sh 配置文件示例
+# 去掉行首的 # 并修改为你想要的值即可。
+
+# 自定义 API 入口（如自建 Worker）
+# export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# 自动执行返回的命令，跳过确认（谨慎开启）
+# export FUCK_AUTO_EXEC=false
+
+# 请求超时时间（秒）
+# export FUCK_TIMEOUT=30
+
+# 是否打印调试信息
+# export FUCK_DEBUG=false
+CFG
+    fi
+
     # 把 source 那行加到 shell 配置文件里
     local profile_file
     profile_file=$(_installer_detect_profile)
@@ -315,6 +450,7 @@ _install_script() {
         echo -e "  ${C_CYAN}fuck uninstall git${C_RESET}"
         echo -e "  ${C_CYAN}fuck 找出当前目录所有大于10MB的文件${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# 卸载 fuckit.sh${C_RESET}"
+        echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# 显示配置帮助${C_RESET}"
         echo -e "\n${C_YELLOW}记得重启终端以使用新命令！${C_RESET}"
     else
         echo -e "$FUCK ${C_YELLOW}检测到已安装，已为您更新脚本。${C_RESET}"

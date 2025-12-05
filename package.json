@@ -1,0 +1,34 @@
+{
+  "name": "fuckit.sh",
+  "version": "2.0.0",
+  "description": "AI-powered CLI tool that converts natural language to shell commands",
+  "keywords": [
+    "cli",
+    "ai",
+    "shell",
+    "bash",
+    "command-line",
+    "gpt",
+    "openai"
+  ],
+  "author": "faithleysath",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/faithleysath/fuckit.sh.git"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "deploy": "bash scripts/deploy.sh",
+    "one-click-deploy": "bash scripts/one-click-deploy.sh",
+    "setup": "bash scripts/setup.sh",
+    "dev": "wrangler dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}
