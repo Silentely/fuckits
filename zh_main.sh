@@ -150,6 +150,7 @@ _fuck_truthy() {
         1|true|yes|y|on|是|开|真)
             return 0
             ;;
+        *)
             return 1
             ;;
     esac
