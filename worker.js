@@ -26,6 +26,34 @@ const README_URL_ZH = 'https://github.com/Silentely/fuckits';
 const INSTALLER_FILENAME_EN = 'fuckits.sh';
 const INSTALLER_FILENAME_ZH = 'fuckits-zh.sh';
 
+// Rate limiting configuration
+const DAILY_FREE_LIMIT = 10;
+
+// Helper function to generate client identifier
+function getClientIdentifier(request) {
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const ua = request.headers.get('User-Agent') || 'unknown';
+  // Simple hash to avoid storing plain IP addresses
+  return simpleHash(ip + ua);
+}
+
+// Simple hash function
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
+
+// Get today's date string in YYYY-MM-DD format
+function getDateString() {
+  const now = new Date();
+  return now.toISOString().split('T')[0];
+}
+
 function isBrowserRequest(userAgent = '') {
   return /Mozilla|Chrome|Safari|Firefox|Edg/.test(userAgent);
 }
