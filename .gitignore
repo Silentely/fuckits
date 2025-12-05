@@ -26,6 +26,7 @@ tmp/
 *.swp
 *.swo
 *~
+.serena
 
 # OS
 .DS_Store
