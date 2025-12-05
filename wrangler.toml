@@ -3,5 +3,5 @@ main = "worker.js" # 指定入口文件
 compatibility_date = "2025-10-26" # 使用一个近期的日期
 
 [[routes]]
-pattern = "fuckits.25500552.xyz/*"
+pattern = "fuckits.25500552.xyz"
 custom_domain = true

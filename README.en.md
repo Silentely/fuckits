@@ -176,6 +176,9 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 > [!TIP]
 > Forking the repo? Swap the domain and regenerate `FUCK_API_ENDPOINT` in your config before sharing binaries.
 
+> [!NOTE]
+> Cloudflare Custom Domains do not allow wildcard or path suffixes (e.g., `fuckits.25500552.xyz/*` or `/zh`). Bind the bare domain only—the Worker itself routes `/zh` requests internally.
+
 ### Post-deploy checklist
 
 1. Bind your custom domain + `/zh` path in the Cloudflare dashboard.

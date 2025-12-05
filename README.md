@@ -196,6 +196,9 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 > [!TIP]
 > Fork 本项目时，自定义域名和 `FUCK_API_ENDPOINT` 也要替换成你自己的值。
 
+> [!NOTE]
+> 设置 Cloudflare Custom Domain 时不要在路由中添加通配符或路径（例如 `fuckits.25500552.xyz/*` 或 `fuckits.25500552.xyz/zh`），Cloudflare 会直接拒绝。只需绑定裸域，`/zh` 由 Worker 内部根据路径自动处理。
+
 ### 部署后自检
 
 1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。

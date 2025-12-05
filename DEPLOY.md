@@ -101,6 +101,8 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 
 如果返回 `status: ok` 且 `hasApiKey: true`，说明 DNS 与 secret 均已正确配置。
 
+> 注意：Custom Domain 仅支持裸域名（`fuckits.25500552.xyz`），不要在 `wrangler.toml` 或 Dashboard 中添加 `*` 或 `/zh`，否则部署会直接报错。`/zh` 路由由 Worker 脚本处理。
+
 ### 开发模式
 
 在本地运行开发服务器：
@@ -245,6 +247,8 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 ```
 
 Expect `status: ok` and `hasApiKey: true`.
+
+> Reminder: Cloudflare Custom Domains must be bare domains only. Do **not** include `*` or `/zh` in `wrangler.toml` or the dashboard; those requests are routed inside the Worker itself.
 
 ### Development Mode
 
