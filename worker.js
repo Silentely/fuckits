@@ -234,7 +234,7 @@ async function handlePostRequest(request, env) {
       }
     }
 
-    const model = env.OPENAI_API_MODEL || 'gpt-4-turbo';
+    const model = env.OPENAI_API_MODEL || 'gpt-5-nano';
     const apiBase = (env.OPENAI_API_BASE || 'https://api.openai.com/v1').replace(/\/$/, '');
     const apiUrl = `${apiBase}/chat/completions`;
 

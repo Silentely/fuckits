@@ -30,7 +30,7 @@ fuckits 采用前后端分离架构：
 
 **技术栈**：
 - Runtime: Cloudflare Workers (V8 Isolates)
-- AI: OpenAI API (gpt-4-turbo)
+- AI: OpenAI API (gpt-5-nano)
 - CLI: Bash Shell Script
 - Build: Node.js + Bash
 - Deploy: Wrangler CLI
@@ -262,7 +262,7 @@ export FUCK_DISABLE_DEFAULT_ALIAS=false
 ### Worker 环境变量
 通过 `wrangler secret put` 设置：
 - `OPENAI_API_KEY` - OpenAI API 密钥（必需）
-- `OPENAI_API_MODEL` - AI 模型（可选，默认 gpt-4-turbo）
+- `OPENAI_API_MODEL` - AI 模型（可选，默认 gpt-5-nano）
 - `OPENAI_API_BASE` - API 基础 URL（可选，默认 OpenAI 官方）
 - `SHARED_DAILY_LIMIT` - 共享演示模式每日限额（可选，默认 10）
 - `ADMIN_ACCESS_KEY` - 管理员免限额密钥，需与 CLI `FUCK_ADMIN_KEY` 一致

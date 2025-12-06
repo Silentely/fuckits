@@ -212,10 +212,13 @@ _fuck_request_local_model() {
         return 1
     fi
 
-    local model="${FUCK_OPENAI_API_MODEL:-gpt-4-turbo}"
+    local model="${FUCK_OPENAI_MODEL:-gpt-5-nano}"
     local api_base="${FUCK_OPENAI_API_BASE:-https://api.openai.com/v1}"
     api_base=${api_base%/}
     local api_url="$api_base/chat/completions"
+
+    _fuck_debug "本地 API 基址: $api_base"
+    _fuck_debug "本地模型: $model"
 
     local system_prompt
     system_prompt=$(_fuck_local_system_prompt "$sysinfo")

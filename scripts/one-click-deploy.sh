@@ -194,7 +194,7 @@ fi
 
 # Optional: Configure model
 echo -e "\n${C_CYAN}🤖 AI Model Configuration (Optional)${C_RESET}"
-echo -e "${C_YELLOW}Default: gpt-4-turbo${C_RESET}"
+echo -e "${C_YELLOW}Default: gpt-5-nano${C_RESET}"
 if confirm "Do you want to use a different model?"; then
     read -p "Enter model name (e.g., gpt-4o, gpt-4.1-mini): " CUSTOM_MODEL
     update_wrangler_var "OPENAI_API_MODEL" "$CUSTOM_MODEL"

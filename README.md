@@ -225,7 +225,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自建或自定义 Worker 地址 |
 | `FUCK_OPENAI_API_KEY` | 空 | 本地 OpenAI/兼容 Key（推荐，绕过共享配额） |
 | `FUCK_ADMIN_KEY` | 空 | 管理员免额度密钥（需 Worker 同步配置 `ADMIN_ACCESS_KEY`） |
-| `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | 自定义模型（仅在本地 Key 模式下生效） |
+| `FUCK_OPENAI_MODEL` | `gpt-5-nano` | 自定义模型（仅在本地 Key 模式下生效） |
 | `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | 指向自建代理或第三方服务 |
 | `FUCK_ALIAS` | `fuck` | 额外别名（不会影响默认别名，除非关闭） |
 | `FUCK_AUTO_EXEC` | `false` | 自动执行命令，跳过确认（危险操作请慎用） |
@@ -295,7 +295,7 @@ name = "your-worker-name"
 ```
 
 配置环境变量（可选）：
-- `OPENAI_API_MODEL`: AI 模型（默认：`gpt-4-turbo`）
+- `OPENAI_API_MODEL`: AI 模型（默认：`gpt-5-nano`）
 - `OPENAI_API_BASE`: API 基础 URL（默认：`https://api.openai.com/v1`）
 
 详细部署说明请参阅 [DEPLOY.md](./DEPLOY.md)。

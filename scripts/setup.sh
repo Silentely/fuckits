@@ -133,7 +133,7 @@ fi
 
 # Optional: Configure custom model
 echo -e "\n${C_CYAN}🤖 AI Model Configuration (Optional)${C_RESET}"
-echo -e "${C_YELLOW}Default model: gpt-4-turbo${C_RESET}"
+echo -e "${C_YELLOW}Default model: gpt-5-nano${C_RESET}"
 read -p "Do you want to set a custom model? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then

@@ -203,7 +203,7 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | Point to your self-hosted worker |
 | `FUCK_OPENAI_API_KEY` | empty | Local OpenAI-compatible key (recommended, bypasses the shared quota) |
 | `FUCK_ADMIN_KEY` | empty | Maintainer-issued bypass token (Worker must define `ADMIN_ACCESS_KEY`) |
-| `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | Override the model when you use your own key |
+| `FUCK_OPENAI_MODEL` | `gpt-5-nano` | Override the model when you use your own key |
 | `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | Custom API base for proxies/alt providers |
 | `FUCK_ALIAS` | `fuck` | Extra alias (without removing the default) |
 | `FUCK_AUTO_EXEC` | `false` | Skip confirmations (dangerous but handy for automation) |
@@ -272,7 +272,7 @@ name = "your-worker-name"
 ```
 
 **Optional environment variables:**
-- `OPENAI_API_MODEL`: AI model (default: `gpt-4-turbo`)
+- `OPENAI_API_MODEL`: AI model (default: `gpt-5-nano`)
 - `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com/v1`)
 
 For detailed deployment instructions, see [DEPLOY.md](./DEPLOY.md).

@@ -83,7 +83,7 @@ npx wrangler secret put SHARED_DAILY_LIMIT
 
 **可选配置：**
 
-自定义 AI 模型（默认：gpt-4-turbo）：
+自定义 AI 模型（默认：gpt-5-nano）：
 ```bash
 npx wrangler secret put OPENAI_API_MODEL
 ```
@@ -154,7 +154,7 @@ npm run deploy
 | 变量名 | 必需 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `OPENAI_API_KEY` | ✅ 是 | - | OpenAI API 密钥（用于共享演示模式） |
-| `OPENAI_API_MODEL` | ❌ 否 | `gpt-4-turbo` | 使用的 AI 模型 |
+| `OPENAI_API_MODEL` | ❌ 否 | `gpt-5-nano` | 使用的 AI 模型 |
 | `OPENAI_API_BASE` | ❌ 否 | `https://api.openai.com/v1` | API 基础 URL |
 | `SHARED_DAILY_LIMIT` | ❌ 否 | `10` | 共享演示模式的每日调用限制 |
 | `ADMIN_ACCESS_KEY` | ❌ 否 | - | 管理员免限额度密钥，配合 CLI 中的 `FUCK_ADMIN_KEY` 使用 |
@@ -283,7 +283,7 @@ npx wrangler secret put ADMIN_ACCESS_KEY
 
 **Optional Configuration:**
 
-Custom AI model (default: gpt-4-turbo):
+Custom AI model (default: gpt-5-nano):
 ```bash
 npx wrangler secret put OPENAI_API_MODEL
 ```
@@ -354,7 +354,7 @@ Environment variables configured in Cloudflare Workers:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OPENAI_API_KEY` | ✅ Yes | - | OpenAI API key |
-| `OPENAI_API_MODEL` | ❌ No | `gpt-4-turbo` | AI model to use |
+| `OPENAI_API_MODEL` | ❌ No | `gpt-5-nano` | AI model to use |
 | `OPENAI_API_BASE` | ❌ No | `https://api.openai.com/v1` | API base URL |
 | `SHARED_DAILY_LIMIT` | ❌ No | `10` | Daily cap for the shared demo Worker |
 | `ADMIN_ACCESS_KEY` | ❌ No | - | Maintainer bypass key (paired with CLI `FUCK_ADMIN_KEY`) |
