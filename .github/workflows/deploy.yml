@@ -143,7 +143,7 @@ jobs:
           import os
           import re
 
-          PATH = os.environ["WRANGLER_CONFIG_PATH"]
+          PATH = os.environ.get("WRANGLER_CONFIG_PATH", "wrangler.ci.toml")
 
           def emit(value: str) -> None:
               if value:
