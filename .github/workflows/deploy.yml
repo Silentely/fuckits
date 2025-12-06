@@ -136,6 +136,44 @@ jobs:
 
           PY
 
+      - name: Mask OpenAI API Key pattern
+        run: |
+          # Extract and mask any OpenAI API keys from wrangler config
+          python3 - <<'PY'
+          import os
+          import re
+
+          PATH = os.environ["WRANGLER_CONFIG_PATH"]
+
+          def emit(value: str) -> None:
+              if value:
+                  print(f"::add-mask::{value}")
+
+          try:
+              with open(PATH, "r", encoding="utf-8") as fh:
+                  content = fh.read()
+          except Exception as exc:
+              print(f"Failed to read {PATH}: {exc}")
+              exit(0)
+
+          # Match OpenAI API key patterns: sk-[alphanumeric string]
+          # This regex matches keys that start with "sk-" followed by alphanumeric characters
+          pattern = r'sk-[A-Za-z0-9]{20,}'
+          matches = re.findall(pattern, content)
+
+          for key in matches:
+              emit(key)
+              # Also mask common prefix variants
+              for length in (20, 24, 28, 32, 36, 40, 44, 48):
+                  if len(key) >= length:
+                      prefix = key[:length]
+                      for suffix in ("...", "…"):
+                          emit(f"{prefix}{suffix}")
+                          emit(f'"{prefix}{suffix}"')
+                          emit(f"'{prefix}{suffix}'")
+
+          PY
+
       - name: Deploy to Cloudflare Works
         if: github.event_name != 'pull_request'
         env:
