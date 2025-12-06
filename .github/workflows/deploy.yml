@@ -52,63 +52,69 @@ jobs:
       - name: Mask sensitive values from wrangler config
         run: |
           python3 - <<'PY'
-          import os
-          import tomllib
+import os
+import sys
 
-          path = os.environ["WRANGLER_CONFIG_PATH"]
+try:
+    import tomllib as toml
+except ModuleNotFoundError:
+    import tomli as toml
 
-          def emit(value: str) -> None:
-              if value:
-                  print(f"::add-mask::{value}")
+PATH = os.environ["WRANGLER_CONFIG_PATH"]
 
-          def add_mask(value):
-              if not isinstance(value, str) or not value:
-                  return
-              variants = {value, f'"{value}"', f"'{value}'"}
-              prefix_lengths = [4, 6, 8, 10, 12, 16]
-              for plen in prefix_lengths:
-                  if len(value) > plen:
-                      prefix = value[:plen]
-                      for ellipsis in ("...", "…"):
-                          variants.add(prefix + ellipsis)
-                          variants.add(f'"{prefix}{ellipsis}"')
-                          variants.add(f"'{prefix}{ellipsis}'")
-              for item in variants:
-                  emit(item)
+def emit(value: str) -> None:
+    if value:
+        print(f"::add-mask::{value}")
 
-          try:
-              with open(path, "rb") as fh:
-                  data = tomllib.load(fh)
-          except Exception as exc:
-              raise SystemExit(f"Failed to parse {path}: {exc}")
+def add_mask(value):
+    if not isinstance(value, str) or not value:
+        return
+    variants = {value, value.strip('"'), value.strip("'")}
+    prefix_lengths = (4, 6, 8, 10, 12, 16)
+    suffixes = ("...", "…")
+    for plen in prefix_lengths:
+        if len(value) > plen:
+            prefix = value[:plen]
+            for end in suffixes:
+                variants.add(prefix + end)
+                variants.add(f'"{prefix}{end}"')
+                variants.add(f"'{prefix}{end}'")
+    for item in variants:
+        emit(item)
 
-          def mask_vars(section):
-              if isinstance(section, dict):
-                  for val in section.values():
-                      add_mask(val)
+try:
+    with open(PATH, "rb") as fh:
+        data = toml.load(fh)
+except Exception as exc:
+    print(f"Failed to parse {PATH}: {exc}", file=sys.stderr)
+    sys.exit(0)
 
-          mask_vars(data.get("vars"))
+def mask_vars(section):
+    if isinstance(section, dict):
+        for val in section.values():
+            add_mask(val)
 
-          envs = data.get("env") or {}
-          if isinstance(envs, dict):
-              for env_cfg in envs.values():
-                  if isinstance(env_cfg, dict):
-                      mask_vars(env_cfg.get("vars"))
+mask_vars(data.get("vars"))
 
-          for route in data.get("routes", []):
-              if isinstance(route, dict):
-                  pattern = route.get("pattern")
-                  if isinstance(pattern, str):
-                      add_mask(pattern)
-                      if "." in pattern:
-                          add_mask(pattern.split(".", 1)[1])
-                  add_mask(route.get("custom_domain"))
+envs = data.get("env") or {}
+if isinstance(envs, dict):
+    for env_cfg in envs.values():
+        if isinstance(env_cfg, dict):
+            mask_vars(env_cfg.get("vars"))
 
-          # Also cover env vars/injected secrets for wrangler output
-          for env_var in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
-              add_mask(os.environ.get(env_var))
+for route in data.get("routes", []):
+    if isinstance(route, dict):
+        pattern = route.get("pattern")
+        if isinstance(pattern, str):
+            add_mask(pattern)
+            if "." in pattern:
+                add_mask(pattern.split(".", 1)[1])
+        add_mask(route.get("custom_domain"))
 
-          PY
+for env_var in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
+    add_mask(os.environ.get(env_var))
+
+PY
 
       - name: Deploy to Cloudflare Works
         if: github.event_name != 'pull_request'
