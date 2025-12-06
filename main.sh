@@ -68,6 +68,34 @@ if [ -z "${C_RESET:-}" ]; then
     readonly FCKN="${C_RED}F*CKING${C_RESET}"
 fi
 
+_fuck_draw_top_border() {
+    local width=${1:-40}
+    local content_color="${2:-$C_CYAN}"
+    printf "${content_color}╭─%s─╮${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
+}
+
+_fuck_draw_bottom_border() {
+    local width=${1:-40}
+    local content_color="${2:-$C_CYAN}"
+    printf "${content_color}╰─%s─╯${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
+}
+
+_fuck_draw_content_line() {
+    local line_content="$1"
+    local width=${2:-40}
+    local border_color="${3:-$C_CYAN}"
+    local content_color="${4:-$C_GREEN}"
+
+    # Calculate padding
+    local current_length
+    current_length=$(printf '%s' "$line_content" | wc -c)
+    local padding_right=$((width - current_length - 2)) # 2 for the vertical bars
+    local padded_content="${line_content}$(printf ' %.0s' $(seq 1 $padding_right))"
+
+    printf "${border_color}│${content_color}%s${border_color}│${C_RESET}\n" "$padded_content"
+}
+
+
 if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}" ]; then
     if [ -z "${HOME:-}" ]; then
         readonly INSTALL_DIR="/tmp/.fuck"
@@ -392,23 +420,67 @@ _fuck_debug() {
 _fuck_spinner() {
     local pid=$1
     local delay=0.1
-    local spinstr='|/-\'
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     
     # Hide cursor
     tput civis 2>/dev/null || printf "\033[?25l"
 
     while kill -0 "$pid" 2>/dev/null; do
         local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
+        printf " %c " "$spinstr"
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
-        printf "\b\b\b\b\b\b"
+        printf "\b\b\b"
     done
-    printf "    \b\b\b\b"
+    printf "   \b\b\b"
     
     # Show cursor
     tput cnorm 2>/dev/null || printf "\033[?25h"
 }
+
+# Detects potentially dangerous commands and prints a warning
+_fuck_detect_dangerous_command() {
+    local command_to_check="$1"
+    local dangerous_found=false
+
+    # List of dangerous patterns
+    # Using word boundaries (\b) for better matching where applicable
+    local patterns=(
+        '\brm -rf'
+        '\bmkfs\b'
+        '\bdd\b'
+        ' > /dev/null' # Redirecting output to /dev/null for potentially dangerous commands
+        ' > /etc/passwd'
+        ' > /etc/shadow'
+        ' > /etc/sudoers'
+        ' > /dev/sda' # Or other disk devices
+        'chmod .* 777'
+        '\bwipefs\b'
+        '\bformat\b'
+        '\bshred\b'
+        '\bfdisk\b'
+        '\bparted\b'
+        '\bcurl .* \| sudo sh' # piping curl to sudo sh
+        '\bwget .* \| sudo sh' # piping wget to sudo sh
+    )
+
+    for pattern in "${patterns[@]}"; do
+        if printf '%s' "$command_to_check" | grep -Eq "$pattern"; then
+            echo -e "${C_RED_BOLD}⚠️  WARNING: Potentially dangerous command detected! ⚠️${C_RESET}" >&2
+            echo -e "${C_YELLOW}The suggested command contains patterns that could lead to data loss or system instability.${C_RESET}" >&2
+            echo -e "${C_YELLOW}Review it carefully before execution. Use ${C_BOLD}n${C_RESET}${C_YELLOW} to abort if you are unsure.${C_RESET}" >&2
+            dangerous_found=true
+            break
+        fi
+    done
+    
+    if $dangerous_found; then
+        return 0 # Dangerous command found
+    else
+        return 1 # No dangerous command found
+    fi
+}
+
 
 # Ensure a config file exists to help users tweak the behaviour
 _fuck_secure_config_file() {
@@ -595,14 +667,33 @@ _fuck_execute_prompt() {
     fi
 
     # --- User Confirmation (as requested) ---
+    local box_width=80 # Define the width of the box
     echo -e "${C_CYAN}Here is what I came up with:${C_RESET}"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
-    echo -e "${C_GREEN}${response}${C_RESET}"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    _fuck_draw_top_border "$box_width" "$C_CYAN"
     
-    # Check if auto-exec mode is enabled
-    local should_exec=false
-    if _fuck_truthy "$auto_mode"; then
+    # Split the response into lines and print each line within the box
+    # IFS is used to properly handle newlines from `response`
+    local IFS=$'\n'
+    for line in $response; do
+        _fuck_draw_content_line "$line" "$box_width" "$C_CYAN" "$C_GREEN"
+    done
+    unset IFS
+    
+        _fuck_draw_bottom_border "$box_width" "$C_CYAN"
+    
+        
+    
+        # Check for dangerous commands
+    
+        _fuck_detect_dangerous_command "$response"
+    
+    
+    
+        # Check if auto-exec mode is enabled
+    
+        local should_exec=false
+    
+        if _fuck_truthy "$auto_mode"; then
         echo -e "${C_YELLOW}⚡ Auto-exec enabled. Running...${C_RESET}"
         should_exec=true
     else
@@ -623,10 +714,12 @@ _fuck_execute_prompt() {
             case "$normalized" in
                 ""|"y"|"yes")
                     should_exec=true
+                    echo -e "${C_GREEN}✅ Executing...${C_RESET}"
                     break
                     ;;
                 "n"|"no")
                     should_exec=false
+                    echo -e "${C_YELLOW}❌ Aborted.${C_RESET}" >&2
                     break
                     ;;
                 *)
@@ -644,7 +737,8 @@ _fuck_execute_prompt() {
         fi
         return $exit_code
     else
-        echo -e "${C_YELLOW}Aborted.${C_RESET}" >&2
+        # The 'Aborted.' message is now printed within the loop,
+        # so we just return 1 here if should_exec is false.
         return 1
     fi
 }

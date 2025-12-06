@@ -83,6 +83,68 @@ if [ -z "${C_RESET:-}" ]; then
     fi
 fi
 
+_fuck_draw_top_border() {
+    local width=${1:-40}
+    local content_color="${2:-$C_CYAN}"
+    printf "${content_color}╭─%s─╮${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
+}
+
+_fuck_draw_bottom_border() {
+    local width=${1:-40}
+    local content_color="${2:-$C_CYAN}"
+    printf "${content_color}╰─%s─╯${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
+}
+
+_fuck_draw_content_line() {
+    local line_content="$1"
+    local width=${2:-40}
+    local border_color="${3:-$C_CYAN}"
+    local content_color="${4:-$C_GREEN}"
+
+    # Calculate padding
+    # For Chinese characters, wc -c counts bytes, not visual width.
+    # A simple way to approximate width for display is to assume CJK characters are 2 spaces wide.
+    # This is a heuristic and might not be perfect for all fonts/terminals.
+    local visual_width=0
+    local char_count
+    char_count=$(echo "$line_content" | wc -c) # Count bytes, approx chars
+    local i=0
+    while [ "$i" -lt "$char_count" ]; do
+        local char
+        char=$(echo "$line_content" | cut -c $((i+1)))
+        if [ -n "$(echo "$char" | grep -P "[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]")" ]; then
+            visual_width=$((visual_width + 2)) # Assume CJK char is 2 wide
+        else
+            visual_width=$((visual_width + 1)) # Assume other char is 1 wide
+        fi
+        i=$((i + 1))
+    done
+
+    local padding_right=$((width - visual_width - 2)) # 2 for the vertical bars
+    if [ "$padding_right" -lt 0 ]; then
+        padding_right=0
+    fi
+    local padded_content="${line_content}$(printf ' %.0s' $(seq 1 $padding_right))"
+
+    printf "${border_color}│${content_color}%s${border_color}│${C_RESET}\n" "$padded_content"
+}
+
+
+    # --- 配置 ---
+    if [ -z "${HOME:-}" ]; then
+        # 这部分是给临时运行模式用的，它不安装任何东西
+        # 但我们还是需要定义这些变量，免得脚本报错
+        # 安装程序部分会进行真正的检查
+        readonly INSTALL_DIR="/tmp/.fuck"
+        readonly MAIN_SH="/tmp/.fuck/main.sh"
+        readonly CONFIG_FILE="/tmp/.fuck/config.sh"
+    else
+        readonly INSTALL_DIR="$HOME/.fuck"
+        readonly MAIN_SH="$INSTALL_DIR/main.sh"
+        readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+    fi
+fi
+
 # 如果存在配置文件则加载
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
@@ -409,6 +471,49 @@ _fuck_spinner() {
     tput cnorm 2>/dev/null || printf "\033[?25h"
 }
 
+# 检测潜在危险命令并发出警告
+_fuck_detect_dangerous_command() {
+    local command_to_check="$1"
+    local dangerous_found=false
+
+    # 危险模式列表
+    local patterns=(
+        '\brm -rf'
+        '\bmkfs\b'
+        '\bdd\b'
+        ' > /dev/null' # 重定向输出到 /dev/null 的潜在危险命令
+        ' > /etc/passwd'
+        ' > /etc/shadow'
+        ' > /etc/sudoers'
+        ' > /dev/sda' # 或其他磁盘设备
+        'chmod .* 777'
+        '\bwipefs\b'
+        '\bformat\b'
+        '\bshred\b'
+        '\bfdisk\b'
+        '\bparted\b'
+        '\bcurl .* \| sudo sh' # piping curl to sudo sh
+        '\bwget .* \| sudo sh' # piping wget to sudo sh
+    )
+
+    for pattern in "${patterns[@]}"; do
+        if printf '%s' "$command_to_check" | grep -Eq "$pattern"; then
+            echo -e "${C_RED_BOLD}⚠️  警告: 检测到潜在危险命令! ⚠️${C_RESET}" >&2
+            echo -e "${C_YELLOW}生成的命令包含可能导致数据丢失或系统不稳定的模式。${C_RESET}" >&2
+            echo -e "${C_YELLOW}请在执行前仔细检查。如果不确定，请按 ${C_BOLD}n${C_RESET}${C_YELLOW} 取消。${C_RESET}" >&2
+            dangerous_found=true
+            break
+        fi
+    done
+    
+    if $dangerous_found; then
+        return 0 # 发现危险命令
+    else
+        return 1 # 未发现危险命令
+    fi
+}
+
+
 # 确保配置文件存在
 _fuck_secure_config_file() {
     if [ -f "$CONFIG_FILE" ]; then
@@ -609,14 +714,32 @@ _fuck_execute_prompt() {
     fi
 
     # --- 用户确认 ---
+    local box_width=80 # 定义框的宽度
     echo -e "${C_CYAN}为您生成了以下命令：${C_RESET}"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
-    echo -e "${C_GREEN}${response}${C_RESET}"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
-
-    local should_exec=false
-    if _fuck_truthy "$auto_mode"; then
-        echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
+    _fuck_draw_top_border "$box_width" "$C_CYAN"
+    
+    # 将响应按行分割并逐行打印在框内
+    local IFS=$'\n'
+    for line in $response; do
+        _fuck_draw_content_line "$line" "$box_width" "$C_CYAN" "$C_GREEN"
+    done
+    unset IFS
+    
+        _fuck_draw_bottom_border "$box_width" "$C_CYAN"
+    
+    
+    
+        # 检查危险命令
+    
+        _fuck_detect_dangerous_command "$response"
+    
+        
+    
+        local should_exec=false
+    
+        if _fuck_truthy "$auto_mode"; then
+    
+            echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
         should_exec=true
     else
         while true; do
@@ -632,12 +755,14 @@ _fuck_execute_prompt() {
             normalized=$(printf '%s' "$confirmation" | tr '[:upper:]' '[:lower:]')
 
             case "$normalized" in
-                ""|"y"|"yes")
+                ""|"y"|"yes"|"是")
                     should_exec=true
+                    echo -e "${C_GREEN}✅ 执行中...${C_RESET}"
                     break
                     ;;
-                "n"|"no")
+                "n"|"no"|"否")
                     should_exec=false
+                    echo -e "${C_YELLOW}❌ 已取消。${C_RESET}" >&2
                     break
                     ;;
                 *)
@@ -655,7 +780,8 @@ _fuck_execute_prompt() {
         fi
         return $exit_code
     else
-        echo -e "${C_YELLOW}已取消。${C_RESET}" >&2
+        # "已取消。" 消息现在在循环内打印，
+        # 所以如果 should_exec 为 false，直接返回 1 即可。
         return 1
     fi
 }
