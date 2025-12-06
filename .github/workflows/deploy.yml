@@ -51,44 +51,44 @@ jobs:
       - name: Mask sensitive values from wrangler config
         run: |
           python - <<'PY'
-import os
-import tomllib
+          import os
+          import tomllib
 
-path = os.environ["WRANGLER_CONFIG_PATH"]
+          path = os.environ["WRANGLER_CONFIG_PATH"]
 
-def add_mask(value):
-    if isinstance(value, str) and value:
-        print(f"::add-mask::{value}")
+          def add_mask(value):
+              if isinstance(value, str) and value:
+                  print(f"::add-mask::{value}")
 
-try:
-    with open(path, "rb") as fh:
-        data = tomllib.load(fh)
-except Exception as exc:
-    raise SystemExit(f"Failed to parse {path}: {exc}")
+          try:
+              with open(path, "rb") as fh:
+                  data = tomllib.load(fh)
+          except Exception as exc:
+              raise SystemExit(f"Failed to parse {path}: {exc}")
 
-def mask_vars(section):
-    if isinstance(section, dict):
-        for val in section.values():
-            add_mask(val)
+          def mask_vars(section):
+              if isinstance(section, dict):
+                  for val in section.values():
+                      add_mask(val)
 
-mask_vars(data.get("vars"))
+          mask_vars(data.get("vars"))
 
-envs = data.get("env") or {}
-if isinstance(envs, dict):
-    for env_cfg in envs.values():
-        if isinstance(env_cfg, dict):
-            mask_vars(env_cfg.get("vars"))
+          envs = data.get("env") or {}
+          if isinstance(envs, dict):
+              for env_cfg in envs.values():
+                  if isinstance(env_cfg, dict):
+                      mask_vars(env_cfg.get("vars"))
 
-for route in data.get("routes", []):
-    if isinstance(route, dict):
-        pattern = route.get("pattern")
-        if isinstance(pattern, str):
-            add_mask(pattern)
-            if "." in pattern:
-                add_mask(pattern.split(".", 1)[1])
-        add_mask(route.get("custom_domain"))
+          for route in data.get("routes", []):
+              if isinstance(route, dict):
+                  pattern = route.get("pattern")
+                  if isinstance(pattern, str):
+                      add_mask(pattern)
+                      if "." in pattern:
+                          add_mask(pattern.split(".", 1)[1])
+                  add_mask(route.get("custom_domain"))
 
-PY
+          PY
 
       - name: Deploy to Cloudflare Works
         if: github.event_name != 'pull_request'
