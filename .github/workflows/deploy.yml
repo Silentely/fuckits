@@ -52,27 +52,27 @@ jobs:
         run: |
           if grep -Eq '^[[:space:]]*\[vars\]' "$WRANGLER_CONFIG_PATH"; then
             python - <<'PY'
-import os
-import re
+            import os
+            import re
 
-path = os.environ["WRANGLER_CONFIG_PATH"]
-mask_line = "::add-mask::{}"
-with open(path, encoding="utf-8") as fh:
-    inside_vars = False
-    for raw in fh:
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if stripped.startswith("[") and stripped.endswith("]"):
-            inside_vars = stripped.lower() == "[vars]"
-            continue
-        if not inside_vars:
-            continue
-        match = re.match(r'([A-Za-z0-9_]+)\s*=\s*"(.*)"', stripped)
-        if match:
-            value = match.group(2)
-            if value:
-                print(mask_line.format(value))
+            path = os.environ["WRANGLER_CONFIG_PATH"]
+            mask_line = "::add-mask::{}"
+            with open(path, encoding="utf-8") as fh:
+                inside_vars = False
+                for raw in fh:
+                    stripped = raw.strip()
+                    if not stripped or stripped.startswith("#"):
+                        continue
+                    if stripped.startswith("[") and stripped.endswith("]"):
+                        inside_vars = stripped.lower() == "[vars]"
+                        continue
+                    if not inside_vars:
+                        continue
+                    match = re.match(r'([A-Za-z0-9_]+)\s*=\s*"(.*)"', stripped)
+                    if match:
+                        value = match.group(2)
+                        if value:
+                            print(mask_line.format(value))
 PY
           fi
 
