@@ -429,11 +429,11 @@ _fuck_append_config_hint() {
         assignment="# export $key=$sample"
     fi
 
-    cat <<CFG >> "$CONFIG_FILE"
-
-# $comment
-$assignment
-CFG
+    {
+        printf '\n'
+        printf '# %s\n' "$comment"
+        printf '%s\n' "$assignment"
+    } >> "$CONFIG_FILE"
 }
 
 _fuck_seed_config_placeholders() {
@@ -664,6 +664,22 @@ EOF
 
 # --- End of Core Logic Heredoc ---
 
+# Helper to materialize the embedded core logic into a file (used for install/temp execution)
+_fuck_write_core() {
+    local target="$1"
+    printf '%s\n' "$CORE_LOGIC" > "$target"
+}
+
+# Helper to source the core logic into the current shell
+_fuck_source_core() {
+   local tmp_core
+   tmp_core=$(mktemp)
+   _fuck_write_core "$tmp_core"
+   # shellcheck disable=SC1090
+   source "$tmp_core"
+   rm -f "$tmp_core"
+}
+
 
 # --- Installer Functions (Run by the outer script) ---
 
@@ -688,12 +704,18 @@ _installer_detect_profile() {
 }
 
 # Main installation function
+_installer_secure_config_file() {
+        if [ -f "$CONFIG_FILE" ]; then
+        chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    fi
+}
+
 _install_script() {
     echo -e "$FCKN ${C_BOLD}Alright, let's get this shit installed...${C_RESET}"
     mkdir -p "$INSTALL_DIR"
     
     # Write the embedded core logic to the main.sh file
-    echo "$CORE_LOGIC" > "$MAIN_SH"
+    _fuck_write_core "$MAIN_SH"
     
     if [ $? -ne 0 ]; then
         echo -e "$FUCK ${C_RED}Can't write to the file. Check your damn permissions.${C_RESET}" >&2
@@ -731,7 +753,7 @@ _install_script() {
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
-        _fuck_secure_config_file
+        _installer_secure_config_file
     fi
 
     # Add source line to shell profile
@@ -774,12 +796,13 @@ CFG
 
 # If arguments are passed (e.g., "bash -s ...")
 if [ "$#" -gt 0 ]; then
-    # Temporary Mode
-    # Evaluate the core logic to define functions in this shell
-    eval "$CORE_LOGIC"
-    # Call the main function directly (alias won't work here)
+    if [ "$1" = "install" ] && [ "$#" -eq 1 ]; then
+        _install_script
+        exit 0
+    fi
+
+    _fuck_source_core
     _fuck_execute_prompt "$@"
 else
-    # Install Mode
     _install_script
 fi

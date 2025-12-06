@@ -428,11 +428,11 @@ _fuck_append_config_hint() {
         assignment="# export $key=$sample"
     fi
 
-    cat <<CFG >> "$CONFIG_FILE"
-
-# $comment
-$assignment
-CFG
+    {
+        printf '\n'
+        printf '# %s\n' "$comment"
+        printf '%s\n' "$assignment"
+    } >> "$CONFIG_FILE"
 }
 
 _fuck_seed_config_placeholders() {
@@ -675,6 +675,28 @@ EOF
 
 # --- 核心逻辑 Heredoc 结束 ---
 
+# 将内嵌核心逻辑写到文件中（安装/临时模式都会用到）
+_fuck_write_core() {
+    local target="$1"
+    printf '%s\n' "$CORE_LOGIC" > "$target"
+}
+
+# 将核心逻辑载入当前 shell
+_fuck_source_core() {
+    local tmp_core
+    tmp_core=$(mktemp)
+    _fuck_write_core "$tmp_core"
+    # shellcheck disable=SC1090
+    source "$tmp_core"
+    rm -f "$tmp_core"
+}
+
+# 将内嵌核心逻辑写入指定文件（安装与临时执行会用到）
+_fuck_write_core() {
+    local target="$1"
+    printf '%s\n' "$CORE_LOGIC" > "$target"
+}
+
 
 # --- 安装函数 (由外部脚本运行) ---
 
@@ -699,12 +721,18 @@ _installer_detect_profile() {
 }
 
 # 主安装函数
+_installer_secure_config_file() {
+    if [ -f "$CONFIG_FILE" ]; then
+        chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    fi
+}
+
 _install_script() {
     echo -e "${C_BOLD}开始安装 fuckits...${C_RESET}"
     mkdir -p "$INSTALL_DIR"
     
     # 把核心逻辑写进 main.sh
-    echo "$CORE_LOGIC" > "$MAIN_SH"
+    _fuck_write_core "$MAIN_SH"
     
     if [ $? -ne 0 ]; then
         echo -e "$FUCK ${C_RED}无法写入文件，请检查目录权限。${C_RESET}" >&2
@@ -742,7 +770,7 @@ _install_script() {
 # 禁用内置 fuck 别名
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
-        _fuck_secure_config_file
+        _installer_secure_config_file
     fi
 
     # 把 source 那行加到 shell 配置文件里
@@ -785,12 +813,13 @@ CFG
 
 # 如果有参数传进来 (比如 "bash -s ...")
 if [ "$#" -gt 0 ]; then
-    # 临时模式
-    # 运行核心逻辑，定义函数
-    eval "$CORE_LOGIC"
-    # 直接调用主函数 (别名在这儿不好使)
+    if [ "$1" = "install" ] && [ "$#" -eq 1 ]; then
+        _install_script
+        exit 0
+    fi
+
+    _fuck_source_core
     _fuck_execute_prompt "$@"
 else
-    # 安装模式
     _install_script
 fi
