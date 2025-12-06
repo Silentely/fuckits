@@ -51,6 +51,8 @@ jobs:
 
       - name: Mask sensitive values from wrangler config
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ADMIN_ACCESS_KEY: ${{ secrets.ADMIN_ACCESS_KEY }}
           SHARED_DAILY_LIMIT: ${{ secrets.SHARED_DAILY_LIMIT }}
@@ -75,7 +77,8 @@ jobs:
               if not isinstance(value, str) or not value:
                   return
               variants = {value, value.strip('"'), value.strip("'")}
-              prefix_lengths = (4, 6, 8, 10, 12, 16)
+              # Generate prefix variants with various lengths to catch partial displays
+              prefix_lengths = (4, 6, 8, 10, 12, 16, 20, 24, 28, 32, 36, 40, 48)
               suffixes = ("...", "…")
               for plen in prefix_lengths:
                   if len(value) > plen:
@@ -116,13 +119,20 @@ jobs:
                           add_mask(pattern.split(".", 1)[1])
                   add_mask(route.get("custom_domain"))
 
-          # Mask Cloudflare credentials
-          for env_var in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
-              add_mask(os.environ.get(env_var))
+          # Mask all sensitive environment variables
+          sensitive_vars = [
+              "CLOUDFLARE_API_TOKEN",
+              "CLOUDFLARE_ACCOUNT_ID",
+              "OPENAI_API_KEY",
+              "ADMIN_ACCESS_KEY",
+              "SHARED_DAILY_LIMIT",
+              "QUOTA_KV_BINDING",
+          ]
 
-          # Mask Worker secrets that may appear in wrangler deploy output
-          for secret_var in ("OPENAI_API_KEY", "ADMIN_ACCESS_KEY", "SHARED_DAILY_LIMIT", "QUOTA_KV_BINDING"):
-              add_mask(os.environ.get(secret_var))
+          for var_name in sensitive_vars:
+              value = os.environ.get(var_name)
+              if value:
+                  add_mask(value)
 
           PY
 
