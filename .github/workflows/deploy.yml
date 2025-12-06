@@ -38,12 +38,14 @@ jobs:
       - name: Download wrangler configuration from gist
         env:
           WRANGLER_TOML_URL: ${{ vars.WRANGLER_TOML_URL }}
+          WRANGLER_TOML_URL_SECRET: ${{ secrets.WRANGLER_TOML_URL }}
         run: |
-          if [ -z "$WRANGLER_TOML_URL" ]; then
-            echo "WRANGLER_TOML_URL repository variable is not configured."
+          URL="${WRANGLER_TOML_URL:-$WRANGLER_TOML_URL_SECRET}"
+          if [ -z "$URL" ]; then
+            echo "WRANGLER_TOML_URL repository variable or secret is not configured."
             exit 1
           fi
-          curl -fsSL "$WRANGLER_TOML_URL" -o "$WRANGLER_CONFIG_PATH"
+          curl -fsSL "$URL" -o "$WRANGLER_CONFIG_PATH"
           echo "✅ Downloaded wrangler config to $WRANGLER_CONFIG_PATH"
 
       - name: Deploy to Cloudflare Works

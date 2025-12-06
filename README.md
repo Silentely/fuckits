@@ -284,8 +284,8 @@ npm run deploy
 
 1. 在 gist（或任意可公开读取的存储）中保存完整 `wrangler.toml`，包含 `account_id`、`name`、`routes` 等配置。
 2. 打开 `Settings → Secrets and variables → Actions`：
-   - 在 **Variables** 区域新增 `WRANGLER_TOML_URL`，值为刚才 gist 的原始链接。
-   - 在 **Secrets** 区域新增 `CLOUDFLARE_API_TOKEN`（至少需要 `Workers KV Storage:Edit` + `Workers Scripts:Edit` 权限）。
+   - **推荐**：在 **Secrets** 区域新增 `WRANGLER_TOML_URL`，以免 gist 链接暴露；若你确实想用 Repository Variable 也支持。
+   - 同时新增 `CLOUDFLARE_API_TOKEN`（至少需要 `Workers KV Storage:Edit` + `Workers Scripts:Edit` 权限）。
    - 如果你的 gist 没写 `account_id`，再新增 `CLOUDFLARE_ACCOUNT_ID` secret；若 gist 已包含此字段，可忽略。
 3. 推送或合并到 `main` 时会自动触发 `Deploy to Cloudflare Works` 工作流。Pull Request 仍会执行 `npm ci + npm run build` 来验证构建，但会跳过真正的部署。
 4. 如需手动重发，进入 GitHub → Actions → Deploy to Cloudflare Works → `Run workflow`，可直接复用相同变量/secret。
