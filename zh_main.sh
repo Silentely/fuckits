@@ -68,73 +68,10 @@ if [ -z "${C_RESET:-}" ]; then
     readonly FUCK="${C_RED_BOLD}[!]${C_RESET}"
     readonly FCKN="${C_RED}[提示]${C_RESET}"
 
-    # --- 配置 ---
-    if [ -z "${HOME:-}" ]; then
-        # 这部分是给临时运行模式用的，它不安装任何东西
-        # 但我们还是需要定义这些变量，免得脚本报错
-        # 安装程序部分会进行真正的检查
-        readonly INSTALL_DIR="/tmp/.fuck"
-        readonly MAIN_SH="/tmp/.fuck/main.sh"
-        readonly CONFIG_FILE="/tmp/.fuck/config.sh"
-    else
-        readonly INSTALL_DIR="$HOME/.fuck"
-        readonly MAIN_SH="$INSTALL_DIR/main.sh"
-        readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
-    fi
 fi
 
-_fuck_draw_top_border() {
-    local width=${1:-40}
-    local content_color="${2:-$C_CYAN}"
-    printf "${content_color}╭─%s─╮${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
-}
-
-_fuck_draw_bottom_border() {
-    local width=${1:-40}
-    local content_color="${2:-$C_CYAN}"
-    printf "${content_color}╰─%s─╯${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
-}
-
-_fuck_draw_content_line() {
-    local line_content="$1"
-    local width=${2:-40}
-    local border_color="${3:-$C_CYAN}"
-    local content_color="${4:-$C_GREEN}"
-
-    # Calculate padding
-    # For Chinese characters, wc -c counts bytes, not visual width.
-    # A simple way to approximate width for display is to assume CJK characters are 2 spaces wide.
-    # This is a heuristic and might not be perfect for all fonts/terminals.
-    local visual_width=0
-    local char_count
-    char_count=$(echo "$line_content" | wc -c) # Count bytes, approx chars
-    local i=0
-    while [ "$i" -lt "$char_count" ]; do
-        local char
-        char=$(echo "$line_content" | cut -c $((i+1)))
-        if [ -n "$(echo "$char" | grep -P "[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]")" ]; then
-            visual_width=$((visual_width + 2)) # Assume CJK char is 2 wide
-        else
-            visual_width=$((visual_width + 1)) # Assume other char is 1 wide
-        fi
-        i=$((i + 1))
-    done
-
-    local padding_right=$((width - visual_width - 2)) # 2 for the vertical bars
-    if [ "$padding_right" -lt 0 ]; then
-        padding_right=0
-    fi
-    local padded_content="${line_content}$(printf ' %.0s' $(seq 1 $padding_right))"
-
-    printf "${border_color}│${content_color}%s${border_color}│${C_RESET}\n" "$padded_content"
-}
-
-
-    # --- 配置 ---
+if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}" ]; then
     if [ -z "${HOME:-}" ]; then
-        # 这部分是给临时运行模式用的，它不安装任何东西
-        # 但我们还是需要定义这些变量，免得脚本报错
-        # 安装程序部分会进行真正的检查
         readonly INSTALL_DIR="/tmp/.fuck"
         readonly MAIN_SH="/tmp/.fuck/main.sh"
         readonly CONFIG_FILE="/tmp/.fuck/config.sh"
@@ -713,33 +650,17 @@ _fuck_execute_prompt() {
         return $exit_code
     fi
 
-    # --- 用户确认 ---
-    local box_width=80 # 定义框的宽度
     echo -e "${C_CYAN}为您生成了以下命令：${C_RESET}"
-    _fuck_draw_top_border "$box_width" "$C_CYAN"
-    
-    # 将响应按行分割并逐行打印在框内
-    local IFS=$'\n'
-    for line in $response; do
-        _fuck_draw_content_line "$line" "$box_width" "$C_CYAN" "$C_GREEN"
-    done
-    unset IFS
-    
-        _fuck_draw_bottom_border "$box_width" "$C_CYAN"
-    
-    
-    
-        # 检查危险命令
-    
-        _fuck_detect_dangerous_command "$response"
-    
-        
-    
-        local should_exec=false
-    
-        if _fuck_truthy "$auto_mode"; then
-    
-            echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    printf '%s\n' "$response"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+
+    _fuck_detect_dangerous_command "$response"
+
+    local should_exec=false
+
+    if _fuck_truthy "$auto_mode"; then
+        echo -e "${C_YELLOW}⚡ 已开启自动执行模式，立即运行...${C_RESET}"
         should_exec=true
     else
         while true; do

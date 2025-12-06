@@ -68,34 +68,6 @@ if [ -z "${C_RESET:-}" ]; then
     readonly FCKN="${C_RED}F*CKING${C_RESET}"
 fi
 
-_fuck_draw_top_border() {
-    local width=${1:-40}
-    local content_color="${2:-$C_CYAN}"
-    printf "${content_color}╭─%s─╮${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
-}
-
-_fuck_draw_bottom_border() {
-    local width=${1:-40}
-    local content_color="${2:-$C_CYAN}"
-    printf "${content_color}╰─%s─╯${C_RESET}\n" "$(printf '─%.0s' $(seq 1 $((width - 2))))"
-}
-
-_fuck_draw_content_line() {
-    local line_content="$1"
-    local width=${2:-40}
-    local border_color="${3:-$C_CYAN}"
-    local content_color="${4:-$C_GREEN}"
-
-    # Calculate padding
-    local current_length
-    current_length=$(printf '%s' "$line_content" | wc -c)
-    local padding_right=$((width - current_length - 2)) # 2 for the vertical bars
-    local padded_content="${line_content}$(printf ' %.0s' $(seq 1 $padding_right))"
-
-    printf "${border_color}│${content_color}%s${border_color}│${C_RESET}\n" "$padded_content"
-}
-
-
 if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}" ]; then
     if [ -z "${HOME:-}" ]; then
         readonly INSTALL_DIR="/tmp/.fuck"
@@ -666,34 +638,16 @@ _fuck_execute_prompt() {
         return $exit_code
     fi
 
-    # --- User Confirmation (as requested) ---
-    local box_width=80 # Define the width of the box
     echo -e "${C_CYAN}Here is what I came up with:${C_RESET}"
-    _fuck_draw_top_border "$box_width" "$C_CYAN"
-    
-    # Split the response into lines and print each line within the box
-    # IFS is used to properly handle newlines from `response`
-    local IFS=$'\n'
-    for line in $response; do
-        _fuck_draw_content_line "$line" "$box_width" "$C_CYAN" "$C_GREEN"
-    done
-    unset IFS
-    
-        _fuck_draw_bottom_border "$box_width" "$C_CYAN"
-    
-        
-    
-        # Check for dangerous commands
-    
-        _fuck_detect_dangerous_command "$response"
-    
-    
-    
-        # Check if auto-exec mode is enabled
-    
-        local should_exec=false
-    
-        if _fuck_truthy "$auto_mode"; then
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    printf '%s\n' "$response"
+    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+
+    _fuck_detect_dangerous_command "$response"
+
+    local should_exec=false
+
+    if _fuck_truthy "$auto_mode"; then
         echo -e "${C_YELLOW}⚡ Auto-exec enabled. Running...${C_RESET}"
         should_exec=true
     else
