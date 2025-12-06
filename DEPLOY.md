@@ -147,6 +147,22 @@ npm run deploy
 
 这会自动重新构建并部署。
 
+### GitHub Actions 自动部署
+
+如果你想让 Cloudflare 部署在 CI 中自动完成，同时又不把真实的 `wrangler.toml` 放在仓库里，可以按下面步骤配置：
+
+1. 将完整的 `wrangler.toml`（包含 `account_id`、`name`、`routes`、`kv_namespaces` 等字段）保存到私有 gist 或任何可被 GitHub Actions 读取的 URL，记录它的 **原始链接**。
+2. 进入 GitHub 仓库 → `Settings → Secrets and variables → Actions`：
+   - Variables：新增 `WRANGLER_TOML_URL`，内容为刚才的原始链接。
+   - Secrets：新增 `CLOUDFLARE_API_TOKEN`（需要 `Workers Scripts:Edit`、`Workers KV Storage:Edit` 权限）。如果 `wrangler.toml` 里没有 `account_id` 字段，再额外添加 `CLOUDFLARE_ACCOUNT_ID` secret。
+3. 推送或合并到 `main` 时，`.github/workflows/deploy.yml` 会自动运行，执行 `npm ci → npm run build → curl 远程 toml → npx wrangler deploy --config wrangler.ci.toml`。Pull Request 仍会执行构建验证，但部署步骤会自动跳过。
+4. 需要立即触发部署时，打开 GitHub → Actions → **Deploy to Cloudflare Works** → `Run workflow` 即可复用同一套变量和 secret。
+
+> [!IMPORTANT]
+> - `WRANGLER_TOML_URL` 未设置时，workflow 会第一时间失败并提醒你补齐。
+> - 缺少 `CLOUDFLARE_API_TOKEN` 会阻止 `wrangler deploy`，避免把流量打到未知账号。
+> - workflow 会把下载的 `wrangler.ci.toml` 写在临时文件中，部署结束后立即删除。
+
 ### 环境变量
 
 在 Cloudflare Workers 中配置的环境变量：
@@ -346,6 +362,21 @@ npm run deploy
 ```
 
 This will automatically rebuild and redeploy.
+
+### GitHub Actions Deployment
+
+To keep the real `wrangler.toml` outside of the repo while still deploying automatically, follow these steps:
+
+1. Store the complete `wrangler.toml` (with `account_id`, `name`, `routes`, KV bindings, etc.) inside a private gist or any URL accessible from GitHub Actions and copy its **raw** link.
+2. Go to `Settings → Secrets and variables → Actions`:
+   - **Variables**: add `WRANGLER_TOML_URL` and paste the raw gist link.
+   - **Secrets**: add `CLOUDFLARE_API_TOKEN` (needs at least `Workers Scripts:Edit` + `Workers KV Storage:Edit`). Add `CLOUDFLARE_ACCOUNT_ID` only if your gist omits the `account_id` field.
+3. Every push/merge to `main` triggers `.github/workflows/deploy.yml`, which runs `npm ci → npm run build → curl remote toml → npx wrangler deploy --config wrangler.ci.toml`. Pull Requests still execute build verification but automatically skip the deploy step.
+4. To redeploy on demand, open GitHub → Actions → **Deploy to Cloudflare Works** → `Run workflow`.
+
+> [!NOTE]
+> - Missing `WRANGLER_TOML_URL` or `CLOUDFLARE_API_TOKEN` makes the workflow fail immediately, preventing partial deployments.
+> - The downloaded `wrangler.ci.toml` is removed as soon as the deploy step finishes.
 
 ### Environment Variables
 
