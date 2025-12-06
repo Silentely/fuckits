@@ -20,7 +20,7 @@
 
 ## 🧩 项目来源 & 二次开发说明
 
-`fuckits` 目前由 Silentely 团队维护，为 [https://github.com/faithleysath/fuckits](https://github.com/faithleysath/fuckit.sh)的二次开发版本。非常感谢原项目作者及社区贡献的灵感与实现，本仓库在继承核心体验的基础上继续演进，欢迎在原仓库 Star/Issue 支持原作者。
+`fuckits` 目前由 Silentely 维护，为 [fuckit.sh](https://github.com/faithleysath/fuckit.sh)的二次开发版本。非常感谢原项目作者及社区贡献的灵感与实现，本仓库在继承核心体验的基础上继续演进，欢迎在原仓库 Star/Issue 支持原作者。
 
 ### 相比原项目的新增亮点
 
