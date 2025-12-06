@@ -48,18 +48,47 @@ jobs:
           curl -fsSL "$URL" -o "$WRANGLER_CONFIG_PATH"
           echo "✅ Downloaded wrangler config to $WRANGLER_CONFIG_PATH"
 
-      - name: Mask sensitive vars from wrangler config
+      - name: Mask sensitive values from wrangler config
         run: |
-          if grep -Eq '^[[:space:]]*\[vars\]' "$WRANGLER_CONFIG_PATH"; then
-            awk '
-              BEGIN { inside = 0 }
-              /^\s*\[vars\]\s*$/ { inside = 1; next }
-              /^\s*\[.*\]\s*$/ { inside = 0 }
-              inside && match($0, /^[[:space:]]*[A-Za-z0-9_]+[[:space:]]*=[[:space:]]*"([^"]*)"/, m) {
-                printf "::add-mask::%s\n", m[1]
-              }
-            ' "$WRANGLER_CONFIG_PATH"
-          fi
+          python - <<'PY'
+import os
+import tomllib
+
+path = os.environ["WRANGLER_CONFIG_PATH"]
+
+def add_mask(value):
+    if isinstance(value, str) and value:
+        print(f"::add-mask::{value}")
+
+try:
+    with open(path, "rb") as fh:
+        data = tomllib.load(fh)
+except Exception as exc:
+    raise SystemExit(f"Failed to parse {path}: {exc}")
+
+def mask_vars(section):
+    if isinstance(section, dict):
+        for val in section.values():
+            add_mask(val)
+
+mask_vars(data.get("vars"))
+
+envs = data.get("env") or {}
+if isinstance(envs, dict):
+    for env_cfg in envs.values():
+        if isinstance(env_cfg, dict):
+            mask_vars(env_cfg.get("vars"))
+
+for route in data.get("routes", []):
+    if isinstance(route, dict):
+        pattern = route.get("pattern")
+        if isinstance(pattern, str):
+            add_mask(pattern)
+            if "." in pattern:
+                add_mask(pattern.split(".", 1)[1])
+        add_mask(route.get("custom_domain"))
+
+PY
 
       - name: Deploy to Cloudflare Works
         if: github.event_name != 'pull_request'
@@ -81,11 +110,16 @@ jobs:
           script: |
             const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
             const { owner, repo } = context.repo;
-            const workflowId = context.workflow;
+            const workflowFile = context.workflow;
+            const { data: wf } = await github.rest.actions.getWorkflow({
+              owner,
+              repo,
+              workflow_id: workflowFile
+            });
             const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
               owner,
               repo,
-              workflow_id: workflowId,
+              workflow_id: wf.id,
               per_page: 100
             });
             let deleted = 0;
