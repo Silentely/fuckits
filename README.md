@@ -4,20 +4,6 @@
   <a href="./README.en.md">English</a> | <strong>简体中文</strong>
 </p>
 
-<p align="center">
-  <a href="https://github.com/Silentely/fuckits/stargazers">
-    <img src="https://img.shields.io/github/stars/faithleysath/fuckits?style=social" alt="GitHub Stars">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/network/members">
-    <img src="https://img.shields.io/github/forks/faithleysath/fuckits?style=social" alt="GitHub Forks">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/commits/main">
-    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckits" alt="GitHub last commit">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/faithleysath/fuckits" alt="License">
-  </a>
-</p>
 
 > [!IMPORTANT]
 > **本项目正在重构中**
@@ -34,7 +20,7 @@
 
 ## 🧩 项目来源 & 二次开发说明
 
-`fuckits` 目前由 Silentely 团队维护，为 [faithleysath/fuckits](https://github.com/faithleysath/fuckits) 的二次开发版本。非常感谢原项目作者及社区贡献的灵感与实现，本仓库在继承核心体验的基础上继续演进，欢迎在原仓库 Star/Issue 支持原作者。
+`fuckits` 目前由 Silentely 团队维护，为 [https://github.com/faithleysath/fuckits](https://github.com/faithleysath/fuckit.sh)的二次开发版本。非常感谢原项目作者及社区贡献的灵感与实现，本仓库在继承核心体验的基础上继续演进，欢迎在原仓库 Star/Issue 支持原作者。
 
 ### 相比原项目的新增亮点
 
