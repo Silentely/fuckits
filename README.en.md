@@ -4,29 +4,6 @@
   <strong>English</strong> | <a href="./README.md">简体中文</a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/Silentely/fuckits/stargazers">
-    <img src="https://img.shields.io/github/stars/faithleysath/fuckits?style=social" alt="GitHub Stars">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/network/members">
-    <img src="https://img.shields.io/github/forks/faithleysath/fuckits?style=social" alt="GitHub Forks">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/commits/main">
-    <img src="https://img.shields.io/github/last-commit/faithleysath/fuckits" alt="GitHub last commit">
-  </a>
-  <a href="https://github.com/Silentely/fuckits/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/faithleysath/fuckits" alt="License">
-  </a>
-</p>
-
-**I fucking forgot that command.**
-
-`fuckits` is an AI-powered command-line tool that translates your natural language descriptions directly into executable shell commands.
-
-When you're too lazy to check the `man` pages or search on Google, just `fuck` it.
-
-**This project is completely free to use. You do not need to provide your own OpenAI API Key.**
-
 ## 🧩 Origin & Fork Notes
 
 This repository (maintained by Silentely) is a derivative of [faithleysath/fuckits](https://github.com/faithleysath/fuckits). Huge thanks to the original author and contributors — please support the upstream project with stars/issues. Our fork keeps the spirit of the original CLI while expanding the deployment story and quota controls.
@@ -39,6 +16,15 @@ This repository (maintained by Silentely) is a derivative of [faithleysath/fucki
 * **Automated setup/deploy scripts** – `npm run setup` and `npm run one-click-deploy` walk through Cloudflare login, secret provisioning (including the new admin key), builds, and deployment, reducing manual drift.
 * **Documentation & roadmap polish** – README/DEPLOY/SUMMARY/CLAUDE.md highlight the fork status, credits, Amber rewrite roadmap, and the expanded environment-variable matrix to simplify reuse for other forks.
 
+
+
+**I fucking forgot that command.**
+
+`fuckits` is an AI-powered command-line tool that translates your natural language descriptions directly into executable shell commands.
+
+When you're too lazy to check the `man` pages or search on Google, just `fuck` it.
+
+**This project is completely free to use. You do not need to provide your own OpenAI API Key.**
 
 ## Preview
 

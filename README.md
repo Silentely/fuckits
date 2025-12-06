@@ -5,19 +5,6 @@
 </p>
 
 
-> [!IMPORTANT]
-> **本项目正在重构中**
-> 
-> 受[Linux.do佬友们的启发和建议](https://linux.do/t/topic/1099746)，此项目将用[Amber](https://amber-lang.com)语言重构，并加入完善的版本管理、更新提示，以及自定义llm key，自定义alias、个人偏好设置、ui风格（猫娘、御姐等）等更多新功能。
-
-**我他妈忘了那条命令了。**
-
-`fuckits` 是一个基于 AI 的命令行工具，它能将你的自然语言描述直接转换成可执行的 Shell 命令。
-
-当你懒得去查 `man` 手册或者在 Google 上搜索时，直接 `fuck` 就完事了。
-
-**本项目完全免费，你无需提供自己的 OpenAI API Key 即可直接使用。**
-
 ## 🧩 项目来源 & 二次开发说明
 
 `fuckits` 目前由 Silentely 维护，为 [fuckit.sh](https://github.com/faithleysath/fuckit.sh)的二次开发版本。非常感谢原项目作者及社区贡献的灵感与实现，本仓库在继承核心体验的基础上继续演进，欢迎在原仓库 Star/Issue 支持原作者。
@@ -30,6 +17,21 @@
 * **一键部署/Setup 流程**：`npm run setup` / `npm run one-click-deploy` 覆盖登录、Secret 写入（包括新增管理员密钥）、构建与部署，用脚本化方式保证步骤统一。
 * **安全提示与文档体系**：README / DEPLOY / SUMMARY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格、以及 Amber 重构计划，方便 fork 二开的后续协作。
 
+
+  
+
+> [!IMPORTANT]
+> **本项目正在重构中**
+> 
+> 受[Linux.do佬友们的启发和建议](https://linux.do/t/topic/1099746)，此项目将用[Amber](https://amber-lang.com)语言重构，并加入完善的版本管理、更新提示，以及自定义llm key，自定义alias、个人偏好设置、ui风格（猫娘、御姐等）等更多新功能。
+
+**我他妈忘了那条命令了。**
+
+`fuckits` 是一个基于 AI 的命令行工具，它能将你的自然语言描述直接转换成可执行的 Shell 命令。
+
+当你懒得去查 `man` 手册或者在 Google 上搜索时，直接 `fuck` 就完事了。
+
+**本项目完全免费，你无需提供自己的 OpenAI API Key 即可直接使用。**
 
 ## 预览
 
