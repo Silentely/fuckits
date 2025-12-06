@@ -33,6 +33,8 @@ readonly C_DIM='\033[2m'
 readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
 readonly FCKN="${C_RED}F*CKING${C_RESET}"
 
+readonly FUCKITS_LOCALE="en"
+
 
 # --- Configuration ---
 if [ -z "${HOME:-}" ]; then
@@ -140,6 +142,217 @@ _fuck_json_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
+_fuck_should_use_local_api() {
+    if [ -n "${FUCK_OPENAI_API_KEY:-}" ]; then
+        return 0
+    fi
+    return 1
+}
+
+_fuck_local_system_prompt() {
+    local sysinfo="$1"
+    if [ "$FUCKITS_LOCALE" = "zh" ]; then
+        printf '你是一个专业的 shell 脚本生成器。用户会提供他们的系统信息和一个命令。你的任务是返回一个可执行的、原始的 shell 脚本来完成他们的目标。脚本可以是多行的。不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）。只需要原始的脚本内容。用户的系统信息是：%s' "$sysinfo"
+    else
+        printf 'You are an expert shell script generator. A user will provide their system information and a prompt. Your task is to return a raw, executable shell script that accomplishes their goal. The script can be multi-line. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash). Just the raw script content. The user\'s system info is: %s' "$sysinfo"
+    fi
+}
+
+_fuck_extract_command_from_json() {
+    local json_file="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$json_file" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+choices = data.get('choices') or []
+if not choices:
+    sys.exit(1)
+message = choices[0].get('message') or {}
+content = (message.get('content') or '').strip()
+if not content:
+    sys.exit(1)
+print(content)
+PY
+        return
+    fi
+
+    if command -v node >/dev/null 2>&1; then
+        node - "$json_file" <<'JS'
+const fs = require('fs');
+const path = process.argv[1];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+const choice = (data.choices && data.choices[0]) || {};
+const message = choice.message || {};
+const content = (message.content || '').trim();
+if (!content) {
+  process.exit(1);
+}
+console.log(content);
+JS
+        return
+    fi
+
+    echo -e "$FUCK ${C_RED}Cannot parse AI response because neither python3 nor node is available.${C_RESET}" >&2
+    echo -e "${C_YELLOW}Please install python3 or node to use local API mode.${C_RESET}" >&2
+    return 1
+}
+
+_fuck_request_local_model() {
+    local prompt="$1"
+    local sysinfo="$2"
+    local curl_timeout="$3"
+
+    local api_key="${FUCK_OPENAI_API_KEY:-}"
+    if [ -z "$api_key" ]; then
+        echo -e "$FUCK ${C_RED}Local API key not configured. Set FUCK_OPENAI_API_KEY in ~/.fuck/config.sh.${C_RESET}" >&2
+        return 1
+    fi
+
+    local model="${FUCK_OPENAI_API_MODEL:-gpt-4-turbo}"
+    local api_base="${FUCK_OPENAI_API_BASE:-https://api.openai.com/v1}"
+    api_base=${api_base%/}
+    local api_url="$api_base/chat/completions"
+
+    local system_prompt
+    system_prompt=$(_fuck_local_system_prompt "$sysinfo")
+
+    local escaped_prompt escaped_system
+    escaped_prompt=$(_fuck_json_escape "$prompt")
+    escaped_system=$(_fuck_json_escape "$system_prompt")
+    local payload
+    payload=$(printf '{ "model": "%s", "messages": [ {"role":"system","content":"%s"}, {"role":"user","content":"%s"} ], "max_tokens": 1024, "temperature": 0.2 }' \
+        "$model" "$escaped_system" "$escaped_prompt")
+
+    local tmp_json
+    tmp_json=$(mktemp) || return 1
+
+    if ! curl -fsS --max-time "$curl_timeout" "$api_url" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $api_key" \
+        -d "$payload" > "$tmp_json"; then
+        echo -e "$FUCK ${C_RED}Local API request failed.${C_RESET}" >&2
+        cat "$tmp_json" >&2
+        rm -f "$tmp_json"
+        return 1
+    fi
+
+    local command_output
+    if ! command_output=$(_fuck_extract_command_from_json "$tmp_json"); then
+        rm -f "$tmp_json"
+        echo -e "$FUCK ${C_RED}Unable to parse local model response.${C_RESET}" >&2
+        return 1
+    fi
+
+    rm -f "$tmp_json"
+    printf '%s\n' "$command_output"
+}
+
+_fuck_request_worker_model() {
+    local prompt="$1"
+    local sysinfo="$2"
+    local curl_timeout="$3"
+
+    local payload
+    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' \
+        "$( _fuck_json_escape "$sysinfo" )" \
+        "$( _fuck_json_escape "$prompt" )")
+
+    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
+
+    _fuck_debug "API URL: $api_url"
+    _fuck_debug "Payload: $payload"
+    _fuck_debug "Timeout: $curl_timeout"
+
+    local tmp_response tmp_status
+    tmp_response=$(mktemp)
+    tmp_status=$(mktemp)
+
+    (
+        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "$payload" -o "$tmp_response" -w "%{http_code}" > "$tmp_status"
+    ) &
+    local pid=$!
+
+    _fuck_spinner "$pid"
+
+    local curl_exit=0
+    if ! wait "$pid"; then
+        curl_exit=$?
+    fi
+
+    local http_status=""
+    if [ -f "$tmp_status" ]; then
+        http_status=$(tr -d '\r\n' < "$tmp_status")
+        rm -f "$tmp_status"
+    fi
+
+    local response=""
+    if [ -f "$tmp_response" ]; then
+        response=$(cat "$tmp_response")
+        rm -f "$tmp_response"
+    fi
+
+    if [ $curl_exit -ne 0 ]; then
+        echo -e "$FUCK ${C_RED}Failed to reach the shared Worker.${C_RESET}" >&2
+        if [ -n "$response" ]; then
+            echo -e "${C_DIM}$response${C_RESET}" >&2
+        fi
+        return $curl_exit
+    fi
+
+    if [ -z "$http_status" ]; then
+        http_status=0
+    fi
+
+    if [ "$http_status" -eq 429 ] && printf '%s' "$response" | grep -q 'DEMO_LIMIT_EXCEEDED'; then
+        local limit
+        limit=$(printf '%s' "$response" | sed -n 's/.*"limit":[[:space:]]*\([0-9]\+\).*/\1/p' | head -n1)
+        local remaining
+        remaining=$(printf '%s' "$response" | sed -n 's/.*"remaining":[[:space:]]*\([0-9]\+\).*/\1/p' | head -n1)
+        [ -z "$limit" ] && limit=10
+        _fuck_notify_demo_limit "$limit" "$remaining"
+        return 2
+    fi
+
+    if [ "$http_status" -ge 400 ] || [ -z "$response" ]; then
+        echo -e "$FUCK ${C_RED}Shared Worker returned HTTP $http_status.${C_RESET}" >&2
+        if [ -n "$response" ]; then
+            echo -e "${C_DIM}$response${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    printf '%s\n' "$response"
+}
+
+_fuck_notify_demo_limit() {
+    local daily_limit="${1:-10}"
+    local remaining="${2:-0}"
+
+    echo -e "$FUCK ${C_YELLOW}Shared demo quota exhausted (${daily_limit} calls per day).${C_RESET}" >&2
+    case "$remaining" in
+        ''|*[!0-9]*) ;;
+        *)
+            if [ "$remaining" -gt 0 ]; then
+                echo -e "${C_DIM}$remaining calls left for today.${C_RESET}" >&2
+            fi
+            ;;
+    esac
+
+    _fuck_ensure_config_exists
+    _fuck_secure_config_file
+
+    echo -e "${C_CYAN}Switch to your own key:${C_RESET} run ${C_GREEN}fuck config${C_RESET} and set ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET} (plus optional ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET})." >&2
+    echo -e "${C_CYAN}Config path:${C_RESET} ${C_GREEN}$CONFIG_FILE${C_RESET}" >&2
+    if [ -n "${EDITOR:-}" ]; then
+        echo -e "${C_YELLOW}Hint:${C_RESET} ${EDITOR} \"$CONFIG_FILE\"" >&2
+    fi
+    echo -e "${C_DIM}Security:${C_RESET} the file permissions are locked to 600 so the key stays local." >&2
+}
+
 # Simple helper to parse boolean-like values
 _fuck_truthy() {
     local value="${1:-}"
@@ -185,8 +398,15 @@ _fuck_spinner() {
 }
 
 # Ensure a config file exists to help users tweak the behaviour
+_fuck_secure_config_file() {
+    if [ -f "$CONFIG_FILE" ]; then
+        chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    fi
+}
+
 _fuck_ensure_config_exists() {
     if [ -f "$CONFIG_FILE" ]; then
+        _fuck_secure_config_file
         return
     fi
 
@@ -197,6 +417,13 @@ _fuck_ensure_config_exists() {
 
 # Custom API endpoint that points to your self-hosted worker
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# Local OpenAI-compatible API key (recommended)
+# export FUCK_OPENAI_API_KEY="sk-..."
+
+# Optional: override model/base when using your own key
+# export FUCK_OPENAI_MODEL="gpt-4o-mini"
+# export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
 
 # Add an extra alias besides the default 'fuck'
 # export FUCK_ALIAS="pls"
@@ -213,6 +440,8 @@ _fuck_ensure_config_exists() {
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
+
+    _fuck_secure_config_file
 }
 
 _fuck_show_config_help() {
@@ -223,7 +452,8 @@ _fuck_show_config_help() {
     else
         echo -e "${C_YELLOW}Open this file in your favourite editor to customise fuckits.${C_RESET}"
     fi
-    echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG"
+    echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
+    echo -e "${C_DIM}Pro tip:${C_RESET} we lock ${CONFIG_FILE} to chmod 600 so your API key stays local."
 }
 
 # Uninstalls the script
@@ -290,56 +520,23 @@ _fuck_execute_prompt() {
     local curl_timeout="${FUCK_TIMEOUT:-30}"
     local sysinfo_string
     sysinfo_string=$(_fuck_collect_sysinfo_string)
-    
-    local escaped_prompt
-    escaped_prompt=$(_fuck_json_escape "$prompt")
-    
-    local escaped_sysinfo
-    escaped_sysinfo=$(_fuck_json_escape "$sysinfo_string")
 
-    # Construct the JSON payload
-    local payload
-    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' "$escaped_sysinfo" "$escaped_prompt")
-
-    # Use configured API endpoint or default
-    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
-
-    _fuck_debug "API URL: $api_url"
-    _fuck_debug "Payload: $payload"
-
-    echo -ne "${C_YELLOW}Thinking...${C_RESET}"
-    
-    local tmp_response
-    tmp_response=$(mktemp)
-    
-    # Call API in background
-    (
-        curl -fsS --max-time "$curl_timeout" -X POST "$api_url" \
-            -H "Content-Type: application/json" \
-            -d "$payload" > "$tmp_response" 2>&1
-    ) &    local pid=$!
-    
-    _fuck_spinner "$pid"
-    if wait "$pid"; then
-        exit_code=0
+    local response=""
+    local exit_code=0
+    if _fuck_should_use_local_api; then
+        echo -ne "${C_YELLOW}Using your local API key...${C_RESET} "
+        response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
+        exit_code=$?
     else
+        echo -ne "${C_YELLOW}Thinking...${C_RESET} "
+        response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     fi
-    
-    echo "" # Newline after spinner
 
-    local response
-    if [ -f "$tmp_response" ]; then
-        response=$(cat "$tmp_response")
-        rm -f "$tmp_response"
-    else
-        response=""
-    fi
+    echo ""
 
     if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
-        echo -e "$FUCK ${C_RED}Couldn't reach the AI service or got empty response.${C_RESET}" >&2
-        [ -n "$response" ] && echo -e "${C_DIM}$response${C_RESET}" >&2
-        return 1
+        return $exit_code
     fi
 
     # --- User Confirmation (as requested) ---
@@ -462,15 +659,29 @@ _install_script() {
 # Custom API endpoint that points to your self-hosted worker
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
 
+# Local OpenAI-compatible API key (recommended)
+# export FUCK_OPENAI_API_KEY="sk-..."
+
+# Optional: override model/base when using your own key
+# export FUCK_OPENAI_MODEL="gpt-4o-mini"
+# export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# Add an extra alias besides the default 'fuck'
+# export FUCK_ALIAS="pls"
+
 # Skip confirmation prompts (use with caution!)
-# export FUCK_AUTO_EXEC=0
+# export FUCK_AUTO_EXEC=false
 
 # Override curl timeout (seconds)
 # export FUCK_TIMEOUT=30
 
 # Enable verbose debug logs
-# export FUCK_DEBUG=0
+# export FUCK_DEBUG=false
+
+# Disable the built-in 'fuck' alias
+# export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
+        _fuck_secure_config_file
     fi
 
     # Add source line to shell profile

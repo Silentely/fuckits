@@ -27,6 +27,8 @@ tmp/
 *.swo
 *~
 .serena
+.gemini-clipboard
+.fuck
 
 # OS
 .DS_Store

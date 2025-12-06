@@ -105,11 +105,16 @@ npm run one-click-deploy
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自定义 API 端点 |
+| `FUCK_OPENAI_API_KEY` | 空 | 本地 OpenAI/兼容 Key，绕过共享额度 |
+| `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | 自定义模型名（配合本地 Key 使用） |
+| `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | 指向自建代理或其它服务 |
 | `FUCK_ALIAS` | - | 额外别名（不影响默认 fuck） |
 | `FUCK_AUTO_EXEC` | `false` | 跳过确认自动执行 |
 | `FUCK_TIMEOUT` | `30` | curl 超时时间（秒） |
 | `FUCK_DEBUG` | `false` | 启用调试日志 |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | 禁用默认 fuck 别名 |
+
+> 配置文件首次生成后会自动 `chmod 600 ~/.fuck/config.sh`，确保密钥仅保存在本地。
 
 ### 查看配置
 ```bash

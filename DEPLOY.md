@@ -55,6 +55,24 @@ npx wrangler login
 npx wrangler secret put OPENAI_API_KEY
 ```
 
+> [!TIP]
+> **关于 API 密钥的使用说明：**
+>
+> 这个密钥用于共享 Worker 演示模式，提供每天 10 次的免费体验额度。
+>
+> **推荐用户配置本地密钥：**
+> - 运行 `fuck config` 查看配置文件位置
+> - 在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`
+> - 配置后 CLI 将直接使用用户自己的密钥，无使用限制
+> - 配置文件自动设置为 `chmod 600` 权限，确保密钥安全
+
+**可选：配置共享 Worker 的每日限额**
+
+```bash
+# 设置共享演示模式的每日调用限制（默认 10 次）
+npx wrangler secret put SHARED_DAILY_LIMIT
+```
+
 **可选配置：**
 
 自定义 AI 模型（默认：gpt-4-turbo）：
@@ -127,9 +145,17 @@ npm run deploy
 
 | 变量名 | 必需 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `OPENAI_API_KEY` | ✅ 是 | - | OpenAI API 密钥 |
+| `OPENAI_API_KEY` | ✅ 是 | - | OpenAI API 密钥（用于共享演示模式） |
 | `OPENAI_API_MODEL` | ❌ 否 | `gpt-4-turbo` | 使用的 AI 模型 |
 | `OPENAI_API_BASE` | ❌ 否 | `https://api.openai.com/v1` | API 基础 URL |
+| `SHARED_DAILY_LIMIT` | ❌ 否 | `10` | 共享演示模式的每日调用限制 |
+
+> [!NOTE]
+> **关于限流机制：**
+> - Worker 使用内存 Map 实现简单的 IP 级别限流
+> - 每天 UTC 00:00 自动重置配额
+> - 达到限制时返回 HTTP 429 状态码
+> - 用户可通过配置本地 API 密钥绕过限制
 
 ### 故障排查
 
@@ -148,6 +174,19 @@ npm run deploy
 1. 确认已设置 `OPENAI_API_KEY`
 2. 检查 API 密钥是否有效
 3. 查看 Cloudflare Workers 日志
+
+### 问题：用户报告配额限制
+
+1. 提示用户运行 `fuck config` 配置本地密钥
+2. 检查 Worker 的 `SHARED_DAILY_LIMIT` 设置
+3. 查看 Worker 日志确认限流是否正常工作
+
+### 问题：本地 API 密钥模式不工作
+
+1. 确认用户已在 `~/.fuck/config.sh` 中正确设置 `FUCK_OPENAI_API_KEY`
+2. 检查配置文件权限是否为 600
+3. 确认用户系统中安装了 python3 或 node（用于 JSON 解析）
+4. 运行 `FUCK_DEBUG=true fuck <命令>` 查看详细日志
 
 ---
 
@@ -201,6 +240,9 @@ Set your OpenAI API key:
 ```bash
 npx wrangler secret put OPENAI_API_KEY
 ```
+
+> [!TIP]
+> This secret only powers the shared demo Worker (10 calls/day). Ask end users to run `fuck config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
 
 **Optional Configuration:**
 

@@ -101,11 +101,12 @@ fi
 
 # Configure API key
 echo -e "\n${C_CYAN}🔑 OpenAI API Configuration${C_RESET}"
-echo -e "${C_YELLOW}You need to set your OpenAI API key as a secret${C_RESET}"
-read -p "Do you want to set your OpenAI API key now? [y/N] " -n 1 -r
+echo -e "${C_YELLOW}This secret only powers the shared demo Worker (10 calls/day). Encourage end users to set FUCK_OPENAI_API_KEY locally.${C_RESET}"
+read -p "Do you want to set the shared Worker OpenAI API key now? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Enter your OpenAI API key (input will be visible): " OPENAI_API_KEY_VALUE
+    read -s -p "Enter your OpenAI API key: " OPENAI_API_KEY_VALUE
+    echo
     if [ -n "$OPENAI_API_KEY_VALUE" ]; then
         printf '%s' "$OPENAI_API_KEY_VALUE" | npx wrangler secret put OPENAI_API_KEY
         echo -e "${C_GREEN}✅ API key configured${C_RESET}"

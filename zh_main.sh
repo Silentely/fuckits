@@ -30,6 +30,8 @@ readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
 readonly C_DIM='\033[2m'
 
+readonly FUCKITS_LOCALE="zh"
+
 # --- 提示符 ---
 readonly FUCK="${C_RED_BOLD}[!]${C_RESET}"
 readonly FCKN="${C_RED}[提示]${C_RESET}"
@@ -143,6 +145,213 @@ _fuck_json_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
 }
 
+_fuck_should_use_local_api() {
+    if [ -n "${FUCK_OPENAI_API_KEY:-}" ]; then
+        return 0
+    fi
+    return 1
+}
+
+_fuck_local_system_prompt() {
+    local sysinfo="$1"
+    if [ "$FUCKITS_LOCALE" = "zh" ]; then
+        printf '你是一个专业的 shell 脚本生成器。用户会提供他们的系统信息和一个命令。你的任务是返回一个可执行的、原始的 shell 脚本来完成他们的目标。脚本可以是多行的。不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）。只需要原始的脚本内容。用户的系统信息是：%s' "$sysinfo"
+    else
+        printf 'You are an expert shell script generator. A user will provide their system information and a prompt. Your task is to return a raw, executable shell script that accomplishes their goal. The script can be multi-line. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash). Just the raw script content. The user\'s system info is: %s' "$sysinfo"
+    fi
+}
+
+_fuck_extract_command_from_json() {
+    local json_file="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$json_file" <<'PY2'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+choices = data.get('choices') or []
+if not choices:
+    sys.exit(1)
+message = choices[0].get('message') or {}
+content = (message.get('content') or '').strip()
+if not content:
+    sys.exit(1)
+print(content)
+PY2
+        return
+    fi
+
+    if command -v node >/dev/null 2>&1; then
+        node - "$json_file" <<'JS2'
+const fs = require('fs');
+const path = process.argv[1];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+const choice = (data.choices && data.choices[0]) || {};
+const message = choice.message || {};
+const content = (message.content || '').trim();
+if (!content) {
+  process.exit(1);
+}
+console.log(content);
+JS2
+        return
+    fi
+
+    echo -e "$FUCK ${C_RED}无法解析模型返回的数据，请安装 python3 或 node。${C_RESET}" >&2
+    return 1
+}
+
+_fuck_request_local_model() {
+    local prompt="$1"
+    local sysinfo="$2"
+    local curl_timeout="$3"
+
+    local api_key="${FUCK_OPENAI_API_KEY:-}"
+    if [ -z "$api_key" ]; then
+        echo -e "$FUCK ${C_RED}未配置本地 API Key，请在 ~/.fuck/config.sh 中设置 FUCK_OPENAI_API_KEY。${C_RESET}" >&2
+        return 1
+    fi
+
+    local model="${FUCK_OPENAI_API_MODEL:-gpt-4-turbo}"
+    local api_base="${FUCK_OPENAI_API_BASE:-https://api.openai.com/v1}"
+    api_base=${api_base%/}
+    local api_url="$api_base/chat/completions"
+
+    local system_prompt
+    system_prompt=$(_fuck_local_system_prompt "$sysinfo")
+
+    local payload
+    payload=$(printf '{ "model": "%s", "messages": [ {"role":"system","content":"%s"}, {"role":"user","content":"%s"} ], "max_tokens": 1024, "temperature": 0.2 }' \
+        "$model" "$(_fuck_json_escape "$system_prompt")" "$(_fuck_json_escape "$prompt")")
+
+    local tmp_json
+    tmp_json=$(mktemp) || return 1
+
+    if ! curl -fsS --max-time "$curl_timeout" "$api_url" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $api_key" \
+        -d "$payload" > "$tmp_json"; then
+        echo -e "$FUCK ${C_RED}本地 API 请求失败。${C_RESET}" >&2
+        cat "$tmp_json" >&2
+        rm -f "$tmp_json"
+        return 1
+    fi
+
+    local command_output
+    if ! command_output=$(_fuck_extract_command_from_json "$tmp_json"); then
+        rm -f "$tmp_json"
+        echo -e "$FUCK ${C_RED}无法解析模型返回内容。${C_RESET}" >&2
+        return 1
+    fi
+
+    rm -f "$tmp_json"
+    printf '%s\n' "$command_output"
+}
+
+_fuck_request_worker_model() {
+    local prompt="$1"
+    local sysinfo="$2"
+    local curl_timeout="$3"
+
+    local payload
+    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' \
+        "$( _fuck_json_escape "$sysinfo" )" \
+        "$( _fuck_json_escape "$prompt" )")
+
+    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
+
+    _fuck_debug "API URL: $api_url"
+    _fuck_debug "Payload: $payload"
+    _fuck_debug "Timeout: $curl_timeout"
+
+    local tmp_response tmp_status
+    tmp_response=$(mktemp)
+    tmp_status=$(mktemp)
+
+    (
+        curl -sS --max-time "$curl_timeout" -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "$payload" -o "$tmp_response" -w "%{http_code}" > "$tmp_status"
+    ) &
+    local pid=$!
+
+    _fuck_spinner "$pid"
+
+    local curl_exit=0
+    if ! wait "$pid"; then
+        curl_exit=$?
+    fi
+
+    local http_status=""
+    if [ -f "$tmp_status" ]; then
+        http_status=$(tr -d '\r\n' < "$tmp_status")
+        rm -f "$tmp_status"
+    fi
+
+    local response=""
+    if [ -f "$tmp_response" ]; then
+        response=$(cat "$tmp_response")
+        rm -f "$tmp_response"
+    fi
+
+    if [ $curl_exit -ne 0 ]; then
+        echo -e "$FUCK ${C_RED}无法连接到共享 Worker。${C_RESET}" >&2
+        if [ -n "$response" ]; then
+            echo -e "${C_DIM}$response${C_RESET}" >&2
+        fi
+        return $curl_exit
+    fi
+
+    if [ -z "$http_status" ]; then
+        http_status=0
+    fi
+
+    if [ "$http_status" -eq 429 ] && printf '%s' "$response" | grep -q 'DEMO_LIMIT_EXCEEDED'; then
+        local limit
+        limit=$(printf '%s' "$response" | sed -n 's/.*"limit":[[:space:]]*\([0-9]\+\).*/\1/p' | head -n1)
+        local remaining
+        remaining=$(printf '%s' "$response" | sed -n 's/.*"remaining":[[:space:]]*\([0-9]\+\).*/\1/p' | head -n1)
+        [ -z "$limit" ] && limit=10
+        _fuck_notify_demo_limit "$limit" "$remaining"
+        return 2
+    fi
+
+    if [ "$http_status" -ge 400 ] || [ -z "$response" ]; then
+        echo -e "$FUCK ${C_RED}共享 Worker 返回 HTTP $http_status。${C_RESET}" >&2
+        if [ -n "$response" ]; then
+            echo -e "${C_DIM}$response${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    printf '%s\n' "$response"
+}
+
+_fuck_notify_demo_limit() {
+    local daily_limit="${1:-10}"
+    local remaining="${2:-0}"
+
+    echo -e "$FUCK ${C_YELLOW}共享体验额度已用光（每天最多 ${daily_limit} 次）。${C_RESET}" >&2
+    case "$remaining" in
+        ''|*[!0-9]*) ;;
+        *)
+            if [ "$remaining" -gt 0 ]; then
+                echo -e "${C_DIM}今日剩余额度：$remaining 次。${C_RESET}" >&2
+            fi
+            ;;
+    esac
+
+    _fuck_ensure_config_exists
+    _fuck_secure_config_file
+
+    echo -e "${C_CYAN}解决方案：${C_RESET}运行 ${C_GREEN}fuck config${C_RESET}，在 ${C_GREEN}$CONFIG_FILE${C_RESET} 中设置 ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET}，必要时同时配置 ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET}。" >&2
+    if [ -n "${EDITOR:-}" ]; then
+        echo -e "${C_YELLOW}提示：${C_RESET}${EDITOR} \"$CONFIG_FILE\"" >&2
+    fi
+    echo -e "${C_DIM}安全提示：配置文件自动 chmod 600，仅限当前用户读取。${C_RESET}" >&2
+}
+
+
 # 判断是否为 true/yes/on 等
 _fuck_truthy() {
     local value="${1:-}"
@@ -188,34 +397,50 @@ _fuck_spinner() {
 }
 
 # 确保配置文件存在
+_fuck_secure_config_file() {
+    if [ -f "$CONFIG_FILE" ]; then
+        chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    fi
+}
+
 _fuck_ensure_config_exists() {
     if [ -f "$CONFIG_FILE" ]; then
+        _fuck_secure_config_file
         return
     fi
 
     mkdir -p "$(dirname "$CONFIG_FILE")"
     cat <<'CFG' > "$CONFIG_FILE"
-# fuckits 配置文件示例
-# 去掉行首的 # 并修改为你想要的值即可。
+# fuckits 配置示例
+# 去掉行首的 #，改成你自己的值即可。
 
-# 自定义 API 入口（如自建 Worker）
+# 自建/自定义 Worker 入口
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
 
-# 额外别名（默认提供 fuck）
+# 本地 OpenAI 兼容 Key（强烈推荐）
+# export FUCK_OPENAI_API_KEY="sk-..."
+
+# 覆盖默认模型或 API 基址
+# export FUCK_OPENAI_MODEL="gpt-4o-mini"
+# export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# 额外别名（不会影响默认 fuck）
 # export FUCK_ALIAS="运行"
 
-# 自动执行返回的命令，跳过确认（谨慎开启）
+# 自动执行返回命令（危险，谨慎开启）
 # export FUCK_AUTO_EXEC=false
 
 # 请求超时时间（秒）
 # export FUCK_TIMEOUT=30
 
-# 是否打印调试信息
+# 是否输出调试信息
 # export FUCK_DEBUG=false
 
-# 不再自动注入默认别名
+# 禁用内置 fuck 别名
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
+
+    _fuck_secure_config_file
 }
 
 # 显示配置提示
@@ -227,7 +452,8 @@ _fuck_show_config_help() {
     else
         echo -e "${C_YELLOW}用任意编辑器打开该文件即可修改配置。${C_RESET}"
     fi
-    echo -e "${C_CYAN}可用选项：${C_RESET}FUCK_API_ENDPOINT, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG"
+    echo -e "${C_CYAN}可用选项：${C_RESET}FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
+    echo -e "${C_DIM}安全说明：配置文件会自动 chmod 600，防止 Key 泄露。${C_RESET}"
 }
 
 # 卸载脚本
@@ -308,81 +534,23 @@ _fuck_execute_prompt() {
     local curl_timeout="${FUCK_TIMEOUT:-30}"
     local sysinfo_string
     sysinfo_string=$(_fuck_collect_sysinfo_string)
-    
-    local escaped_prompt
-    escaped_prompt=$(_fuck_json_escape "$prompt")
-    
-    local escaped_sysinfo
-    escaped_sysinfo=$(_fuck_json_escape "$sysinfo_string")
 
-    # 构建 JSON
-    local payload
-    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' "$escaped_sysinfo" "$escaped_prompt")
-
-    # 使用配置的 API 地址或默认地址
-    local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
-
-    _fuck_debug "----------------------------------------"
-    _fuck_debug "API URL: $api_url"
-    _fuck_debug "Payload: $payload"
-    _fuck_debug "Timeout: $curl_timeout"
-
-    echo -ne "${C_YELLOW}思考中...${C_RESET} "
-    
-    local tmp_response
-    tmp_response=$(mktemp)
-    
-    # 保存当前的 shell 选项
-    local old_opts="$-"
-    # 如果开启了 monitor 模式 (m)，则临时关闭，防止后台任务结束时打印 job control 信息
-    if [[ "$old_opts" == *"m"* ]]; then
-        set +m
-    fi
-
-    # 后台执行 curl
-    (
-        curl -fsS --max-time "$curl_timeout" -X POST "$api_url" \
-            -H "Content-Type: application/json" \
-            -d "$payload" > "$tmp_response" 2>&1
-    ) &
-    local pid=$!
-    
-    _fuck_spinner "$pid"
-    
-    if wait "$pid"; then
-        exit_code=0
+    local response=""
+    local exit_code=0
+    if _fuck_should_use_local_api; then
+        echo -ne "${C_YELLOW}使用本地 API Key...${C_RESET} "
+        response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
+        exit_code=$?
     else
+        echo -ne "${C_YELLOW}思考中...${C_RESET} "
+        response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     fi
-    
-    # 恢复 monitor 模式
-    if [[ "$old_opts" == *"m"* ]]; then
-        set -m
-    fi
-    
-    echo "" # Newline
-    
-    local response
-    if [ -f "$tmp_response" ]; then
-        response=$(cat "$tmp_response")
-        rm -f "$tmp_response"
-    else
-        response=""
-    fi
 
-    _fuck_debug "Exit Code: $exit_code"
-    _fuck_debug "Response Raw:\n$response"
-    _fuck_debug "----------------------------------------"
+    echo ""
 
     if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
-        echo -e "$FUCK ${C_RED}无法连接到 AI 服务或无响应。${C_RESET}" >&2
-        if _fuck_truthy "${FUCK_DEBUG:-0}"; then
-            echo -e "${C_DIM}[DEBUG] 详细错误信息:${C_RESET}" >&2
-            echo -e "${C_DIM}$response${C_RESET}" >&2
-        elif [ -n "$response" ]; then
-             echo -e "${C_DIM}错误详情: $response${C_RESET}" >&2
-        fi
-        return 1
+        return $exit_code
     fi
 
     # --- 用户确认 ---
@@ -496,21 +664,35 @@ _install_script() {
     # 如果没有配置文件则生成一个示例
     if [ ! -f "$CONFIG_FILE" ]; then
         cat <<'CFG' > "$CONFIG_FILE"
-# fuckits 配置文件示例
-# 去掉行首的 # 并修改为你想要的值即可。
+# fuckits 配置示例
+# 去掉行首的 #，改成你自己的值即可。
 
-# 自定义 API 入口（如自建 Worker）
+# 自建/自定义 Worker 入口
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
 
-# 自动执行返回的命令，跳过确认（谨慎开启）
+# 本地 OpenAI 兼容 Key（强烈推荐）
+# export FUCK_OPENAI_API_KEY="sk-..."
+
+# 覆盖默认模型或 API 基址
+# export FUCK_OPENAI_MODEL="gpt-4o-mini"
+# export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# 额外别名（不会影响默认 fuck）
+# export FUCK_ALIAS="运行"
+
+# 自动执行返回的命令（危险，谨慎开启）
 # export FUCK_AUTO_EXEC=false
 
 # 请求超时时间（秒）
 # export FUCK_TIMEOUT=30
 
-# 是否打印调试信息
+# 是否输出调试信息
 # export FUCK_DEBUG=false
+
+# 禁用内置 fuck 别名
+# export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
+        _fuck_secure_config_file
     fi
 
     # 把 source 那行加到 shell 配置文件里

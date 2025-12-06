@@ -2,10 +2,18 @@
 #
 # Example configuration file for fuckits
 # Copy or symlink this file to ~/.fuck/config.sh and customize it.
+# Run: chmod 600 ~/.fuck/config.sh to keep your API keys local-only.
 #
 
-# Custom API endpoint (default: https://fuckits.25500552.xyz/)
+# Custom API endpoint (default shared demo: https://fuckits.25500552.xyz/)
 # export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
+
+# Local OpenAI API key (recommended; bypasses shared demo limit)
+# export FUCK_OPENAI_API_KEY="sk-..."
+
+# Optional: local model & base URL
+# export FUCK_OPENAI_MODEL="gpt-4o-mini"
+# export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
 
 # Extra alias besides the default 'fuck'
 # export FUCK_ALIAS="pls"

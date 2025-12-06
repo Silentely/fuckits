@@ -52,6 +52,7 @@
 ## 🔧 重构亮点
 
 * `~/.fuck/config.sh` 配置文件：支持自定义 API 入口、命令别名、自动执行、超时时间等。
+* 本地密钥优先：`fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 10 次体验额度，超出会提示你配置自己的 Key。
 * 新增 `fuck config` 命令：一键定位配置文件并查看可用开关。
 * 自动执行模式：`FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
 * 自定义别名：通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
@@ -87,6 +88,9 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 > 1.  **下载**: `curl -o fuckits https://fuckits.25500552.xyz`
 > 2.  **瞅一眼**: `less fuckits`
 > 3.  **运行**: `bash fuckits`
+
+> [!TIP]
+> 共享 Worker 只是体验通道（每天 10 次），装完脚本后立刻执行 `fuck config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。
 
 安装完成后，请重启你的终端或运行 `source ~/.bashrc` / `source ~/.zshrc` 来让命令生效。
 
@@ -125,6 +129,7 @@ fuck config
 
 配置文件位于 `~/.fuck/config.sh`，你可以在其中自定义：
 - 自定义 API 端点（用于自建 Worker）
+- 本地 OpenAI Key（`FUCK_OPENAI_API_KEY`）以及对应的 `FUCK_OPENAI_MODEL` / `FUCK_OPENAI_API_BASE`
 - 自动执行模式（跳过确认）
 - 请求超时时间
 - 调试模式
@@ -215,6 +220,9 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自建或自定义 Worker 地址 |
+| `FUCK_OPENAI_API_KEY` | 空 | 本地 OpenAI/兼容 Key（推荐，绕过共享配额） |
+| `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | 自定义模型（仅在本地 Key 模式下生效） |
+| `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | 指向自建代理或第三方服务 |
 | `FUCK_ALIAS` | `fuck` | 额外别名（不会影响默认别名，除非关闭） |
 | `FUCK_AUTO_EXEC` | `false` | 自动执行命令，跳过确认（危险操作请慎用） |
 | `FUCK_TIMEOUT` | `30` | `curl` 请求超时时间（秒） |
@@ -222,6 +230,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | 若设为 `true`，将不会自动注入 `fuck` 别名 |
 
 通过 `fuck config` 可以快速查看文件路径并创建默认示例。
+安装脚本会自动将 `~/.fuck/config.sh` 的权限设置为 `chmod 600`，确保你的密钥只保留在本地。
 
 ---
 

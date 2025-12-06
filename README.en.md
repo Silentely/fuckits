@@ -47,6 +47,7 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 ## 🔧 What's New
 
 * Per-user config file (`~/.fuck/config.sh`) with custom API endpoints, aliases, auto-exec, timeouts, and debug flags.
+* Local-key-first workflow: `fuck config` generates `~/.fuck/config.sh` (auto `chmod 600`); once you set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`, the CLI calls OpenAI directly via your own quota. The shared Worker only exposes a 10 calls/day demo bucket and now tells you to switch once you hit the cap.
 * `fuck config` helper that tells you where the config lives and auto-generates a starter file.
 * Auto-exec mode controlled via `FUCK_AUTO_EXEC=true` for non-interactive workflows.
 * Custom aliases via `FUCK_ALIAS="pls"` while keeping the OG `fuck` command.
@@ -74,6 +75,9 @@ curl -sS https://fuckits.25500552.xyz | bash
 > 2.  **Inspect**: `less fuckits`
 > 3.  **Run**: `bash fuckits`
 > Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
+>
+> [!TIP]
+> The shared Worker is just a tasting menu (10 calls/day). Right after installation run `fuck config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
 
@@ -112,6 +116,7 @@ fuck config
 
 The config file lives at `~/.fuck/config.sh`. You can tweak:
 - Custom API endpoints for self-hosted workers
+- Local OpenAI-compatible credentials via `FUCK_OPENAI_API_KEY` (plus optional `FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`)
 - Auto-exec mode to skip confirmations
 - Request timeouts and debug output
 - Extra aliases (while keeping the default `fuck` command)
@@ -195,13 +200,16 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 | Variable | Default | Description |
 | --- | --- | --- |
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | Point to your self-hosted worker |
+| `FUCK_OPENAI_API_KEY` | empty | Local OpenAI-compatible key (recommended, bypasses the shared quota) |
+| `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | Override the model when you use your own key |
+| `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | Custom API base for proxies/alt providers |
 | `FUCK_ALIAS` | `fuck` | Extra alias (without removing the default) |
 | `FUCK_AUTO_EXEC` | `false` | Skip confirmations (dangerous but handy for automation) |
 | `FUCK_TIMEOUT` | `30` | `curl` timeout in seconds |
 | `FUCK_DEBUG` | `false` | Verbose debug logs |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | Don’t automatically inject the `fuck` alias |
 
-Run `fuck config` to print the file path and auto-generate a starter template.
+Run `fuck config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
 
 ---
 
