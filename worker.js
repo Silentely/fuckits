@@ -39,9 +39,27 @@ function resolveSharedLimit(env) {
   return SHARED_DEFAULT_LIMIT;
 }
 
-async function checkSharedQuota(ip, limit, env) {
+function resolveQuotaStore(env) {
   if (env?.QUOTA_KV && typeof env.QUOTA_KV.get === 'function') {
-    return checkSharedQuotaKV(env.QUOTA_KV, ip, limit);
+    return env.QUOTA_KV;
+  }
+
+  const alias = env?.QUOTA_KV_BINDING;
+  if (alias && env?.[alias] && typeof env[alias].get === 'function') {
+    return env[alias];
+  }
+
+  if (env?.fuckits && typeof env.fuckits.get === 'function') {
+    return env.fuckits;
+  }
+
+  return null;
+}
+
+async function checkSharedQuota(ip, limit, env) {
+  const quotaStore = resolveQuotaStore(env);
+  if (quotaStore) {
+    return checkSharedQuotaKV(quotaStore, ip, limit);
   }
   return checkSharedQuotaInMemory(ip, limit);
 }

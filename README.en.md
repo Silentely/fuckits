@@ -197,7 +197,7 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 > Cloudflare Custom Domains do not allow wildcard or path suffixes (e.g., `fuckits.25500552.xyz/*` or `/zh`). Bind the bare domain only—the Worker itself routes `/zh` requests internally.
 
 > [!IMPORTANT]
-> To enforce `SHARED_DAILY_LIMIT` across every Cloudflare POP/edge instance, bind a KV namespace (binding name `QUOTA_KV`) to your Worker and follow the steps in [DEPLOY.md](./DEPLOY.md#kv-backed-quota). Without KV, the fallback in-memory counter can reset whenever Cloudflare spins up a fresh isolate, so demo users might exceed the intended limit without seeing the reminder.
+> To enforce `SHARED_DAILY_LIMIT` across every Cloudflare POP/edge instance, bind a KV namespace to your Worker. Using `QUOTA_KV` as the binding name is the simplest option; if you prefer another name (e.g., `fuckits`), add `QUOTA_KV_BINDING="that_name"` under `[vars]` so the Worker can locate it. Details live in [DEPLOY.md](./DEPLOY.md#kv-backed-quota). Without KV, the fallback in-memory counter can reset whenever Cloudflare spins up a fresh isolate, so demo users might exceed the intended limit without seeing the reminder.
 
 ### Post-deploy checklist
 

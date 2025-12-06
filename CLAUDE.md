@@ -267,6 +267,7 @@ export FUCK_DISABLE_DEFAULT_ALIAS=false
 - `SHARED_DAILY_LIMIT` - 共享演示模式每日限额（可选，默认 10）
 - `ADMIN_ACCESS_KEY` - 管理员免限额密钥，需与 CLI `FUCK_ADMIN_KEY` 一致
 - `QUOTA_KV` - （KV 绑定）可选但推荐，用于跨 PoP 持久化配额计数
+- `QUOTA_KV_BINDING` - 若 KV 绑定不是 `QUOTA_KV`，这里写上真实的绑定名，Worker 会按该名字寻找
 
 ---
 

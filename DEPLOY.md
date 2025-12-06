@@ -168,7 +168,7 @@ npm run deploy
 
 #### 有关 KV 限流
 
-为了让 `SHARED_DAILY_LIMIT` 在不同 PoP/实例间保持一致，建议为 Worker 绑定一个名为 `QUOTA_KV` 的 Cloudflare KV 命名空间：
+为了让 `SHARED_DAILY_LIMIT` 在不同 PoP/实例间保持一致，建议为 Worker 绑定一个名为 `QUOTA_KV` 的 Cloudflare KV 命名空间（若你坚持使用其他名字，可以在 `[vars]` 中添加 `QUOTA_KV_BINDING="实际绑定名"`）：
 
 ```bash
 npx wrangler kv:namespace create QUOTA_KV
@@ -361,7 +361,7 @@ Environment variables configured in Cloudflare Workers:
 
 #### KV-backed quota (recommended)
 
-Keep demo limits consistent across all Cloudflare POPs by binding a KV namespace named `QUOTA_KV` to your Worker:
+Keep demo limits consistent across all Cloudflare POPs by binding a KV namespace to your Worker (either name it `QUOTA_KV`, or keep your custom binding and add `QUOTA_KV_BINDING="<binding-name>"` under `[vars]`):
 
 ```bash
 npx wrangler kv:namespace create QUOTA_KV
