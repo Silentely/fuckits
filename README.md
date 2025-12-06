@@ -293,6 +293,9 @@ npm run deploy
 > [!IMPORTANT]
 > 如果 `WRANGLER_TOML_URL` 未配置，工作流会直接失败并提示；同理，缺少 `CLOUDFLARE_API_TOKEN` 也会让部署步骤立即中止，避免误部署到未知环境。
 
+> [!WARNING]
+> 强烈建议把诸如 `OPENAI_API_KEY`、`ADMIN_ACCESS_KEY` 这类敏感值通过 `wrangler secret put` 管理，而不要写在 `[vars]` 中。如果仍旧放在 `wrangler.toml` 里，工作流会自动把这些值加入 GitHub 日志掩码，但泄漏风险依旧更高。
+
 ### 可用的 npm 脚本
 
 - `npm run build` - 构建 Worker（将脚本嵌入 worker.js）

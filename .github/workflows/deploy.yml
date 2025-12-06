@@ -48,6 +48,34 @@ jobs:
           curl -fsSL "$URL" -o "$WRANGLER_CONFIG_PATH"
           echo "✅ Downloaded wrangler config to $WRANGLER_CONFIG_PATH"
 
+      - name: Mask sensitive vars from wrangler config
+        run: |
+          if grep -Eq '^[[:space:]]*\[vars\]' "$WRANGLER_CONFIG_PATH"; then
+            python - <<'PY'
+import os
+import re
+
+path = os.environ["WRANGLER_CONFIG_PATH"]
+mask_line = "::add-mask::{}"
+with open(path, encoding="utf-8") as fh:
+    inside_vars = False
+    for raw in fh:
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("[") and stripped.endswith("]"):
+            inside_vars = stripped.lower() == "[vars]"
+            continue
+        if not inside_vars:
+            continue
+        match = re.match(r'([A-Za-z0-9_]+)\s*=\s*"(.*)"', stripped)
+        if match:
+            value = match.group(2)
+            if value:
+                print(mask_line.format(value))
+PY
+          fi
+
       - name: Deploy to Cloudflare Works
         if: github.event_name != 'pull_request'
         env:
@@ -60,3 +88,30 @@ jobs:
           fi
           npx wrangler deploy --config "$WRANGLER_CONFIG_PATH"
           rm -f "$WRANGLER_CONFIG_PATH"
+
+      - name: Delete workflow runs older than 3 days
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+            const { owner, repo } = context.repo;
+            const workflowId = context.workflow;
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner,
+              repo,
+              workflow_id: workflowId,
+              per_page: 100
+            });
+            let deleted = 0;
+            for (const run of runs) {
+              if (new Date(run.created_at) < cutoff) {
+                await github.rest.actions.deleteWorkflowRun({
+                  owner,
+                  repo,
+                  run_id: run.id
+                });
+                deleted++;
+              }
+            }
+            core.info(`Deleted ${deleted} workflow runs older than 3 days.`);

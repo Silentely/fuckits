@@ -163,6 +163,9 @@ npm run deploy
 > - 缺少 `CLOUDFLARE_API_TOKEN` 会阻止 `wrangler deploy`，避免把流量打到未知账号。
 > - workflow 会把下载的 `wrangler.ci.toml` 写在临时文件中，部署结束后立即删除。
 
+> [!WARNING]
+> 还是推荐使用 `wrangler secret put` 来设置 `OPENAI_API_KEY` / `ADMIN_ACCESS_KEY` 等敏感值，而不是写入 `[vars]`。如果确实留在 `wrangler.toml`，工作流会在部署前自动将这些值加入掩码，避免它们在 GitHub Log 中裸露，但最安全的方案仍是改用 Secrets。
+
 ### 环境变量
 
 在 Cloudflare Workers 中配置的环境变量：
@@ -377,6 +380,9 @@ To keep the real `wrangler.toml` outside of the repo while still deploying autom
 > [!NOTE]
 > - Missing `WRANGLER_TOML_URL` or `CLOUDFLARE_API_TOKEN` makes the workflow fail immediately, preventing partial deployments.
 > - The downloaded `wrangler.ci.toml` is removed as soon as the deploy step finishes.
+
+> [!WARNING]
+> Prefer `wrangler secret put` for sensitive values such as `OPENAI_API_KEY` / `ADMIN_ACCESS_KEY`. Keeping them inside `[vars]` works, and the workflow now masks any values it finds there, but secrets stored via Wrangler stay off disk and never appear in logs.
 
 ### Environment Variables
 
