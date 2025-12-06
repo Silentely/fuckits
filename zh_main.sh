@@ -487,6 +487,9 @@ _fuck_ensure_config_exists() {
 # 是否输出调试信息
 # export FUCK_DEBUG=false
 
+# 确认后立即后台执行命令
+# export FUCK_DETACH_AFTER_CONFIRM=false
+
 # 禁用内置 fuck 别名
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
@@ -618,20 +621,22 @@ _fuck_execute_prompt() {
     else
         while true; do
             printf "${C_BOLD}是否执行？[Y/n] ${C_RESET}"
-            local confirmation
+            local confirmation normalized
             if [ -r /dev/tty ]; then
-                read -r -n 1 confirmation < /dev/tty
-                echo "" # Newline
+                IFS= read -r confirmation < /dev/tty
             else
                 read -r confirmation
             fi
 
-            case "$confirmation" in
-                [yY]|"")
+            confirmation=$(printf '%s' "${confirmation:-}" | tr -d ' \t\r')
+            normalized=$(printf '%s' "$confirmation" | tr '[:upper:]' '[:lower:]')
+
+            case "$normalized" in
+                ""|"y"|"yes")
                     should_exec=true
                     break
                     ;;
-                [nN])
+                "n"|"no")
                     should_exec=false
                     break
                     ;;
@@ -643,14 +648,20 @@ _fuck_execute_prompt() {
     fi
 
     if [ "$should_exec" = "true" ]; then
-        # 执行服务器返回的命令并检查退出码
-        if eval "$response"; then
-            echo -e "${C_GREEN}执行完成。${C_RESET}"
-        else
-            local exit_code=$?
-            echo -e "${C_RED_BOLD}错误！${C_RED}命令执行失败，退出码 $exit_code。${C_RESET}" >&2
-            return $exit_code
+        if _fuck_truthy "${FUCK_DETACH_AFTER_CONFIRM:-0}"; then
+            ( eval "$response" ) &
+            local child_pid=$!
+            echo -e "${C_YELLOW}命令已在后台运行 (PID $child_pid)。${C_RESET}" >&2
+            return 0
         fi
+
+        # 执行服务器返回的命令并直接传播退出码
+        eval "$response"
+        local exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            echo -e "${C_RED_BOLD}错误！${C_RED}命令执行失败，退出码 $exit_code。${C_RESET}" >&2
+        fi
+        return $exit_code
     else
         echo -e "${C_YELLOW}已取消。${C_RESET}" >&2
         return 1

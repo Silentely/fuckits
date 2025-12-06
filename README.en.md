@@ -224,6 +224,7 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 | `FUCK_TIMEOUT` | `30` | `curl` timeout in seconds |
 | `FUCK_DEBUG` | `false` | Verbose debug logs |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | Don’t automatically inject the `fuck` alias |
+| `FUCK_DETACH_AFTER_CONFIRM` | `false` | Launch the generated command in background after confirmation |
 
 Run `fuck config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
 

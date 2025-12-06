@@ -230,6 +230,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_TIMEOUT` | `30` | `curl` 请求超时时间（秒） |
 | `FUCK_DEBUG` | `false` | 输出调试日志，便于排查问题 |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | 若设为 `true`，将不会自动注入 `fuck` 别名 |
+| `FUCK_DETACH_AFTER_CONFIRM` | `false` | 确认后将命令放到后台运行，CLI 不再等待 |
 
 通过 `fuck config` 可以快速查看文件路径并创建默认示例。
 安装脚本会自动将 `~/.fuck/config.sh` 的权限设置为 `chmod 600`，确保你的密钥只保留在本地。

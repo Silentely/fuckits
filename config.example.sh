@@ -30,5 +30,8 @@
 # Enable verbose debug logs
 # export FUCK_DEBUG=false
 
+# Detach after confirmation (run commands in background)
+# export FUCK_DETACH_AFTER_CONFIRM=false
+
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false

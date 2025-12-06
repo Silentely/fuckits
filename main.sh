@@ -449,6 +449,7 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_TIMEOUT" "Override curl timeout (seconds)" '30' 0
     _fuck_append_config_hint "FUCK_DEBUG" "Enable verbose debug logs" 'false' 0
     _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "Disable the built-in 'fuck' alias" 'false' 0
+    _fuck_append_config_hint "FUCK_DETACH_AFTER_CONFIRM" "Run generated command in background after confirmation" 'false' 0
 }
 
 _fuck_ensure_config_exists() {
@@ -487,6 +488,9 @@ _fuck_ensure_config_exists() {
 
 # Enable verbose debug logs
 # export FUCK_DEBUG=false
+
+# Run the generated command in background after confirmation
+# export FUCK_DETACH_AFTER_CONFIRM=false
 
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
@@ -606,21 +610,23 @@ _fuck_execute_prompt() {
         # Interactive confirmation
         while true; do
             printf "${C_BOLD}Execute? [Y/n] ${C_RESET}"
-            local confirmation
+            local confirmation normalized
             if [ -r /dev/tty ]; then
-                read -r -n 1 confirmation < /dev/tty
-                echo "" # Newline
+                IFS= read -r confirmation < /dev/tty
             else
                 # Fallback for no TTY
-                read -r confirmation
+                IFS= read -r confirmation
             fi
 
-            case "$confirmation" in
-                [yY]|"")
+            confirmation=$(printf '%s' "${confirmation:-}" | tr -d ' \t\r')
+            normalized=$(printf '%s' "$confirmation" | tr '[:upper:]' '[:lower:]')
+
+            case "$normalized" in
+                ""|"y"|"yes")
                     should_exec=true
                     break
                     ;;
-                [nN])
+                "n"|"no")
                     should_exec=false
                     break
                     ;;
@@ -632,14 +638,20 @@ _fuck_execute_prompt() {
     fi
 
     if [ "$should_exec" = "true" ]; then
-        # Execute the response from the server and check its exit code
-        if eval "$response"; then
-            echo -e "${C_GREEN}Done.${C_RESET}"
-        else
-            local exit_code=$?
-            echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
-            return $exit_code
+        if _fuck_truthy "${FUCK_DETACH_AFTER_CONFIRM:-0}"; then
+            ( eval "$response" ) &
+            local child_pid=$!
+            echo -e "${C_YELLOW}Command dispatched in background (PID $child_pid).${C_RESET}" >&2
+            return 0
         fi
+
+        # Execute synchronously and propagate the exit code directly
+        eval "$response"
+        local exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
+        fi
+        return $exit_code
     else
         echo -e "${C_YELLOW}Aborted.${C_RESET}" >&2
         return 1
