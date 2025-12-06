@@ -26,6 +26,7 @@ const README_URL_ZH = 'https://github.com/Silentely/fuckits';
 const INSTALLER_FILENAME_EN = 'fuckits.sh';
 const INSTALLER_FILENAME_ZH = 'fuckits-zh.sh';
 const SHARED_DEFAULT_LIMIT = 10;
+const SECONDS_IN_DAY = 24 * 60 * 60;
 
 let lastQuotaDate = null;
 const sharedUsage = new Map();
@@ -38,7 +39,14 @@ function resolveSharedLimit(env) {
   return SHARED_DEFAULT_LIMIT;
 }
 
-function checkSharedQuota(ip, limit) {
+async function checkSharedQuota(ip, limit, env) {
+  if (env?.QUOTA_KV && typeof env.QUOTA_KV.get === 'function') {
+    return checkSharedQuotaKV(env.QUOTA_KV, ip, limit);
+  }
+  return checkSharedQuotaInMemory(ip, limit);
+}
+
+function checkSharedQuotaInMemory(ip, limit) {
   const today = new Date().toISOString().slice(0, 10);
   if (lastQuotaDate !== today) {
     sharedUsage.clear();
@@ -52,6 +60,33 @@ function checkSharedQuota(ip, limit) {
     remaining: Math.max(limit - current, 0),
     count: current,
   };
+}
+
+async function checkSharedQuotaKV(kv, ip, limit) {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `quota:${today}:${ip || 'anonymous'}`;
+  const ttl = secondsUntilNextUtcMidnight();
+
+  try {
+    const raw = await kv.get(key);
+    let count = Number(raw) || 0;
+    count += 1;
+    await kv.put(key, String(count), { expirationTtl: ttl > 0 ? ttl : SECONDS_IN_DAY });
+    return {
+      allowed: count <= limit,
+      remaining: Math.max(limit - count, 0),
+      count,
+    };
+  } catch (error) {
+    console.error('Failed to persist quota counter, falling back to in-memory map', error);
+    return checkSharedQuotaInMemory(ip, limit);
+  }
+}
+
+function secondsUntilNextUtcMidnight() {
+  const now = new Date();
+  const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  return Math.ceil((midnight - now.getTime()) / 1000);
 }
 
 function isBrowserRequest(userAgent = '') {
@@ -165,7 +200,7 @@ async function handlePostRequest(request, env) {
       'anonymous';
     if (!hasAdminBypass) {
       const sharedLimit = resolveSharedLimit(env);
-      const quota = checkSharedQuota(clientIp, sharedLimit);
+      const quota = await checkSharedQuota(clientIp, sharedLimit, env);
       if (!quota.allowed) {
         const message = {
           error: 'DEMO_LIMIT_EXCEEDED',

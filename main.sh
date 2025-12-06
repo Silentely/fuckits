@@ -154,7 +154,7 @@ _fuck_local_system_prompt() {
     if [ "$FUCKITS_LOCALE" = "zh" ]; then
         printf '你是一个专业的 shell 脚本生成器。用户会提供他们的系统信息和一个命令。你的任务是返回一个可执行的、原始的 shell 脚本来完成他们的目标。脚本可以是多行的。不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）。只需要原始的脚本内容。用户的系统信息是：%s' "$sysinfo"
     else
-        printf 'You are an expert shell script generator. A user will provide their system information and a prompt. Your task is to return a raw, executable shell script that accomplishes their goal. The script can be multi-line. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash). Just the raw script content. The user\'s system info is: %s' "$sysinfo"
+        printf 'You are an expert shell script generator. A user will provide their system information and a prompt. Your task is to return a raw, executable shell script that accomplishes their goal. The script can be multi-line. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash). Just the raw script content. The user'"'"'s system info is: %s' "$sysinfo"
     fi
 }
 
@@ -283,7 +283,9 @@ _fuck_request_worker_model() {
     ) &
     local pid=$!
 
-    _fuck_spinner "$pid"
+    if [ -t 2 ]; then
+        _fuck_spinner "$pid" >&2
+    fi
 
     local curl_exit=0
     if ! wait "$pid"; then

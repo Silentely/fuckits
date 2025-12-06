@@ -166,6 +166,26 @@ npm run deploy
 > - 达到限制时返回 HTTP 429 状态码
 > - 用户可通过配置本地 API 密钥绕过限制
 
+#### 有关 KV 限流
+
+为了让 `SHARED_DAILY_LIMIT` 在不同 PoP/实例间保持一致，建议为 Worker 绑定一个名为 `QUOTA_KV` 的 Cloudflare KV 命名空间：
+
+```bash
+npx wrangler kv:namespace create QUOTA_KV
+npx wrangler kv:namespace create QUOTA_KV --preview
+```
+
+然后在 `wrangler.toml` 中添加（替换为命令输出的 `id/preview_id`）：
+
+```toml
+[[kv_namespaces]]
+binding = "QUOTA_KV"
+id = "<production-id>"
+preview_id = "<preview-id>"
+```
+
+若未配置 KV，Worker 会降级为内存 Map 计数，在 Cloudflare 启动新实例或跨 PoP 转发时可能“忘记”已有调用次数，只能作为临时演示用。
+
 ### 故障排查
 
 ### 问题：构建失败
@@ -338,6 +358,26 @@ Environment variables configured in Cloudflare Workers:
 | `OPENAI_API_BASE` | ❌ No | `https://api.openai.com/v1` | API base URL |
 | `SHARED_DAILY_LIMIT` | ❌ No | `10` | Daily cap for the shared demo Worker |
 | `ADMIN_ACCESS_KEY` | ❌ No | - | Maintainer bypass key (paired with CLI `FUCK_ADMIN_KEY`) |
+
+#### KV-backed quota (recommended)
+
+Keep demo limits consistent across all Cloudflare POPs by binding a KV namespace named `QUOTA_KV` to your Worker:
+
+```bash
+npx wrangler kv:namespace create QUOTA_KV
+npx wrangler kv:namespace create QUOTA_KV --preview
+```
+
+Then update `wrangler.toml`:
+
+```toml
+[[kv_namespaces]]
+binding = "QUOTA_KV"
+id = "<production-id>"
+preview_id = "<preview-id>"
+```
+
+When KV is unavailable the Worker falls back to the in-memory Map, which may reset whenever Cloudflare spins up a fresh isolate (tolerable for demos, but not a strict quota).
 
 ### Troubleshooting
 

@@ -202,6 +202,9 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 > [!NOTE]
 > 设置 Cloudflare Custom Domain 时不要在路由中添加通配符或路径（例如 `fuckits.25500552.xyz/*` 或 `fuckits.25500552.xyz/zh`），Cloudflare 会直接拒绝。只需绑定裸域，`/zh` 由 Worker 内部根据路径自动处理。
 
+> [!IMPORTANT]
+> 若希望共享 Worker 的演示配额（`SHARED_DAILY_LIMIT`）在不同 PoP/实例间都严格生效，请在 Cloudflare 中为该 Worker 绑定一个 KV 命名空间（绑定名 `QUOTA_KV`）。文档 [DEPLOY.md](./DEPLOY.md#%E6%9C%89%E5%85%B3-kv-%E9%99%90%E6%B5%81) 提供了 `wrangler kv:namespace create` 的示例命令。若未配置 KV，Worker 会退回到内存 Map 计数，可能因为实例重启或跨 PoP 调度而“忘记”已使用的次数。
+
 ### 部署后自检
 
 1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。
