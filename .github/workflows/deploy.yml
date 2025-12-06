@@ -50,6 +50,11 @@ jobs:
           echo "✅ Downloaded wrangler config to $WRANGLER_CONFIG_PATH"
 
       - name: Mask sensitive values from wrangler config
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ADMIN_ACCESS_KEY: ${{ secrets.ADMIN_ACCESS_KEY }}
+          SHARED_DAILY_LIMIT: ${{ secrets.SHARED_DAILY_LIMIT }}
+          QUOTA_KV_BINDING: ${{ secrets.QUOTA_KV_BINDING }}
         run: |
           python3 - <<'PY'
           import os
@@ -111,8 +116,13 @@ jobs:
                           add_mask(pattern.split(".", 1)[1])
                   add_mask(route.get("custom_domain"))
 
+          # Mask Cloudflare credentials
           for env_var in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
               add_mask(os.environ.get(env_var))
+
+          # Mask Worker secrets that may appear in wrangler deploy output
+          for secret_var in ("OPENAI_API_KEY", "ADMIN_ACCESS_KEY", "SHARED_DAILY_LIMIT", "QUOTA_KV_BINDING"):
+              add_mask(os.environ.get(secret_var))
 
           PY
 
