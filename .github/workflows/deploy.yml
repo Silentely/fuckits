@@ -12,6 +12,7 @@ on:
 env:
   NODE_VERSION: '20'
   WRANGLER_CONFIG_PATH: wrangler.ci.toml
+  WORKFLOW_FILE: .github/workflows/deploy.yml
 
 jobs:
   deploy:
@@ -58,7 +59,8 @@ jobs:
 
           def add_mask(value):
               if isinstance(value, str) and value:
-                  print(f"::add-mask::{value}")
+                  for wrapped in {value, f'"{value}"', f"'{value}'"}:
+                      print(f"::add-mask::{wrapped}")
 
           try:
               with open(path, "rb") as fh:
@@ -110,12 +112,19 @@ jobs:
           script: |
             const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
             const { owner, repo } = context.repo;
-            const workflowFile = context.workflow;
-            const { data: wf } = await github.rest.actions.getWorkflow({
+            const workflowFile = process.env.WORKFLOW_FILE || ".github/workflows/deploy.yml";
+            const { data } = await github.rest.actions.listRepoWorkflows({
               owner,
               repo,
-              workflow_id: workflowFile
+              per_page: 100
             });
+            const wf = data.workflows.find(
+              (item) => item.path === workflowFile || item.name === context.workflow
+            );
+            if (!wf) {
+              core.warning(`Workflow ${workflowFile} not found; skipping cleanup.`);
+              return;
+            }
             const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
               owner,
               repo,
