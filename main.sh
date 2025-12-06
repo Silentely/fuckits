@@ -449,7 +449,6 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_TIMEOUT" "Override curl timeout (seconds)" '30' 0
     _fuck_append_config_hint "FUCK_DEBUG" "Enable verbose debug logs" 'false' 0
     _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "Disable the built-in 'fuck' alias" 'false' 0
-    _fuck_append_config_hint "FUCK_DETACH_AFTER_CONFIRM" "Run generated command in background after confirmation" 'false' 0
 }
 
 _fuck_ensure_config_exists() {
@@ -488,9 +487,6 @@ _fuck_ensure_config_exists() {
 
 # Enable verbose debug logs
 # export FUCK_DEBUG=false
-
-# Run the generated command in background after confirmation
-# export FUCK_DETACH_AFTER_CONFIRM=false
 
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
@@ -638,14 +634,6 @@ _fuck_execute_prompt() {
     fi
 
     if [ "$should_exec" = "true" ]; then
-        if _fuck_truthy "${FUCK_DETACH_AFTER_CONFIRM:-0}"; then
-            ( eval "$response" ) &
-            local child_pid=$!
-            echo -e "${C_YELLOW}Command dispatched in background (PID $child_pid).${C_RESET}" >&2
-            return 0
-        fi
-
-        # Execute synchronously and propagate the exit code directly
         eval "$response"
         local exit_code=$?
         if [ $exit_code -ne 0 ]; then

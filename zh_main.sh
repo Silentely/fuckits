@@ -487,9 +487,6 @@ _fuck_ensure_config_exists() {
 # 是否输出调试信息
 # export FUCK_DEBUG=false
 
-# 确认后立即后台执行命令
-# export FUCK_DETACH_AFTER_CONFIRM=false
-
 # 禁用内置 fuck 别名
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
@@ -648,14 +645,6 @@ _fuck_execute_prompt() {
     fi
 
     if [ "$should_exec" = "true" ]; then
-        if _fuck_truthy "${FUCK_DETACH_AFTER_CONFIRM:-0}"; then
-            ( eval "$response" ) &
-            local child_pid=$!
-            echo -e "${C_YELLOW}命令已在后台运行 (PID $child_pid)。${C_RESET}" >&2
-            return 0
-        fi
-
-        # 执行服务器返回的命令并直接传播退出码
         eval "$response"
         local exit_code=$?
         if [ $exit_code -ne 0 ]; then
