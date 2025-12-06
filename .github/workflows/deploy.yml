@@ -104,6 +104,10 @@ jobs:
                           add_mask(pattern.split(".", 1)[1])
                   add_mask(route.get("custom_domain"))
 
+          # Also cover env vars/injected secrets for wrangler output
+          for env_var in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
+              add_mask(os.environ.get(env_var))
+
           PY
 
       - name: Deploy to Cloudflare Works
