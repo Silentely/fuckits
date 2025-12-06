@@ -106,6 +106,7 @@ npm run one-click-deploy
 |------|--------|------|
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自定义 API 端点 |
 | `FUCK_OPENAI_API_KEY` | 空 | 本地 OpenAI/兼容 Key，绕过共享额度 |
+| `FUCK_ADMIN_KEY` | 空 | 维护者发放的免额度密钥（需匹配 Worker 的 `ADMIN_ACCESS_KEY`） |
 | `FUCK_OPENAI_MODEL` | `gpt-4-turbo` | 自定义模型名（配合本地 Key 使用） |
 | `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | 指向自建代理或其它服务 |
 | `FUCK_ALIAS` | - | 额外别名（不影响默认 fuck） |

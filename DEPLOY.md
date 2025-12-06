@@ -66,6 +66,14 @@ npx wrangler secret put OPENAI_API_KEY
 > - 配置后 CLI 将直接使用用户自己的密钥，无使用限制
 > - 配置文件自动设置为 `chmod 600` 权限，确保密钥安全
 
+**可选：配置管理员免限额密钥**
+
+```bash
+npx wrangler secret put ADMIN_ACCESS_KEY
+```
+
+> 将该密钥只分享给信任的同事，并指导他们在 `~/.fuck/config.sh` 中设置 `FUCK_ADMIN_KEY`。一旦两端匹配，该用户的请求将直接跳过共享 10 次/日的限额。
+
 **可选：配置共享 Worker 的每日限额**
 
 ```bash
@@ -149,6 +157,7 @@ npm run deploy
 | `OPENAI_API_MODEL` | ❌ 否 | `gpt-4-turbo` | 使用的 AI 模型 |
 | `OPENAI_API_BASE` | ❌ 否 | `https://api.openai.com/v1` | API 基础 URL |
 | `SHARED_DAILY_LIMIT` | ❌ 否 | `10` | 共享演示模式的每日调用限制 |
+| `ADMIN_ACCESS_KEY` | ❌ 否 | - | 管理员免限额度密钥，配合 CLI 中的 `FUCK_ADMIN_KEY` 使用 |
 
 > [!NOTE]
 > **关于限流机制：**
@@ -244,6 +253,14 @@ npx wrangler secret put OPENAI_API_KEY
 > [!TIP]
 > This secret only powers the shared demo Worker (10 calls/day). Ask end users to run `fuck config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
 
+**Optional: Admin bypass secret**
+
+```bash
+npx wrangler secret put ADMIN_ACCESS_KEY
+```
+
+> Hand this token only to trusted teammates. Anyone who adds the same value to `FUCK_ADMIN_KEY` inside `~/.fuck/config.sh` will skip the 10 calls/day shared limit.
+
 **Optional Configuration:**
 
 Custom AI model (default: gpt-4-turbo):
@@ -319,6 +336,8 @@ Environment variables configured in Cloudflare Workers:
 | `OPENAI_API_KEY` | ✅ Yes | - | OpenAI API key |
 | `OPENAI_API_MODEL` | ❌ No | `gpt-4-turbo` | AI model to use |
 | `OPENAI_API_BASE` | ❌ No | `https://api.openai.com/v1` | API base URL |
+| `SHARED_DAILY_LIMIT` | ❌ No | `10` | Daily cap for the shared demo Worker |
+| `ADMIN_ACCESS_KEY` | ❌ No | - | Maintainer bypass key (paired with CLI `FUCK_ADMIN_KEY`) |
 
 ### Troubleshooting
 

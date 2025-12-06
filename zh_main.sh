@@ -253,10 +253,17 @@ _fuck_request_worker_model() {
     local sysinfo="$2"
     local curl_timeout="$3"
 
+    local admin_key="${FUCK_ADMIN_KEY:-}"
+    local admin_segment=""
+    if [ -n "$admin_key" ]; then
+        admin_segment=$(printf ', "adminKey": "%s"' "$( _fuck_json_escape "$admin_key" )")
+    fi
+
     local payload
-    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' \
+    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s"%s }' \
         "$( _fuck_json_escape "$sysinfo" )" \
-        "$( _fuck_json_escape "$prompt" )")
+        "$( _fuck_json_escape "$prompt" )" \
+        "$admin_segment")
 
     local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
 
@@ -345,6 +352,7 @@ _fuck_notify_demo_limit() {
     _fuck_secure_config_file
 
     echo -e "${C_CYAN}解决方案：${C_RESET}运行 ${C_GREEN}fuck config${C_RESET}，在 ${C_GREEN}$CONFIG_FILE${C_RESET} 中设置 ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET}，必要时同时配置 ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET}。" >&2
+    echo -e "${C_CYAN}若你持有管理员免额密钥：${C_RESET}同样在该文件中配置 ${C_BOLD}FUCK_ADMIN_KEY${C_RESET}（需与 Worker 侧的 ADMIN_ACCESS_KEY 匹配）即可跳过共享额度限制。" >&2
     if [ -n "${EDITOR:-}" ]; then
         echo -e "${C_YELLOW}提示：${C_RESET}${EDITOR} \"$CONFIG_FILE\"" >&2
     fi
@@ -420,6 +428,9 @@ _fuck_ensure_config_exists() {
 # 本地 OpenAI 兼容 Key（强烈推荐）
 # export FUCK_OPENAI_API_KEY="sk-..."
 
+# 管理员专用免额度密钥（仅分享给信任的人）
+# export FUCK_ADMIN_KEY="adm-..."
+
 # 覆盖默认模型或 API 基址
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
@@ -452,7 +463,7 @@ _fuck_show_config_help() {
     else
         echo -e "${C_YELLOW}用任意编辑器打开该文件即可修改配置。${C_RESET}"
     fi
-    echo -e "${C_CYAN}可用选项：${C_RESET}FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
+    echo -e "${C_CYAN}可用选项：${C_RESET}FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_ADMIN_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
     echo -e "${C_DIM}安全说明：配置文件会自动 chmod 600，防止 Key 泄露。${C_RESET}"
 }
 

@@ -254,10 +254,17 @@ _fuck_request_worker_model() {
     local sysinfo="$2"
     local curl_timeout="$3"
 
+    local admin_key="${FUCK_ADMIN_KEY:-}"
+    local admin_segment=""
+    if [ -n "$admin_key" ]; then
+        admin_segment=$(printf ', "adminKey": "%s"' "$( _fuck_json_escape "$admin_key" )")
+    fi
+
     local payload
-    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s" }' \
+    payload=$(printf '{ "sysinfo": "%s", "prompt": "%s"%s }' \
         "$( _fuck_json_escape "$sysinfo" )" \
-        "$( _fuck_json_escape "$prompt" )")
+        "$( _fuck_json_escape "$prompt" )" \
+        "$admin_segment")
 
     local api_url="${FUCK_API_ENDPOINT:-$DEFAULT_API_ENDPOINT}"
 
@@ -346,6 +353,7 @@ _fuck_notify_demo_limit() {
     _fuck_secure_config_file
 
     echo -e "${C_CYAN}Switch to your own key:${C_RESET} run ${C_GREEN}fuck config${C_RESET} and set ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET} (plus optional ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET})." >&2
+    echo -e "${C_CYAN}Trusted maintainer override:${C_RESET} set ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} if you were issued the worker's ADMIN_ACCESS_KEY to bypass the shared quota." >&2
     echo -e "${C_CYAN}Config path:${C_RESET} ${C_GREEN}$CONFIG_FILE${C_RESET}" >&2
     if [ -n "${EDITOR:-}" ]; then
         echo -e "${C_YELLOW}Hint:${C_RESET} ${EDITOR} \"$CONFIG_FILE\"" >&2
@@ -421,6 +429,9 @@ _fuck_ensure_config_exists() {
 # Local OpenAI-compatible API key (recommended)
 # export FUCK_OPENAI_API_KEY="sk-..."
 
+# Optional: admin bypass key for trusted maintainers
+# export FUCK_ADMIN_KEY="adm-..."
+
 # Optional: override model/base when using your own key
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
@@ -452,7 +463,7 @@ _fuck_show_config_help() {
     else
         echo -e "${C_YELLOW}Open this file in your favourite editor to customise fuckits.${C_RESET}"
     fi
-    echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
+    echo -e "${C_CYAN}Available toggles:${C_RESET} FUCK_API_ENDPOINT, FUCK_OPENAI_API_KEY, FUCK_ADMIN_KEY, FUCK_OPENAI_MODEL, FUCK_OPENAI_API_BASE, FUCK_ALIAS, FUCK_AUTO_EXEC, FUCK_TIMEOUT, FUCK_DEBUG, FUCK_DISABLE_DEFAULT_ALIAS"
     echo -e "${C_DIM}Pro tip:${C_RESET} we lock ${CONFIG_FILE} to chmod 600 so your API key stays local."
 }
 

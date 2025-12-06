@@ -176,6 +176,22 @@ else
     echo -e "${C_YELLOW}You can set it later with: npx wrangler secret put OPENAI_API_KEY${C_RESET}"
 fi
 
+echo -e "\n${C_CYAN}🛡️ Admin Bypass Key (Optional)${C_RESET}"
+echo -e "${C_YELLOW}Share this only with trusted teammates. Matching ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} values on their machines let them skip the shared 10 calls/day quota.${C_RESET}"
+if confirm "Do you want to set the admin bypass key now?"; then
+    read -s -p "Enter the admin bypass key: " ADMIN_ACCESS_KEY_VALUE
+    echo
+    if [ -n "$ADMIN_ACCESS_KEY_VALUE" ]; then
+        printf '%s' "$ADMIN_ACCESS_KEY_VALUE" | npx wrangler secret put ADMIN_ACCESS_KEY
+        echo -e "${C_GREEN}✅ Admin bypass key configured${C_RESET}"
+    else
+        echo -e "${C_YELLOW}⚠️ Skipping admin key setup because no value was provided${C_RESET}"
+    fi
+else
+    echo -e "${C_YELLOW}⚠️ Skipping admin key setup${C_RESET}"
+    echo -e "${C_YELLOW}You can set it later with: npx wrangler secret put ADMIN_ACCESS_KEY${C_RESET}"
+fi
+
 # Optional: Configure model
 echo -e "\n${C_CYAN}🤖 AI Model Configuration (Optional)${C_RESET}"
 echo -e "${C_YELLOW}Default: gpt-4-turbo${C_RESET}"

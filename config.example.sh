@@ -11,6 +11,9 @@
 # Local OpenAI API key (recommended; bypasses shared demo limit)
 # export FUCK_OPENAI_API_KEY="sk-..."
 
+# Optional: admin bypass key (ask project maintainer)
+# export FUCK_ADMIN_KEY="adm-..."
+
 # Optional: local model & base URL
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
