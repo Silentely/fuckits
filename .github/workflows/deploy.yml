@@ -51,16 +51,30 @@ jobs:
 
       - name: Mask sensitive values from wrangler config
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           import os
           import tomllib
 
           path = os.environ["WRANGLER_CONFIG_PATH"]
 
+          def emit(value: str) -> None:
+              if value:
+                  print(f"::add-mask::{value}")
+
           def add_mask(value):
-              if isinstance(value, str) and value:
-                  for wrapped in {value, f'"{value}"', f"'{value}'"}:
-                      print(f"::add-mask::{wrapped}")
+              if not isinstance(value, str) or not value:
+                  return
+              variants = {value, f'"{value}"', f"'{value}'"}
+              prefix_lengths = [4, 6, 8, 10, 12, 16]
+              for plen in prefix_lengths:
+                  if len(value) > plen:
+                      prefix = value[:plen]
+                      for ellipsis in ("...", "…"):
+                          variants.add(prefix + ellipsis)
+                          variants.add(f'"{prefix}{ellipsis}"')
+                          variants.add(f"'{prefix}{ellipsis}'")
+              for item in variants:
+                  emit(item)
 
           try:
               with open(path, "rb") as fh:
