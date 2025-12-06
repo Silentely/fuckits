@@ -412,8 +412,46 @@ _fuck_secure_config_file() {
     fi
 }
 
+_fuck_append_config_hint() {
+    local key="$1"
+    local comment="$2"
+    local sample="$3"
+    local quoted="${4:-1}"
+    [ -f "$CONFIG_FILE" ] || return
+    if grep -Eq "^\\s*#?\\s*export\\s+$key" "$CONFIG_FILE"; then
+        return
+    fi
+
+    local assignment
+    if [ "$quoted" = "1" ]; then
+        assignment="# export $key=\"$sample\""
+    else
+        assignment="# export $key=$sample"
+    fi
+
+    cat <<CFG >> "$CONFIG_FILE"
+
+# $comment
+$assignment
+CFG
+}
+
+_fuck_seed_config_placeholders() {
+    [ -f "$CONFIG_FILE" ] || return
+    _fuck_append_config_hint "FUCK_OPENAI_API_KEY" "Local OpenAI-compatible API key (recommended)" 'sk-...'
+    _fuck_append_config_hint "FUCK_ADMIN_KEY" "Optional: admin bypass key for trusted maintainers" 'adm-...'
+    _fuck_append_config_hint "FUCK_OPENAI_MODEL" "Optional: override model when using your own key" 'gpt-4o-mini'
+    _fuck_append_config_hint "FUCK_OPENAI_API_BASE" "Optional: override API base" 'https://api.openai.com/v1'
+    _fuck_append_config_hint "FUCK_ALIAS" "Add an extra alias besides the default 'fuck'" 'pls'
+    _fuck_append_config_hint "FUCK_AUTO_EXEC" "Skip confirmation prompts (use with caution!)" 'false' 0
+    _fuck_append_config_hint "FUCK_TIMEOUT" "Override curl timeout (seconds)" '30' 0
+    _fuck_append_config_hint "FUCK_DEBUG" "Enable verbose debug logs" 'false' 0
+    _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "Disable the built-in 'fuck' alias" 'false' 0
+}
+
 _fuck_ensure_config_exists() {
     if [ -f "$CONFIG_FILE" ]; then
+        _fuck_seed_config_placeholders
         _fuck_secure_config_file
         return
     fi
@@ -452,6 +490,7 @@ _fuck_ensure_config_exists() {
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
 
+    _fuck_seed_config_placeholders
     _fuck_secure_config_file
 }
 

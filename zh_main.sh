@@ -411,8 +411,46 @@ _fuck_secure_config_file() {
     fi
 }
 
+_fuck_append_config_hint() {
+    local key="$1"
+    local comment="$2"
+    local sample="$3"
+    local quoted="${4:-1}"
+    [ -f "$CONFIG_FILE" ] || return
+    if grep -Eq "^\\s*#?\\s*export\\s+$key" "$CONFIG_FILE"; then
+        return
+    fi
+
+    local assignment
+    if [ "$quoted" = "1" ]; then
+        assignment="# export $key=\"$sample\""
+    else
+        assignment="# export $key=$sample"
+    fi
+
+    cat <<CFG >> "$CONFIG_FILE"
+
+# $comment
+$assignment
+CFG
+}
+
+_fuck_seed_config_placeholders() {
+    [ -f "$CONFIG_FILE" ] || return
+    _fuck_append_config_hint "FUCK_OPENAI_API_KEY" "本地 OpenAI 兼容 Key（推荐）" 'sk-...'
+    _fuck_append_config_hint "FUCK_ADMIN_KEY" "管理员免额度密钥（仅分享给信任的人）" 'adm-...'
+    _fuck_append_config_hint "FUCK_OPENAI_MODEL" "覆盖默认模型" 'gpt-4o-mini'
+    _fuck_append_config_hint "FUCK_OPENAI_API_BASE" "自定义 API 基址" 'https://api.openai.com/v1'
+    _fuck_append_config_hint "FUCK_ALIAS" "额外别名（不影响默认 fuck）" '运行'
+    _fuck_append_config_hint "FUCK_AUTO_EXEC" "自动执行返回命令（危险操作）" 'false' 0
+    _fuck_append_config_hint "FUCK_TIMEOUT" "请求超时时间（秒）" '30' 0
+    _fuck_append_config_hint "FUCK_DEBUG" "是否输出调试信息" 'false' 0
+    _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "禁用内置 fuck 别名" 'false' 0
+}
+
 _fuck_ensure_config_exists() {
     if [ -f "$CONFIG_FILE" ]; then
+        _fuck_seed_config_placeholders
         _fuck_secure_config_file
         return
     fi
@@ -451,6 +489,7 @@ _fuck_ensure_config_exists() {
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
 CFG
 
+    _fuck_seed_config_placeholders
     _fuck_secure_config_file
 }
 
