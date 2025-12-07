@@ -159,7 +159,7 @@ echo -e "\n${C_YELLOW}━━━━━━━━━━━━━━━━━━━�
 echo -e "${C_CYAN}Step 4: Configure OpenAI API${C_RESET}"
 echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
 
-echo -e "${C_YELLOW}🔑 This secret only powers the shared demo Worker (10 calls/day). CLI users should still configure FUCK_OPENAI_API_KEY locally.${C_RESET}"
+echo -e "${C_YELLOW}🔑 This secret only powers the shared demo Worker (200 calls/day). CLI users should still configure FUCK_OPENAI_API_KEY locally.${C_RESET}"
 echo -e "${C_CYAN}Get your API key from: https://platform.openai.com/api-keys${C_RESET}\n"
 
 if confirm "Do you want to set the shared Worker OpenAI API key now?"; then
@@ -177,7 +177,7 @@ else
 fi
 
 echo -e "\n${C_CYAN}🛡️ Admin Bypass Key (Optional)${C_RESET}"
-echo -e "${C_YELLOW}Share this only with trusted teammates. Matching ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} values on their machines let them skip the shared 10 calls/day quota.${C_RESET}"
+echo -e "${C_YELLOW}Share this only with trusted teammates. Matching ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} values on their machines let them skip the shared 200 calls/day quota.${C_RESET}"
 if confirm "Do you want to set the admin bypass key now?"; then
     read -s -p "Enter the admin bypass key: " ADMIN_ACCESS_KEY_VALUE
     echo

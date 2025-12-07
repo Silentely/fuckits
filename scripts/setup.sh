@@ -101,7 +101,7 @@ fi
 
 # Configure API key
 echo -e "\n${C_CYAN}🔑 OpenAI API Configuration${C_RESET}"
-echo -e "${C_YELLOW}This secret only powers the shared demo Worker (10 calls/day). Encourage end users to set FUCK_OPENAI_API_KEY locally.${C_RESET}"
+echo -e "${C_YELLOW}This secret only powers the shared demo Worker (200 calls/day). Encourage end users to set FUCK_OPENAI_API_KEY locally.${C_RESET}"
 read -p "Do you want to set the shared Worker OpenAI API key now? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -117,7 +117,7 @@ fi
 
 # Optional: Configure admin bypass key
 echo -e "\n${C_CYAN}🛡️ Admin Bypass Key (Optional)${C_RESET}"
-echo -e "${C_YELLOW}Provide this only to trusted teammates. Matching ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} values let them skip the shared 10 calls/day limit.${C_RESET}"
+echo -e "${C_YELLOW}Provide this only to trusted teammates. Matching ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} values let them skip the shared 200 calls/day limit.${C_RESET}"
 read -p "Do you want to set the admin bypass key now? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then

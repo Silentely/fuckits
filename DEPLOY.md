@@ -58,7 +58,7 @@ npx wrangler secret put OPENAI_API_KEY
 > [!TIP]
 > **关于 API 密钥的使用说明：**
 >
-> 这个密钥用于共享 Worker 演示模式，提供每天 10 次的免费体验额度。
+> 这个密钥用于共享 Worker 演示模式，提供每天 200 次的免费体验额度。
 >
 > **推荐用户配置本地密钥：**
 > - 运行 `fuck config` 查看配置文件位置
@@ -72,12 +72,12 @@ npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put ADMIN_ACCESS_KEY
 ```
 
-> 将该密钥只分享给信任的同事，并指导他们在 `~/.fuck/config.sh` 中设置 `FUCK_ADMIN_KEY`。一旦两端匹配，该用户的请求将直接跳过共享 10 次/日的限额。
+> 将该密钥只分享给信任的同事，并指导他们在 `~/.fuck/config.sh` 中设置 `FUCK_ADMIN_KEY`。一旦两端匹配，该用户的请求将直接跳过共享 200 次/日的限额。
 
 **可选：配置共享 Worker 的每日限额**
 
 ```bash
-# 设置共享演示模式的每日调用限制（默认 10 次）
+# 设置共享演示模式的每日调用限制（默认 200 次）
 npx wrangler secret put SHARED_DAILY_LIMIT
 ```
 
@@ -175,7 +175,7 @@ npm run deploy
 | `OPENAI_API_KEY` | ✅ 是 | - | OpenAI API 密钥（用于共享演示模式） |
 | `OPENAI_API_MODEL` | ❌ 否 | `gpt-5-nano` | 使用的 AI 模型 |
 | `OPENAI_API_BASE` | ❌ 否 | `https://api.openai.com/v1` | API 基础 URL |
-| `SHARED_DAILY_LIMIT` | ❌ 否 | `10` | 共享演示模式的每日调用限制 |
+| `SHARED_DAILY_LIMIT` | ❌ 否 | `200` | 共享演示模式的每日调用限制 |
 | `ADMIN_ACCESS_KEY` | ❌ 否 | - | 管理员免限额度密钥，配合 CLI 中的 `FUCK_ADMIN_KEY` 使用 |
 
 > [!NOTE]
@@ -290,7 +290,7 @@ npx wrangler secret put OPENAI_API_KEY
 ```
 
 > [!TIP]
-> This secret only powers the shared demo Worker (10 calls/day). Ask end users to run `fuck config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
+> This secret only powers the shared demo Worker (200 calls/day). Ask end users to run `fuck config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
 
 **Optional: Admin bypass secret**
 
@@ -298,7 +298,7 @@ npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put ADMIN_ACCESS_KEY
 ```
 
-> Hand this token only to trusted teammates. Anyone who adds the same value to `FUCK_ADMIN_KEY` inside `~/.fuck/config.sh` will skip the 10 calls/day shared limit.
+> Hand this token only to trusted teammates. Anyone who adds the same value to `FUCK_ADMIN_KEY` inside `~/.fuck/config.sh` will skip the 200 calls/day shared limit.
 
 **Optional Configuration:**
 
@@ -393,7 +393,7 @@ Environment variables configured in Cloudflare Workers:
 | `OPENAI_API_KEY` | ✅ Yes | - | OpenAI API key |
 | `OPENAI_API_MODEL` | ❌ No | `gpt-5-nano` | AI model to use |
 | `OPENAI_API_BASE` | ❌ No | `https://api.openai.com/v1` | API base URL |
-| `SHARED_DAILY_LIMIT` | ❌ No | `10` | Daily cap for the shared demo Worker |
+| `SHARED_DAILY_LIMIT` | ❌ No | `200` | Daily cap for the shared demo Worker |
 | `ADMIN_ACCESS_KEY` | ❌ No | - | Maintainer bypass key (paired with CLI `FUCK_ADMIN_KEY`) |
 
 #### KV-backed quota (recommended)

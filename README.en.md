@@ -10,7 +10,7 @@ This repository (maintained by Silentely) is a derivative of [faithleysath/fucki
 
 ### What’s new compared with upstream
 
-* **Quota & admin key redesign** – besides the local-key-first workflow, the CLI now supports `FUCK_ADMIN_KEY` which pairs with the Worker secret `ADMIN_ACCESS_KEY`, so trusted maintainers can bypass the 10 calls/day shared bucket when necessary.
+* **Quota & admin key redesign** – besides the local-key-first workflow, the CLI now supports `FUCK_ADMIN_KEY` which pairs with the Worker secret `ADMIN_ACCESS_KEY`, so trusted maintainers can bypass the 200 calls/day shared bucket when necessary.
 * **Full bilingual toolchain** – English `main.sh`, Chinese `zh_main.sh`, and locale-aware Worker responses are embedded via `npm run build`, ensuring both installers stay in sync.
 * **Config UX upgrades** – `fuck config` scaffolds `~/.fuck/config.sh`, locks it to `chmod 600`, and lists every toggle (API endpoint, alias, auto-exec, timeout, admin key, etc.) so power users can tweak safely.
 * **Automated setup/deploy scripts** – `npm run setup` and `npm run one-click-deploy` walk through Cloudflare login, secret provisioning (including the new admin key), builds, and deployment, reducing manual drift.
@@ -45,7 +45,7 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 ## 🔧 What's New
 
 * Per-user config file (`~/.fuck/config.sh`) with custom API endpoints, aliases, auto-exec, timeouts, and debug flags.
-* Local-key-first workflow: `fuck config` generates `~/.fuck/config.sh` (auto `chmod 600`); once you set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`, the CLI calls OpenAI directly via your own quota. The shared Worker only exposes a 10 calls/day demo bucket and now tells you to switch once you hit the cap. Maintainers can also mint a `FUCK_ADMIN_KEY` (paired with the Worker's `ADMIN_ACCESS_KEY`) for trusted teammates who need unlimited shared access.
+* Local-key-first workflow: `fuck config` generates `~/.fuck/config.sh` (auto `chmod 600`); once you set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`, the CLI calls OpenAI directly via your own quota. The shared Worker only exposes a 200 calls/day demo bucket and now tells you to switch once you hit the cap. Maintainers can also mint a `FUCK_ADMIN_KEY` (paired with the Worker's `ADMIN_ACCESS_KEY`) for trusted teammates who need unlimited shared access.
 * `fuck config` helper that tells you where the config lives and auto-generates a starter file.
 * Auto-exec mode controlled via `FUCK_AUTO_EXEC=true` for non-interactive workflows.
 * Custom aliases via `FUCK_ALIAS="pls"` while keeping the OG `fuck` command.
@@ -75,7 +75,7 @@ curl -sS https://fuckits.25500552.xyz | bash
 > Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
 >
 > [!TIP]
-> The shared Worker is just a tasting menu (10 calls/day). Right after installation run `fuck config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
+> The shared Worker is just a tasting menu (200 calls/day). Right after installation run `fuck config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
 

@@ -11,7 +11,7 @@
 
 ### 相比原项目的新增亮点
 
-* **云端限流/密钥体系升级**：除本地 `FUCK_OPENAI_API_KEY` 优先策略外，加入 `FUCK_ADMIN_KEY` + `ADMIN_ACCESS_KEY` 双端校验，让受信任维护者可在共享 Worker 上突破 10 次/日体验额度。
+* **云端限流/密钥体系升级**：除本地 `FUCK_OPENAI_API_KEY` 优先策略外，加入 `FUCK_ADMIN_KEY` + `ADMIN_ACCESS_KEY` 双端校验，让受信任维护者可在共享 Worker 上突破 200 次/日体验额度。
 * **全量双语 CLI + Worker**：英文 `main.sh` / 中文 `zh_main.sh` 以及 Worker 端 locale 自适应，脚本构建流程（`npm run build`）自动将两种安装脚本打包进 Worker。
 * **可视化配置能力**：`fuck config` 会生成示例文件、自动 `chmod 600`，并罗列所有可切换的旗标（API 端点、Alias、Auto-Exec、Timeout、Admin Key 等）。
 * **一键部署/Setup 流程**：`npm run setup` / `npm run one-click-deploy` 覆盖登录、Secret 写入（包括新增管理员密钥）、构建与部署，用脚本化方式保证步骤统一。
@@ -52,7 +52,7 @@
 ## 🔧 重构亮点
 
 * `~/.fuck/config.sh` 配置文件：支持自定义 API 入口、命令别名、自动执行、超时时间等。
-* 本地密钥优先：`fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 10 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
+* 本地密钥优先：`fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 200 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
 * 新增 `fuck config` 命令：一键定位配置文件并查看可用开关。
 * 自动执行模式：`FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
 * 自定义别名：通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
@@ -90,7 +90,7 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 > 3.  **运行**: `bash fuckits`
 
 > [!TIP]
-> 共享 Worker 只是体验通道（每天 10 次），装完脚本后立刻执行 `fuck config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
+> 共享 Worker 只是体验通道（每天 200 次），装完脚本后立刻执行 `fuck config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
 
 安装完成后，请重启你的终端或运行 `source ~/.bashrc` / `source ~/.zshrc` 来让命令生效。
 
