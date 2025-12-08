@@ -105,7 +105,7 @@ _fuck_collect_sysinfo_enhanced() {
 _fuck_history_add() {
     local cmd="$1"
     local history_file="$INSTALL_DIR/history.log"
-    echo "$(date +%s)|$(whoami)|$cmd" >> "$history_file"
+    echo "$(date +%s)$'\x1F'$(whoami)$'\x1F'$cmd" >> "$history_file"
 }
 ```
 
