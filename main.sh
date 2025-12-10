@@ -200,7 +200,9 @@ _fuck_detect_distro() {
     if [ "$kernel_name" = "Darwin" ]; then
         local product version
         product=$(sw_vers -productName 2>/dev/null || printf 'macOS')
+        product=$(printf '%s' "$product" | tr -d '\r\n')
         version=$(sw_vers -productVersion 2>/dev/null || printf 'unknown')
+        version=$(printf '%s' "$version" | tr -d '\r\n')
         distro="$product $version"
     # Linux detection using /etc/os-release
     elif [ -r /etc/os-release ]; then
@@ -254,6 +256,7 @@ _fuck_get_kernel_version() {
 
     local kernel
     kernel=$(uname -sr 2>/dev/null || uname -s 2>/dev/null || printf 'unknown')
+    kernel=$(printf '%s' "$kernel" | tr -d '\r\n')
 
     # Cache and return result
     _FUCK_CACHED_KERNEL="$kernel"
@@ -274,6 +277,7 @@ _fuck_get_architecture() {
 
     local arch
     arch=$(uname -m 2>/dev/null || printf 'unknown')
+    arch=$(printf '%s' "$arch" | tr -d '\r\n')
 
     # Cache and return result
     _FUCK_CACHED_ARCH="$arch"
@@ -382,31 +386,58 @@ _fuck_detect_pkg_manager() {
     printf '%s\n' "$manager"
 }
 
-# Collects comprehensive system information as a structured string
+# Collects simplified system information as a structured string
 # Outputs: System info string for AI processing
 _fuck_collect_sysinfo_string() {
-    # Ensure static cache is loaded
-    _fuck_load_static_cache
+    local os_type kernel_name pkg_manager summary
 
-    local distro kernel arch pkg_manager user_info tool_versions shell_name cwd summary
+    # Detect operating system type
+    kernel_name=$(uname -s 2>/dev/null || printf 'unknown')
 
-    # Collect all system information
-    distro=$(_fuck_detect_distro)
-    kernel=$(_fuck_get_kernel_version)
-    arch=$(_fuck_get_architecture)
-    pkg_manager=$(_fuck_detect_pkg_manager)
-    user_info=$(_fuck_collect_user_info)
-    tool_versions=$(_fuck_collect_tool_versions)
-    shell_name=${SHELL:-unknown}
-    cwd=$(pwd 2>/dev/null || printf 'unknown')
+    case "$kernel_name" in
+        Darwin)
+            os_type="macOS"
+            pkg_manager="brew"
+            ;;
+        Linux)
+            if [ -r /etc/os-release ]; then
+                local id
+                id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+                case "$id" in
+                    ubuntu|debian)
+                        os_type="Debian"
+                        pkg_manager="apt"
+                        ;;
+                    centos|rhel|rocky|almalinux|fedora)
+                        os_type="RHEL"
+                        pkg_manager="yum"
+                        ;;
+                    arch|manjaro)
+                        os_type="Arch"
+                        pkg_manager="pacman"
+                        ;;
+                    *)
+                        os_type="Linux"
+                        pkg_manager="unknown"
+                        ;;
+                esac
+            else
+                os_type="Linux"
+                pkg_manager="unknown"
+            fi
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            os_type="Windows"
+            pkg_manager="unknown"
+            ;;
+        *)
+            os_type="$kernel_name"
+            pkg_manager="unknown"
+            ;;
+    esac
 
-    # Format as structured string for AI parsing
-    printf -v summary 'OS=%s; Kernel=%s; Arch=%s; Shell=%s; PkgMgr=%s; CWD=%s; User=%s; Tools=[%s]' \
-        "$distro" "$kernel" "$arch" "$shell_name" "$pkg_manager" "$cwd" "$user_info" "$tool_versions"
-
-    # Persist static cache if dirty
-    _fuck_persist_static_cache
-
+    # Format as simple structured string
+    printf -v summary 'OS=%s; PkgMgr=%s' "$os_type" "$pkg_manager"
     printf '%s\n' "$summary"
 }
 
