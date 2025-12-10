@@ -29,6 +29,8 @@ tmp/
 .serena
 .gemini-clipboard
 .fuck
+.claude
+.codex
 
 # OS
 .DS_Store

@@ -111,31 +111,302 @@ _installer_detect_profile() {
     fi
 }
 
-# 检测包管理器
-_fuck_detect_pkg_manager() {
-    if command -v apt-get &> /dev/null; then
-        echo "apt"
-    elif command -v yum &> /dev/null; then
-        echo "yum"
-    elif command -v dnf &> /dev/null; then
-        echo "dnf"
-    elif command -v pacman &> /dev/null; then
-        echo "pacman"
-    elif command -v zypper &> /dev/null; then
-        echo "zypper"
-    elif command -v brew &> /dev/null; then
-        echo "brew"
-    else
-        echo "unknown"
+# --- 系统信息收集模块 ---
+# 静态系统信息缓存文件（跨运行持久化）
+readonly FUCK_SYSINFO_CACHE_FILE="$INSTALL_DIR/.sysinfo.cache"
+# 缓存状态跟踪变量
+_FUCK_STATIC_CACHE_LOADED=0
+_FUCK_STATIC_CACHE_DIRTY=0
+
+# 从缓存文件加载静态系统信息
+# 全局变量: _FUCK_STATIC_CACHE_LOADED, FUCK_SYSINFO_CACHE_FILE
+_fuck_load_static_cache() {
+    # 如果缓存已加载则直接返回
+    if [ "${_FUCK_STATIC_CACHE_LOADED:-0}" -eq 1 ]; then
+        return 0
+    fi
+
+    _FUCK_STATIC_CACHE_LOADED=1
+
+    # 如果缓存文件存在则加载
+    if [ -f "$FUCK_SYSINFO_CACHE_FILE" ]; then
+        # shellcheck disable=SC1090
+        source "$FUCK_SYSINFO_CACHE_FILE" || true
     fi
 }
 
-# 把系统信息整成一个字符串
+# 标记静态缓存为脏（需要持久化）
+# 全局变量: _FUCK_STATIC_CACHE_DIRTY
+_fuck_mark_static_cache_dirty() {
+    _FUCK_STATIC_CACHE_DIRTY=1
+}
+
+# 将静态系统信息持久化到缓存文件
+# 全局变量: _FUCK_STATIC_CACHE_DIRTY, FUCK_SYSINFO_CACHE_FILE
+# 返回值: 成功返回 0，失败返回 1
+_fuck_persist_static_cache() {
+    # 仅在缓存脏时才持久化
+    if [ "${_FUCK_STATIC_CACHE_DIRTY:-0}" -ne 1 ]; then
+        return 0
+    fi
+
+    # 确保缓存目录存在
+    local cache_dir
+    cache_dir=$(dirname "$FUCK_SYSINFO_CACHE_FILE")
+    if ! mkdir -p "$cache_dir" 2>/dev/null; then
+        return 1
+    fi
+
+    # 创建临时文件进行原子写入
+    local tmp_file
+    tmp_file=$(mktemp) || return 1
+
+    # 将缓存变量写入临时文件
+    {
+        printf '_FUCK_CACHED_DISTRO=%q\\n' "${_FUCK_CACHED_DISTRO:-}"
+        printf '_FUCK_CACHED_KERNEL=%q\\n' "${_FUCK_CACHED_KERNEL:-}"
+        printf '_FUCK_CACHED_ARCH=%q\\n' "${_FUCK_CACHED_ARCH:-}"
+        printf '_FUCK_CACHED_PKG_MANAGER=%q\\n' "${_FUCK_CACHED_PKG_MANAGER:-}"
+    } > "$tmp_file"
+
+    # 原子移动到最终位置
+    if mv "$tmp_file" "$FUCK_SYSINFO_CACHE_FILE" 2>/dev/null; then
+        _FUCK_STATIC_CACHE_DIRTY=0
+        return 0
+    else
+        # 失败时清理临时文件
+        rm -f "$tmp_file"
+        return 1
+    fi
+}
+
+# 检测发行版/系统家族（支持缓存）
+# 输出: 发行版字符串（如："Debian 系 12.04 (Ubuntu 24.04 LTS)"）
+_fuck_detect_distro() {
+    _fuck_load_static_cache
+
+    # 如果有缓存值则直接返回
+    if [ -n "${_FUCK_CACHED_DISTRO:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_DISTRO"
+        return 0
+    fi
+
+    local kernel_name distro id version pretty family
+    kernel_name=$(uname -s 2>/dev/null || printf 'unknown')
+    distro="unknown"
+
+    # macOS 检测
+    if [ "$kernel_name" = "Darwin" ]; then
+        local product version
+        product=$(sw_vers -productName 2>/dev/null || printf 'macOS')
+        version=$(sw_vers -productVersion 2>/dev/null || printf 'unknown')
+        distro="$product $version"
+    # Linux 使用 /etc/os-release 检测
+    elif [ -r /etc/os-release ]; then
+        id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+        version=$(grep -E '^VERSION_ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"')
+        pretty=$(grep -E '^PRETTY_NAME=' /etc/os-release | head -n1 | cut -d= -f2- | tr -d '"')
+
+        # 确定系统家族以便更好地分类
+        family=""
+        case "$id" in
+            ubuntu|debian)
+                family="Debian 系"
+                ;;
+            centos|rhel|rocky|almalinux|fedora)
+                family="RHEL 系"
+                ;;
+            arch|manjaro|endeavouros)
+                family="Arch 系"
+                ;;
+        esac
+
+        # 格式化发行版字符串，包含家族和版本信息
+        if [ -n "$family" ]; then
+            distro="$family ${version:-}"
+            if [ -n "$pretty" ]; then
+                distro="$distro (${pretty})"
+            fi
+        else
+            distro="${pretty:-Linux $version}"
+        fi
+    else
+        distro="$kernel_name"
+    fi
+
+    # 缓存并返回结果
+    _FUCK_CACHED_DISTRO="$distro"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$distro"
+}
+
+# 获取内核版本信息（支持缓存）
+# 输出: 内核版本字符串（如："Linux 6.8.0-31-generic"）
+_fuck_get_kernel_version() {
+    _fuck_load_static_cache
+
+    # 如果有缓存值则直接返回
+    if [ -n "${_FUCK_CACHED_KERNEL:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_KERNEL"
+        return 0
+    fi
+
+    local kernel
+    kernel=$(uname -sr 2>/dev/null || uname -s 2>/dev/null || printf 'unknown')
+
+    # 缓存并返回结果
+    _FUCK_CACHED_KERNEL="$kernel"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$kernel"
+}
+
+# 获取系统架构（支持缓存）
+# 输出: 架构字符串（如："x86_64", "arm64"）
+_fuck_get_architecture() {
+    _fuck_load_static_cache
+
+    # 如果有缓存值则直接返回
+    if [ -n "${_FUCK_CACHED_ARCH:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_ARCH"
+        return 0
+    fi
+
+    local arch
+    arch=$(uname -m 2>/dev/null || printf 'unknown')
+
+    # 缓存并返回结果
+    _FUCK_CACHED_ARCH="$arch"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$arch"
+}
+
+# 收集用户信息包括权限级别
+# 输出: 用户信息字符串（如："User=john uid=1000 level=sudoer Groups=john adm sudo"）
+_fuck_collect_user_info() {
+    local current_user uid groups level
+    current_user="${USER:-}"
+
+    # 如果 USER 未设置则使用备用方法
+    if [ -z "$current_user" ]; then
+        current_user=$(whoami 2>/dev/null || printf 'unknown')
+    fi
+
+    # 如果 id 命令可用则获取 UID 和用户组
+    uid="unknown"
+    groups="unknown"
+    if command -v id >/dev/null 2>&1; then
+        uid=$(id -u "$current_user" 2>/dev/null || id -u 2>/dev/null || printf 'unknown')
+        groups=$(id -Gn "$current_user" 2>/dev/null || id -Gn 2>/dev/null || printf 'unknown')
+    fi
+
+    # 确定权限级别
+    level="user"
+    if [ "$uid" = "0" ]; then
+        level="root"
+    elif printf '%s' "$groups" | grep -Eq '(^|[[:space:]])(sudo|wheel|admin)([[:space:]]|$)'; then
+        level="sudoer"
+    fi
+
+    printf 'User=%s uid=%s level=%s Groups=%s' "$current_user" "$uid" "$level" "$groups"
+}
+
+# 收集常用开发工具的版本信息
+# 输出: 工具版本字符串（如："git:git version 2.34.1; docker:Docker version 24.0.6; ..."）
+_fuck_collect_tool_versions() {
+    local tools tool version result
+    tools="git docker npm kubectl curl wget"
+    result=""
+
+    for tool in $tools; do
+        version="not-installed"
+
+        if command -v "$tool" >/dev/null 2>&1; then
+            case "$tool" in
+                git|docker|curl|wget)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    ;;
+                npm)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    [ -n "$version" ] && version="npm $version"
+                    ;;
+                kubectl)
+                    version=$("$tool" version --client --short 2>/dev/null | head -n1)
+                    ;;
+            esac
+        fi
+
+        # 清理版本字符串
+        version=$(printf '%s' "${version:-unknown}" | tr '\r\n' '  ' | tr -s ' ' | sed -e 's/^ *//' -e 's/ *$//')
+        [ -z "$version" ] && version="unknown"
+
+        result="$result$tool:$version; "
+    done
+
+    # 移除末尾的分号和空格
+    result="${result%; }"
+    printf '%s' "$result"
+}
+
+# 检测包管理器（支持缓存）
+# 输出: 包管理器名称（apt, yum, dnf, pacman, zypper, brew, unknown）
+_fuck_detect_pkg_manager() {
+    _fuck_load_static_cache
+
+    # 如果有缓存值则直接返回
+    if [ -n "${_FUCK_CACHED_PKG_MANAGER:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_PKG_MANAGER"
+        return 0
+    fi
+
+    local manager="unknown"
+
+    # 按优先级检测包管理器
+    if command -v apt-get &> /dev/null; then
+        manager="apt"
+    elif command -v yum &> /dev/null; then
+        manager="yum"
+    elif command -v dnf &> /dev/null; then
+        manager="dnf"
+    elif command -v pacman &> /dev/null; then
+        manager="pacman"
+    elif command -v zypper &> /dev/null; then
+        manager="zypper"
+    elif command -v brew &> /dev/null; then
+        manager="brew"
+    fi
+
+    # 缓存并返回结果
+    _FUCK_CACHED_PKG_MANAGER="$manager"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$manager"
+}
+
+# 收集全面的系统信息并格式化为结构化字符串
+# 输出: 用于 AI 处理的系统信息字符串
 _fuck_collect_sysinfo_string() {
-    local pkg_manager
+    # 确保静态缓存已加载
+    _fuck_load_static_cache
+
+    local distro kernel arch pkg_manager user_info tool_versions shell_name cwd summary
+
+    # 收集所有系统信息
+    distro=$(_fuck_detect_distro)
+    kernel=$(_fuck_get_kernel_version)
+    arch=$(_fuck_get_architecture)
     pkg_manager=$(_fuck_detect_pkg_manager)
-    # 服务端的 LLM 得能看懂这个字符串
-    echo "OS: $(uname -s), Arch: $(uname -m), Shell: ${SHELL:-unknown}, PkgMgr: $pkg_manager, CWD: $(pwd)"
+    user_info=$(_fuck_collect_user_info)
+    tool_versions=$(_fuck_collect_tool_versions)
+    shell_name=${SHELL:-unknown}
+    cwd=$(pwd 2>/dev/null || printf 'unknown')
+
+    # 格式化为 AI 解析用的结构化字符串
+    printf -v summary 'OS=%s; Kernel=%s; Arch=%s; Shell=%s; PkgMgr=%s; CWD=%s; User=%s; Tools=[%s]' \
+        "$distro" "$kernel" "$arch" "$shell_name" "$pkg_manager" "$cwd" "$user_info" "$tool_versions"
+
+    # 如果缓存脏了则持久化
+    _fuck_persist_static_cache
+
+    printf '%s\n' "$summary"
 }
 
 # JSON 转义，免得出问题
@@ -407,46 +678,322 @@ _fuck_spinner() {
     tput cnorm 2>/dev/null || printf "\033[?25h"
 }
 
-# 检测潜在危险命令并发出警告
-_fuck_detect_dangerous_command() {
-    local command_to_check="$1"
-    local dangerous_found=false
+# --- 安全检测引擎 (Phase 2) ---
 
-    # 危险模式列表
-    local patterns=(
-        '\brm -rf'
-        '\bmkfs\b'
-        '\bdd\b'
-        ' > /dev/null' # 重定向输出到 /dev/null 的潜在危险命令
-        ' > /etc/passwd'
-        ' > /etc/shadow'
-        ' > /etc/sudoers'
-        ' > /dev/sda' # 或其他磁盘设备
-        'chmod .* 777'
-        '\bwipefs\b'
-        '\bformat\b'
-        '\bshred\b'
-        '\bfdisk\b'
-        '\bparted\b'
-        '\bcurl .* \| sudo sh' # piping curl to sudo sh
-        '\bwget .* \| sudo sh' # piping wget to sudo sh
-    )
+# 阻止级安全规则（最高严重性 - 拒绝执行）
+# 格式：'模式|||原因'
+readonly -a _FUCK_SECURITY_BLOCK_RULES=(
+    '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||检测到 rm -rf /，会直接删除根目录'
+    'rm[[:space:]]+-rf[[:space:]]+/\*|||检测到 rm -rf /*，可能清空根目录'
+    'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||检测到 --no-preserve-root，风险极高'
+    'rm[[:space:]]+-rf[[:space:]]+\.\*|||检测到 rm -rf .*，可能删除全部隐藏文件'
+    '\bdd\b[^#\n]*\b(of|if)=/dev/|||检测到 dd 正在写入 /dev 设备'
+    '\bmkfs(\.\w+)?\b|||检测到 mkfs/格式化操作'
+    '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||检测到分区或磁盘擦除命令'
+    ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||检测到 Fork 炸弹模式'
+)
 
-    for pattern in "${patterns[@]}"; do
-        if printf '%s' "$command_to_check" | grep -Eq "$pattern"; then
-            echo -e "${C_RED_BOLD}⚠️  警告: 检测到潜在危险命令! ⚠️${C_RESET}" >&2
-            echo -e "${C_YELLOW}生成的命令包含可能导致数据丢失或系统不稳定的模式。${C_RESET}" >&2
-            echo -e "${C_YELLOW}请在执行前仔细检查。如果不确定，请按 ${C_BOLD}n${C_RESET}${C_YELLOW} 取消。${C_RESET}" >&2
-            dangerous_found=true
-            break
+# 挑战级安全规则（需要明确用户确认）
+# 格式：'模式|||原因'
+readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
+    'curl[^|]*\|\s*(bash|sh)|||curl 管道 bash/sh，可能远程执行脚本'
+    'wget[^|]*\|\s*(bash|sh)|||wget 管道 bash/sh，可能远程执行脚本'
+    '\bsource\s+https?://|||source 远程脚本'
+    '\beval\b|\bexec\b|||使用 eval/exec 动态执行'
+    '\$\([^)]*\)|||检测到 $(...) 命令替换'
+    '`[^`]*`|||检测到反引号命令替换'
+    '\b(sh|bash|env)\s+-c\b|||检测到 sh/bash -c 包装命令'
+    '\bpython[0-9.]*\s+-c\b|||检测到 python -c 内联脚本'
+    '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||命令操作关键系统路径'
+)
+
+# 警告级安全规则（仅警告，用户可继续）
+# 格式：'模式|||原因'
+readonly -a _FUCK_SECURITY_WARN_RULES=(
+    'rm[[:space:]]+-rf\b|||发现 rm -rf，执行前请再次确认'
+    'chmod[[:space:]]+.*777\b|||检测到 chmod 777 权限'
+    'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf 风险'
+    '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||重定向输出到敏感系统文件'
+)
+
+# 从配置获取当前安全模式
+# 输出："strict"、"balanced" 或 "off"
+_fuck_security_mode() {
+    local mode="${FUCK_SECURITY_MODE:-balanced}"
+    mode=$(printf '%s' "$mode" | tr '[:upper:]' '[:lower:]')
+
+    case "$mode" in
+        strict) printf 'strict\n' ;;
+        off|disabled|none) printf 'off\n' ;;
+        balanced|default|"") printf 'balanced\n' ;;
+        *) printf 'balanced\n' ;;
+    esac
+}
+
+# 获取安全确认的默认挑战文本
+# 输出：默认挑战短语
+_fuck_security_default_challenge_text() {
+    printf '我确认承担风险'
+}
+
+# 检查命令是否匹配安全白名单
+# 参数：$1 - 要检查的命令
+# 返回：0 如果在白名单中，1 否则
+_fuck_security_is_whitelisted() {
+    local command="$1"
+    local whitelist="${FUCK_SECURITY_WHITELIST:-}"
+
+    if [ -z "$whitelist" ]; then
+        return 1
+    fi
+
+    local normalized entry
+    normalized=$(printf '%s' "$whitelist" | tr ',' '\n')
+
+    while IFS= read -r entry; do
+        entry=$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        [ -z "$entry" ] && continue
+
+        if printf '%s' "$command" | grep -Fq "$entry"; then
+            return 0
+        fi
+    done <<< "$normalized"
+
+    return 1
+}
+
+# 将安全级别转换为数值以便比较
+# 参数：$1 - 安全级别（block/challenge/warn/ok）
+# 输出：数值（3/2/1/0）
+_fuck_security_level_value() {
+    case "$1" in
+        block) printf '3\n' ;;
+        challenge) printf '2\n' ;;
+        warn) printf '1\n' ;;
+        *) printf '0\n' ;;
+    esac
+}
+
+# 如果候选级别更严重则提升安全级别
+# 参数：$1 - 当前级别，$2 - 候选级别
+# 输出：更严重的级别
+_fuck_security_promote() {
+    local current="$1"
+    local candidate="$2"
+    local current_val candidate_val
+
+    current_val=$(_fuck_security_level_value "$current")
+    candidate_val=$(_fuck_security_level_value "$candidate")
+
+    if [ "$candidate_val" -gt "$current_val" ]; then
+        printf '%s\n' "$candidate"
+    else
+        printf '%s\n' "$current"
+    fi
+}
+
+# 根据安全模式调整严重性级别
+# 参数：$1 - 模式（strict/balanced/off），$2 - 严重性级别
+# 输出：调整后的严重性级别
+_fuck_security_apply_mode() {
+    local mode="$1"
+    local severity="$2"
+
+    case "$mode" in
+        strict)
+            case "$severity" in
+                warn) severity="challenge" ;;
+                challenge) severity="block" ;;
+            esac
+            ;;
+    esac
+
+    printf '%s\n' "$severity"
+}
+
+# 将命令与安全规则表匹配
+# 参数：$1 - 命令，$2 - 规则表名称
+# 输出：如果匹配则输出原因字符串
+# 返回：0 如果匹配，1 否则
+_fuck_security_match_rule() {
+    local command="$1"
+    local table="$2"
+    local -a rules=()
+
+    eval "rules=(\"\${${table}[@]}\")"
+
+    local rule pattern reason
+    for rule in "${rules[@]}"; do
+        pattern=${rule%%|||*}
+        reason=${rule#*|||}
+        [ -z "$pattern" ] && continue
+
+        if printf '%s' "$command" | grep -Eiq -- "$pattern"; then
+            printf '%s\n' "$reason"
+            return 0
         fi
     done
-    
-    if $dangerous_found; then
-        return 0 # 发现危险命令
+
+    return 1
+}
+
+# 显示潜在危险命令的警告消息
+# 参数：$1 - 警告原因
+_fuck_security_warn_message() {
+    local reason="$1"
+    echo -e "${C_RED_BOLD}⚠️  安全警告：${C_RESET}${reason}" >&2
+    echo -e "${C_YELLOW}请仔细审查，若确认可信可配置 FUCK_SECURITY_WHITELIST。${C_RESET}" >&2
+}
+
+# 显示被禁止命令的阻止消息
+# 参数：$1 - 阻止原因
+_fuck_security_block_message() {
+    local reason="$1"
+    echo -e "${C_RED_BOLD}⛔ 已阻止：${C_RESET}${reason}" >&2
+    echo -e "${C_RED}执行被拒绝，可调整 FUCK_SECURITY_MODE 或加入白名单后重试。${C_RESET}" >&2
+}
+
+# 显示高风险命令的挑战消息
+# 参数：$1 - 挑战原因，$2 - 需要的短语
+_fuck_security_challenge_message() {
+    local reason="$1"
+    local phrase="$2"
+    echo -e "${C_RED_BOLD}⚠️  高危挑战：${C_RESET}${reason}" >&2
+    echo -e "${C_CYAN}如需继续，请输入下方短语：${C_RESET}" >&2
+    echo -e "${C_BOLD}${phrase}${C_RESET}" >&2
+}
+
+# 提示用户输入安全挑战所需的短语
+# 参数：$1 - 需要的短语
+# 返回：0 如果短语匹配，1 否则
+_fuck_security_prompt_phrase() {
+    local phrase="$1"
+    local input=""
+
+    printf "%b> %b" "$C_BOLD" "$C_RESET" >&2
+
+    if [ -r /dev/tty ]; then
+        if ! IFS= read -r input < /dev/tty; then
+            printf "\n" >&2
+            return 1
+        fi
     else
-        return 1 # 未发现危险命令
+        if ! IFS= read -r input; then
+            printf "\n" >&2
+            return 1
+        fi
     fi
+
+    printf "\n" >&2
+    [ "$input" = "$phrase" ]
+}
+
+# 根据严重性级别处理安全决策
+# 参数：$1 - 严重性级别，$2 - 原因，$3 - 命令
+# 返回：0 允许执行，1 拒绝
+_fuck_security_handle_decision() {
+    local severity="$1"
+    local reason="$2"
+    local command="$3"
+
+    case "$severity" in
+        ""|ok|off)
+            return 0
+            ;;
+        warn)
+            _fuck_security_warn_message "${reason:-检测到潜在风险}"
+            return 0
+            ;;
+        challenge)
+            local phrase="${FUCK_SECURITY_CHALLENGE_TEXT:-$(_fuck_security_default_challenge_text)}"
+            _fuck_security_challenge_message "${reason:-高危命令，请再次确认}" "$phrase"
+
+            if _fuck_security_prompt_phrase "$phrase"; then
+                echo -e "${C_GREEN}已通过安全挑战。${C_RESET}" >&2
+                return 0
+            fi
+
+            echo -e "${C_RED}安全挑战失败，命令被取消。${C_RESET}" >&2
+            return 1
+            ;;
+        block)
+            _fuck_security_block_message "${reason:-命令被安全策略阻止}"
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
+# 评估命令安全性并返回严重性级别和原因
+# 参数：$1 - 要评估的命令
+# 输出："严重性|原因" 字符串
+# 返回：始终返回 0（结果在输出中）
+_fuck_security_evaluate_command() {
+    local command="$1"
+    local mode severity reason match promoted structural_reason
+
+    mode=$(_fuck_security_mode)
+
+    # 安全引擎已禁用
+    if [ "$mode" = "off" ]; then
+        printf 'off|安全引擎已关闭\n'
+        return 0
+    fi
+
+    # 检查白名单
+    if _fuck_security_is_whitelisted "$command"; then
+        printf 'ok|命令命中白名单\n'
+        return 0
+    fi
+
+    severity="ok"
+    reason=""
+    match=""
+
+    # 检查阻止规则（最高优先级）
+    if match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_BLOCK_RULES"); then
+        severity="block"
+        reason="$match"
+    fi
+
+    # 检查挑战规则（中等优先级）
+    if [ "$severity" != "block" ] && match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_CHALLENGE_RULES"); then
+        severity="challenge"
+        reason="$match"
+    fi
+
+    # 检查警告规则（低优先级）
+    if [ "$severity" = "ok" ] && match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_WARN_RULES"); then
+        severity="warn"
+        reason="$match"
+    fi
+
+    # 检查命令链接/管道（结构分析）
+    if printf '%s' "$command" | grep -Eiq '(&&|\|\||;|\|)'; then
+        structural_reason="检测到命令分隔符/管道"
+        promoted=$(_fuck_security_promote "$severity" "warn")
+
+        if [ "$promoted" != "$severity" ]; then
+            severity="$promoted"
+            reason="$structural_reason"
+        elif [ -z "$reason" ]; then
+            reason="$structural_reason"
+        fi
+    fi
+
+    # 应用安全模式调整
+    severity=$(_fuck_security_apply_mode "$mode" "$severity")
+
+    printf '%s|%s\n' "$severity" "${reason:-当前命令未命中安全规则}"
+}
+
+# 向后兼容的遗留函数
+# 参数：$1 - 要检查的命令
+# 输出："严重性|原因" 字符串
+_fuck_detect_dangerous_command() {
+    _fuck_security_evaluate_command "$1"
 }
 
 
@@ -492,6 +1039,9 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_TIMEOUT" "请求超时时间（秒）" '30' 0
     _fuck_append_config_hint "FUCK_DEBUG" "是否输出调试信息" 'false' 0
     _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "禁用内置 fuck 别名" 'false' 0
+    _fuck_append_config_hint "FUCK_SECURITY_MODE" "安全引擎模式：strict|balanced|off" 'balanced'
+    _fuck_append_config_hint "FUCK_SECURITY_WHITELIST" "以逗号或换行分隔的信任命令片段" ''
+    _fuck_append_config_hint "FUCK_SECURITY_CHALLENGE_TEXT" "高危命令需要输入的确认短语" '我确认承担风险'
 }
 
 _fuck_ensure_config_exists() {
@@ -655,7 +1205,17 @@ _fuck_execute_prompt() {
     printf '%s\n' "$response"
     echo -e "${C_DIM}----------------------------------------${C_RESET}"
 
-    _fuck_detect_dangerous_command "$response"
+    # 安全检查危险命令
+    local security_result security_level security_reason
+    security_result=$(_fuck_detect_dangerous_command "$response")
+    security_level=${security_result%%|*}
+    security_reason=${security_result#*|}
+
+    # 根据严重性级别处理安全决策
+    if ! _fuck_security_handle_decision "$security_level" "$security_reason" "$response"; then
+        echo -e "${C_RED}❌ 命令因安全策略被中止。${C_RESET}" >&2
+        return 1
+    fi
 
     local should_exec=false
 

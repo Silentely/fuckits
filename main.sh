@@ -109,31 +109,302 @@ _installer_detect_profile() {
     fi
 }
 
-# Detects the package manager
-_fuck_detect_pkg_manager() {
-    if command -v apt-get &> /dev/null; then
-        echo "apt"
-    elif command -v yum &> /dev/null; then
-        echo "yum"
-    elif command -v dnf &> /dev/null; then
-        echo "dnf"
-    elif command -v pacman &> /dev/null; then
-        echo "pacman"
-    elif command -v zypper &> /dev/null; then
-        echo "zypper"
-    elif command -v brew &> /dev/null; then
-        echo "brew"
-    else
-        echo "unknown"
+# --- System Information Collection ---
+# Cache file for static system information (persisted across runs)
+readonly FUCK_SYSINFO_CACHE_FILE="$INSTALL_DIR/.sysinfo.cache"
+# Cache state tracking variables
+_FUCK_STATIC_CACHE_LOADED=0
+_FUCK_STATIC_CACHE_DIRTY=0
+
+# Loads static system information from cache file
+# Globals: _FUCK_STATIC_CACHE_LOADED, FUCK_SYSINFO_CACHE_FILE
+_fuck_load_static_cache() {
+    # Return early if cache is already loaded
+    if [ "${_FUCK_STATIC_CACHE_LOADED:-0}" -eq 1 ]; then
+        return 0
+    fi
+
+    _FUCK_STATIC_CACHE_LOADED=1
+
+    # Source cache file if it exists
+    if [ -f "$FUCK_SYSINFO_CACHE_FILE" ]; then
+        # shellcheck disable=SC1090
+        source "$FUCK_SYSINFO_CACHE_FILE" || true
     fi
 }
 
-# Collects system info as a simple string
+# Marks static cache as dirty (needs to be persisted)
+# Globals: _FUCK_STATIC_CACHE_DIRTY
+_fuck_mark_static_cache_dirty() {
+    _FUCK_STATIC_CACHE_DIRTY=1
+}
+
+# Persists static system information to cache file
+# Globals: _FUCK_STATIC_CACHE_DIRTY, FUCK_SYSINFO_CACHE_FILE
+# Returns: 0 on success, 1 on failure
+_fuck_persist_static_cache() {
+    # Only persist if cache is dirty
+    if [ "${_FUCK_STATIC_CACHE_DIRTY:-0}" -ne 1 ]; then
+        return 0
+    fi
+
+    # Ensure cache directory exists
+    local cache_dir
+    cache_dir=$(dirname "$FUCK_SYSINFO_CACHE_FILE")
+    if ! mkdir -p "$cache_dir" 2>/dev/null; then
+        return 1
+    fi
+
+    # Create temporary file for atomic write
+    local tmp_file
+    tmp_file=$(mktemp) || return 1
+
+    # Write cached variables to temporary file
+    {
+        printf '_FUCK_CACHED_DISTRO=%q\\n' "${_FUCK_CACHED_DISTRO:-}"
+        printf '_FUCK_CACHED_KERNEL=%q\\n' "${_FUCK_CACHED_KERNEL:-}"
+        printf '_FUCK_CACHED_ARCH=%q\\n' "${_FUCK_CACHED_ARCH:-}"
+        printf '_FUCK_CACHED_PKG_MANAGER=%q\\n' "${_FUCK_CACHED_PKG_MANAGER:-}"
+    } > "$tmp_file"
+
+    # Atomic move to final location
+    if mv "$tmp_file" "$FUCK_SYSINFO_CACHE_FILE" 2>/dev/null; then
+        _FUCK_STATIC_CACHE_DIRTY=0
+        return 0
+    else
+        # Clean up temporary file on failure
+        rm -f "$tmp_file"
+        return 1
+    fi
+}
+
+# Detects the distribution/OS family with caching support
+# Outputs: Distribution string (e.g., "Debian-based 12.04 (Ubuntu 24.04 LTS)")
+_fuck_detect_distro() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [ -n "${_FUCK_CACHED_DISTRO:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_DISTRO"
+        return 0
+    fi
+
+    local kernel_name distro id version pretty family
+    kernel_name=$(uname -s 2>/dev/null || printf 'unknown')
+    distro="unknown"
+
+    # macOS detection
+    if [ "$kernel_name" = "Darwin" ]; then
+        local product version
+        product=$(sw_vers -productName 2>/dev/null || printf 'macOS')
+        version=$(sw_vers -productVersion 2>/dev/null || printf 'unknown')
+        distro="$product $version"
+    # Linux detection using /etc/os-release
+    elif [ -r /etc/os-release ]; then
+        id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+        version=$(grep -E '^VERSION_ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"')
+        pretty=$(grep -E '^PRETTY_NAME=' /etc/os-release | head -n1 | cut -d= -f2- | tr -d '"')
+
+        # Determine OS family for better categorization
+        family=""
+        case "$id" in
+            ubuntu|debian)
+                family="Debian-based"
+                ;;
+            centos|rhel|rocky|almalinux|fedora)
+                family="RHEL-based"
+                ;;
+            arch|manjaro|endeavouros)
+                family="Arch-based"
+                ;;
+        esac
+
+        # Format distribution string with family and version
+        if [ -n "$family" ]; then
+            distro="$family ${version:-}"
+            if [ -n "$pretty" ]; then
+                distro="$distro (${pretty})"
+            fi
+        else
+            distro="${pretty:-Linux $version}"
+        fi
+    else
+        distro="$kernel_name"
+    fi
+
+    # Cache and return result
+    _FUCK_CACHED_DISTRO="$distro"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$distro"
+}
+
+# Gets kernel version information with caching
+# Outputs: Kernel version string (e.g., "Linux 6.8.0-31-generic")
+_fuck_get_kernel_version() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [ -n "${_FUCK_CACHED_KERNEL:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_KERNEL"
+        return 0
+    fi
+
+    local kernel
+    kernel=$(uname -sr 2>/dev/null || uname -s 2>/dev/null || printf 'unknown')
+
+    # Cache and return result
+    _FUCK_CACHED_KERNEL="$kernel"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$kernel"
+}
+
+# Gets system architecture with caching
+# Outputs: Architecture string (e.g., "x86_64", "arm64")
+_fuck_get_architecture() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [ -n "${_FUCK_CACHED_ARCH:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_ARCH"
+        return 0
+    fi
+
+    local arch
+    arch=$(uname -m 2>/dev/null || printf 'unknown')
+
+    # Cache and return result
+    _FUCK_CACHED_ARCH="$arch"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$arch"
+}
+
+# Collects user information including permissions
+# Outputs: User info string (e.g., "User=john uid=1000 level=sudoer Groups=john adm sudo")
+_fuck_collect_user_info() {
+    local current_user uid groups level
+    current_user="${USER:-}"
+
+    # Fallback if USER is not set
+    if [ -z "$current_user" ]; then
+        current_user=$(whoami 2>/dev/null || printf 'unknown')
+    fi
+
+    # Get UID and groups if id command is available
+    uid="unknown"
+    groups="unknown"
+    if command -v id >/dev/null 2>&1; then
+        uid=$(id -u "$current_user" 2>/dev/null || id -u 2>/dev/null || printf 'unknown')
+        groups=$(id -Gn "$current_user" 2>/dev/null || id -Gn 2>/dev/null || printf 'unknown')
+    fi
+
+    # Determine permission level
+    level="user"
+    if [ "$uid" = "0" ]; then
+        level="root"
+    elif printf '%s' "$groups" | grep -Eq '(^|[[:space:]])(sudo|wheel|admin)([[:space:]]|$)'; then
+        level="sudoer"
+    fi
+
+    printf 'User=%s uid=%s level=%s Groups=%s' "$current_user" "$uid" "$level" "$groups"
+}
+
+# Collects version information for common development tools
+# Outputs: Tool versions string (e.g., "git:git version 2.34.1; docker:Docker version 24.0.6; ...")
+_fuck_collect_tool_versions() {
+    local tools tool version result
+    tools="git docker npm kubectl curl wget"
+    result=""
+
+    for tool in $tools; do
+        version="not-installed"
+
+        if command -v "$tool" >/dev/null 2>&1; then
+            case "$tool" in
+                git|docker|curl|wget)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    ;;
+                npm)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    [ -n "$version" ] && version="npm $version"
+                    ;;
+                kubectl)
+                    version=$("$tool" version --client --short 2>/dev/null | head -n1)
+                    ;;
+            esac
+        fi
+
+        # Clean up version string
+        version=$(printf '%s' "${version:-unknown}" | tr '\r\n' '  ' | tr -s ' ' | sed -e 's/^ *//' -e 's/ *$//')
+        [ -z "$version" ] && version="unknown"
+
+        result="$result$tool:$version; "
+    done
+
+    # Remove trailing semicolon and space
+    result="${result%; }"
+    printf '%s' "$result"
+}
+
+# Detects the package manager with caching support
+# Outputs: Package manager name (apt, yum, dnf, pacman, zypper, brew, unknown)
+_fuck_detect_pkg_manager() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [ -n "${_FUCK_CACHED_PKG_MANAGER:-}" ]; then
+        printf '%s\n' "$_FUCK_CACHED_PKG_MANAGER"
+        return 0
+    fi
+
+    local manager="unknown"
+
+    # Detect package manager in order of preference
+    if command -v apt-get &> /dev/null; then
+        manager="apt"
+    elif command -v yum &> /dev/null; then
+        manager="yum"
+    elif command -v dnf &> /dev/null; then
+        manager="dnf"
+    elif command -v pacman &> /dev/null; then
+        manager="pacman"
+    elif command -v zypper &> /dev/null; then
+        manager="zypper"
+    elif command -v brew &> /dev/null; then
+        manager="brew"
+    fi
+
+    # Cache and return result
+    _FUCK_CACHED_PKG_MANAGER="$manager"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$manager"
+}
+
+# Collects comprehensive system information as a structured string
+# Outputs: System info string for AI processing
 _fuck_collect_sysinfo_string() {
-    local pkg_manager
+    # Ensure static cache is loaded
+    _fuck_load_static_cache
+
+    local distro kernel arch pkg_manager user_info tool_versions shell_name cwd summary
+
+    # Collect all system information
+    distro=$(_fuck_detect_distro)
+    kernel=$(_fuck_get_kernel_version)
+    arch=$(_fuck_get_architecture)
     pkg_manager=$(_fuck_detect_pkg_manager)
-    # The server-side LLM prompt will need to parse this string
-    echo "OS: $(uname -s), Arch: $(uname -m), Shell: ${SHELL:-unknown}, PkgMgr: $pkg_manager, CWD: $(pwd)"
+    user_info=$(_fuck_collect_user_info)
+    tool_versions=$(_fuck_collect_tool_versions)
+    shell_name=${SHELL:-unknown}
+    cwd=$(pwd 2>/dev/null || printf 'unknown')
+
+    # Format as structured string for AI parsing
+    printf -v summary 'OS=%s; Kernel=%s; Arch=%s; Shell=%s; PkgMgr=%s; CWD=%s; User=%s; Tools=[%s]' \
+        "$distro" "$kernel" "$arch" "$shell_name" "$pkg_manager" "$cwd" "$user_info" "$tool_versions"
+
+    # Persist static cache if dirty
+    _fuck_persist_static_cache
+
+    printf '%s\n' "$summary"
 }
 
 # Escapes a string for use in a JSON payload
@@ -411,46 +682,322 @@ _fuck_spinner() {
 }
 
 # Detects potentially dangerous commands and prints a warning
-_fuck_detect_dangerous_command() {
-    local command_to_check="$1"
-    local dangerous_found=false
+# --- Security Detection Engine (Phase 2) ---
 
-    # List of dangerous patterns
-    # Using word boundaries (\b) for better matching where applicable
-    local patterns=(
-        '\brm -rf'
-        '\bmkfs\b'
-        '\bdd\b'
-        ' > /dev/null' # Redirecting output to /dev/null for potentially dangerous commands
-        ' > /etc/passwd'
-        ' > /etc/shadow'
-        ' > /etc/sudoers'
-        ' > /dev/sda' # Or other disk devices
-        'chmod .* 777'
-        '\bwipefs\b'
-        '\bformat\b'
-        '\bshred\b'
-        '\bfdisk\b'
-        '\bparted\b'
-        '\bcurl .* \| sudo sh' # piping curl to sudo sh
-        '\bwget .* \| sudo sh' # piping wget to sudo sh
-    )
+# Block-level security rules (highest severity - execution denied)
+# Format: 'pattern|||reason'
+readonly -a _FUCK_SECURITY_BLOCK_RULES=(
+    '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||Recursive delete targeting root filesystem'
+    'rm[[:space:]]+-rf[[:space:]]+/\*|||Recursive delete using /* under root'
+    'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||rm --no-preserve-root against /'
+    'rm[[:space:]]+-rf[[:space:]]+\.\*|||Recursive delete targeting hidden/system files'
+    '\bdd\b[^#\n]*\b(of|if)=/dev/|||Raw disk write via dd targeting /dev devices'
+    '\bmkfs(\.\w+)?\b|||Filesystem format command detected'
+    '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||Partition or disk wipe command detected'
+    ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||Fork bomb function detected'
+)
 
-    for pattern in "${patterns[@]}"; do
-        if printf '%s' "$command_to_check" | grep -Eq "$pattern"; then
-            echo -e "${C_RED_BOLD}⚠️  WARNING: Potentially dangerous command detected! ⚠️${C_RESET}" >&2
-            echo -e "${C_YELLOW}The suggested command contains patterns that could lead to data loss or system instability.${C_RESET}" >&2
-            echo -e "${C_YELLOW}Review it carefully before execution. Use ${C_BOLD}n${C_RESET}${C_YELLOW} to abort if you are unsure.${C_RESET}" >&2
-            dangerous_found=true
-            break
+# Challenge-level security rules (requires explicit user confirmation)
+# Format: 'pattern|||reason'
+readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
+    'curl[^|]*\|\s*(bash|sh)|||Remote script execution via curl pipeline'
+    'wget[^|]*\|\s*(bash|sh)|||Remote script execution via wget pipeline'
+    '\bsource\s+https?://|||Sourcing a remote file over HTTP(S)'
+    '\beval\b|\bexec\b|||Explicit eval/exec usage'
+    '\$\([^)]*\)|||Command substitution using $()'
+    '`[^`]*`|||Command substitution using backticks'
+    '\b(sh|bash|env)\s+-c\b|||Nested shell invocation through -c'
+    '\bpython[0-9.]*\s+-c\b|||Inline interpreter execution via -c'
+    '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
+)
+
+# Warn-level security rules (warning only, user can proceed)
+# Format: 'pattern|||reason'
+readonly -a _FUCK_SECURITY_WARN_RULES=(
+    'rm[[:space:]]+-rf\b|||Recursive delete request detected'
+    'chmod[[:space:]]+.*777\b|||World-writable permission change detected'
+    'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf detected'
+    '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||Output redirection into sensitive system files'
+)
+
+# Gets the current security mode from configuration
+# Outputs: "strict", "balanced", or "off"
+_fuck_security_mode() {
+    local mode="${FUCK_SECURITY_MODE:-balanced}"
+    mode=$(printf '%s' "$mode" | tr '[:upper:]' '[:lower:]')
+
+    case "$mode" in
+        strict) printf 'strict\n' ;;
+        off|disabled|none) printf 'off\n' ;;
+        balanced|default|"") printf 'balanced\n' ;;
+        *) printf 'balanced\n' ;;
+    esac
+}
+
+# Gets the default challenge text for security confirmations
+# Outputs: Default challenge phrase
+_fuck_security_default_challenge_text() {
+    printf 'I accept the risk'
+}
+
+# Checks if a command matches the security whitelist
+# Arguments: $1 - command to check
+# Returns: 0 if whitelisted, 1 otherwise
+_fuck_security_is_whitelisted() {
+    local command="$1"
+    local whitelist="${FUCK_SECURITY_WHITELIST:-}"
+
+    if [ -z "$whitelist" ]; then
+        return 1
+    fi
+
+    local normalized entry
+    normalized=$(printf '%s' "$whitelist" | tr ',' '\n')
+
+    while IFS= read -r entry; do
+        entry=$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        [ -z "$entry" ] && continue
+
+        if printf '%s' "$command" | grep -Fq "$entry"; then
+            return 0
+        fi
+    done <<< "$normalized"
+
+    return 1
+}
+
+# Converts security level to numeric value for comparison
+# Arguments: $1 - security level (block/challenge/warn/ok)
+# Outputs: Numeric value (3/2/1/0)
+_fuck_security_level_value() {
+    case "$1" in
+        block) printf '3\n' ;;
+        challenge) printf '2\n' ;;
+        warn) printf '1\n' ;;
+        *) printf '0\n' ;;
+    esac
+}
+
+# Promotes security level if candidate is more severe
+# Arguments: $1 - current level, $2 - candidate level
+# Outputs: The more severe level
+_fuck_security_promote() {
+    local current="$1"
+    local candidate="$2"
+    local current_val candidate_val
+
+    current_val=$(_fuck_security_level_value "$current")
+    candidate_val=$(_fuck_security_level_value "$candidate")
+
+    if [ "$candidate_val" -gt "$current_val" ]; then
+        printf '%s\n' "$candidate"
+    else
+        printf '%s\n' "$current"
+    fi
+}
+
+# Applies security mode adjustments to severity level
+# Arguments: $1 - mode (strict/balanced/off), $2 - severity level
+# Outputs: Adjusted severity level
+_fuck_security_apply_mode() {
+    local mode="$1"
+    local severity="$2"
+
+    case "$mode" in
+        strict)
+            case "$severity" in
+                warn) severity="challenge" ;;
+                challenge) severity="block" ;;
+            esac
+            ;;
+    esac
+
+    printf '%s\n' "$severity"
+}
+
+# Matches command against a security rule table
+# Arguments: $1 - command, $2 - rule table name
+# Outputs: Reason string if matched
+# Returns: 0 if matched, 1 otherwise
+_fuck_security_match_rule() {
+    local command="$1"
+    local table="$2"
+    local -a rules=()
+
+    eval "rules=(\"\${${table}[@]}\")"
+
+    local rule pattern reason
+    for rule in "${rules[@]}"; do
+        pattern=${rule%%|||*}
+        reason=${rule#*|||}
+        [ -z "$pattern" ] && continue
+
+        if printf '%s' "$command" | grep -Eiq -- "$pattern"; then
+            printf '%s\n' "$reason"
+            return 0
         fi
     done
-    
-    if $dangerous_found; then
-        return 0 # Dangerous command found
+
+    return 1
+}
+
+# Displays warning message for potentially dangerous commands
+# Arguments: $1 - reason for warning
+_fuck_security_warn_message() {
+    local reason="$1"
+    echo -e "${C_RED_BOLD}⚠️  SECURITY WARNING:${C_RESET} ${reason}" >&2
+    echo -e "${C_YELLOW}Review the command manually or add a whitelist entry if you fully trust it.${C_RESET}" >&2
+}
+
+# Displays block message for prohibited commands
+# Arguments: $1 - reason for blocking
+_fuck_security_block_message() {
+    local reason="$1"
+    echo -e "${C_RED_BOLD}⛔ SECURITY BLOCK:${C_RESET} ${reason}" >&2
+    echo -e "${C_RED}Execution denied. Adjust FUCK_SECURITY_MODE or whitelist the command if absolutely necessary.${C_RESET}" >&2
+}
+
+# Displays challenge message for high-risk commands
+# Arguments: $1 - reason for challenge, $2 - required phrase
+_fuck_security_challenge_message() {
+    local reason="$1"
+    local phrase="$2"
+    echo -e "${C_RED_BOLD}⚠️  SECURITY CHALLENGE:${C_RESET} ${reason}" >&2
+    echo -e "${C_CYAN}Type the following phrase to continue:${C_RESET}" >&2
+    echo -e "${C_BOLD}${phrase}${C_RESET}" >&2
+}
+
+# Prompts user to enter the required phrase for security challenge
+# Arguments: $1 - required phrase
+# Returns: 0 if phrase matches, 1 otherwise
+_fuck_security_prompt_phrase() {
+    local phrase="$1"
+    local input=""
+
+    printf "%b> %b" "$C_BOLD" "$C_RESET" >&2
+
+    if [ -r /dev/tty ]; then
+        if ! IFS= read -r input < /dev/tty; then
+            printf "\n" >&2
+            return 1
+        fi
     else
-        return 1 # No dangerous command found
+        if ! IFS= read -r input; then
+            printf "\n" >&2
+            return 1
+        fi
     fi
+
+    printf "\n" >&2
+    [ "$input" = "$phrase" ]
+}
+
+# Handles security decision based on severity level
+# Arguments: $1 - severity level, $2 - reason, $3 - command
+# Returns: 0 to allow execution, 1 to deny
+_fuck_security_handle_decision() {
+    local severity="$1"
+    local reason="$2"
+    local command="$3"
+
+    case "$severity" in
+        ""|ok|off)
+            return 0
+            ;;
+        warn)
+            _fuck_security_warn_message "${reason:-Potentially dangerous command detected}"
+            return 0
+            ;;
+        challenge)
+            local phrase="${FUCK_SECURITY_CHALLENGE_TEXT:-$(_fuck_security_default_challenge_text)}"
+            _fuck_security_challenge_message "${reason:-High-risk command detected}" "$phrase"
+
+            if _fuck_security_prompt_phrase "$phrase"; then
+                echo -e "${C_GREEN}Security challenge acknowledged.${C_RESET}" >&2
+                return 0
+            fi
+
+            echo -e "${C_RED}Security challenge failed. Command aborted.${C_RESET}" >&2
+            return 1
+            ;;
+        block)
+            _fuck_security_block_message "${reason:-Command blocked by policy}"
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
+# Evaluates command security and returns severity level with reason
+# Arguments: $1 - command to evaluate
+# Outputs: "severity|reason" string
+# Returns: 0 always (result is in output)
+_fuck_security_evaluate_command() {
+    local command="$1"
+    local mode severity reason match promoted structural_reason
+
+    mode=$(_fuck_security_mode)
+
+    # Security engine disabled
+    if [ "$mode" = "off" ]; then
+        printf 'off|Security engine disabled\n'
+        return 0
+    fi
+
+    # Check whitelist
+    if _fuck_security_is_whitelisted "$command"; then
+        printf 'ok|Command matched whitelist\n'
+        return 0
+    fi
+
+    severity="ok"
+    reason=""
+    match=""
+
+    # Check block rules (highest priority)
+    if match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_BLOCK_RULES"); then
+        severity="block"
+        reason="$match"
+    fi
+
+    # Check challenge rules (medium priority)
+    if [ "$severity" != "block" ] && match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_CHALLENGE_RULES"); then
+        severity="challenge"
+        reason="$match"
+    fi
+
+    # Check warn rules (low priority)
+    if [ "$severity" = "ok" ] && match=$(_fuck_security_match_rule "$command" "_FUCK_SECURITY_WARN_RULES"); then
+        severity="warn"
+        reason="$match"
+    fi
+
+    # Check for command chaining/piping (structural analysis)
+    if printf '%s' "$command" | grep -Eiq '(&&|\|\||;|\|)'; then
+        structural_reason="Command chaining or piping detected"
+        promoted=$(_fuck_security_promote "$severity" "warn")
+
+        if [ "$promoted" != "$severity" ]; then
+            severity="$promoted"
+            reason="$structural_reason"
+        elif [ -z "$reason" ]; then
+            reason="$structural_reason"
+        fi
+    fi
+
+    # Apply security mode adjustments
+    severity=$(_fuck_security_apply_mode "$mode" "$severity")
+
+    printf '%s|%s\n' "$severity" "${reason:-Safe execution}"
+}
+
+# Legacy function for backward compatibility
+# Arguments: $1 - command to check
+# Outputs: "severity|reason" string
+_fuck_detect_dangerous_command() {
+    _fuck_security_evaluate_command "$1"
 }
 
 
@@ -496,6 +1043,9 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_TIMEOUT" "Override curl timeout (seconds)" '30' 0
     _fuck_append_config_hint "FUCK_DEBUG" "Enable verbose debug logs" 'false' 0
     _fuck_append_config_hint "FUCK_DISABLE_DEFAULT_ALIAS" "Disable the built-in 'fuck' alias" 'false' 0
+    _fuck_append_config_hint "FUCK_SECURITY_MODE" "Security engine mode: strict|balanced|off" 'balanced'
+    _fuck_append_config_hint "FUCK_SECURITY_WHITELIST" "Comma/newline separated command patterns to bypass security checks" ''
+    _fuck_append_config_hint "FUCK_SECURITY_CHALLENGE_TEXT" "Phrase required for high-risk command confirmation" 'I accept the risk'
 }
 
 _fuck_ensure_config_exists() {
@@ -643,7 +1193,17 @@ _fuck_execute_prompt() {
     printf '%s\n' "$response"
     echo -e "${C_DIM}----------------------------------------${C_RESET}"
 
-    _fuck_detect_dangerous_command "$response"
+    # Security check for dangerous commands
+    local security_result security_level security_reason
+    security_result=$(_fuck_detect_dangerous_command "$response")
+    security_level=${security_result%%|*}
+    security_reason=${security_result#*|}
+
+    # Handle security decision based on severity
+    if ! _fuck_security_handle_decision "$security_level" "$security_reason" "$response"; then
+        echo -e "${C_RED}❌ Command aborted due to security policy.${C_RESET}" >&2
+        return 1
+    fi
 
     local should_exec=false
 
