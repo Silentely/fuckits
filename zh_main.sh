@@ -597,6 +597,7 @@ _fuck_request_worker_model() {
     local prompt="$1"
     local sysinfo="$2"
     local curl_timeout="$3"
+    local spinner_label="${4:-}"
 
     local admin_key="${FUCK_ADMIN_KEY:-}"
     local admin_segment=""
@@ -628,7 +629,7 @@ _fuck_request_worker_model() {
     local pid=$!
 
     if [ -t 2 ]; then
-        _fuck_spinner "$pid" >&2
+        _fuck_spinner "$pid" "$spinner_label" >&2
     fi
 
     local curl_exit=0
@@ -732,21 +733,36 @@ _fuck_debug() {
 # Spinner 动画
 _fuck_spinner() {
     local pid=$1
+    local prefix="${2:-}"
     local delay=0.1
     local -a frames=("|" "/" "-" "\\")
     local frame_count=${#frames[@]}
     local frame_idx=0
+    local has_prefix=0
+    if [ -n "$prefix" ]; then
+        has_prefix=1
+    fi
     
     # 隐藏光标
     tput civis 2>/dev/null || printf "\033[?25l"
 
     while kill -0 "$pid" 2>/dev/null; do
-        printf " %s " "${frames[$frame_idx]}"
+        if [ "$has_prefix" -eq 1 ]; then
+            printf "\r%s%s" "$prefix" "${frames[$frame_idx]}"
+        else
+            printf " %s " "${frames[$frame_idx]}"
+            printf "\b\b\b"
+        fi
         frame_idx=$(( (frame_idx + 1) % frame_count ))
         sleep "$delay"
-        printf "\b\b\b"
     done
-    printf "   \b\b\b"
+
+    if [ "$has_prefix" -eq 1 ]; then
+        printf "\r%s" "$prefix"
+        tput el 2>/dev/null || printf "\033[K"
+    else
+        printf "   \b\b\b"
+    fi
     
     # 恢复光标
     tput cnorm 2>/dev/null || printf "\033[?25h"
@@ -1268,8 +1284,9 @@ _fuck_execute_prompt() {
         response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     else
-        printf "${C_YELLOW}思考中💭 ${C_RESET}"
-        response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout")
+        local spinner_label="${C_YELLOW}思考中💭 ${C_RESET}"
+        printf '%s' "$spinner_label"
+        response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout" "$spinner_label")
         exit_code=$?
     fi
 
