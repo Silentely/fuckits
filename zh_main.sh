@@ -743,6 +743,7 @@ _fuck_spinner() {
         printf " %c " "$spinstr"
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
+        printf "\b\b\b"
     done
     printf "   \b\b\b"
     
@@ -1266,7 +1267,7 @@ _fuck_execute_prompt() {
         response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     else
-        printf "${C_YELLOW}思考中... ${C_RESET}"
+        printf "${C_YELLOW}思考中💭 ${C_RESET}"
         response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     fi
