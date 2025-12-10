@@ -723,39 +723,45 @@ _fuck_spinner() {
 
 # 阻止级安全规则（最高严重性 - 拒绝执行）
 # 格式：'模式|||原因'
-readonly -a _FUCK_SECURITY_BLOCK_RULES=(
-    '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||检测到 rm -rf /，会直接删除根目录'
-    'rm[[:space:]]+-rf[[:space:]]+/\*|||检测到 rm -rf /*，可能清空根目录'
-    'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||检测到 --no-preserve-root，风险极高'
-    'rm[[:space:]]+-rf[[:space:]]+\.\*|||检测到 rm -rf .*，可能删除全部隐藏文件'
-    '\bdd\b[^#\n]*\b(of|if)=/dev/|||检测到 dd 正在写入 /dev 设备'
-    '\bmkfs(\.\w+)?\b|||检测到 mkfs/格式化操作'
-    '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||检测到分区或磁盘擦除命令'
-    ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||检测到 Fork 炸弹模式'
-)
+if [ -z "${_FUCK_SECURITY_BLOCK_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_BLOCK_RULES=(
+        '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||检测到 rm -rf /，会直接删除根目录'
+        'rm[[:space:]]+-rf[[:space:]]+/\*|||检测到 rm -rf /*，可能清空根目录'
+        'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||检测到 --no-preserve-root，风险极高'
+        'rm[[:space:]]+-rf[[:space:]]+\.\*|||检测到 rm -rf .*，可能删除全部隐藏文件'
+        '\bdd\b[^#\n]*\b(of|if)=/dev/|||检测到 dd 正在写入 /dev 设备'
+        '\bmkfs(\.\w+)?\b|||检测到 mkfs/格式化操作'
+        '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||检测到分区或磁盘擦除命令'
+        ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||检测到 Fork 炸弹模式'
+    )
+fi
 
 # 挑战级安全规则（需要明确用户确认）
 # 格式：'模式|||原因'
-readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
-    'curl[^|]*\|\s*(bash|sh)|||curl 管道 bash/sh，可能远程执行脚本'
-    'wget[^|]*\|\s*(bash|sh)|||wget 管道 bash/sh，可能远程执行脚本'
-    '\bsource\s+https?://|||source 远程脚本'
-    '\beval\b|\bexec\b|||使用 eval/exec 动态执行'
-    '\$\([^)]*\)|||检测到 $(...) 命令替换'
-    '`[^`]*`|||检测到反引号命令替换'
-    '\b(sh|bash|env)\s+-c\b|||检测到 sh/bash -c 包装命令'
-    '\bpython[0-9.]*\s+-c\b|||检测到 python -c 内联脚本'
-    '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||命令操作关键系统路径'
-)
+if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
+        'curl[^|]*\|\s*(bash|sh)|||curl 管道 bash/sh，可能远程执行脚本'
+        'wget[^|]*\|\s*(bash|sh)|||wget 管道 bash/sh，可能远程执行脚本'
+        '\bsource\s+https?://|||source 远程脚本'
+        '\beval\b|\bexec\b|||使用 eval/exec 动态执行'
+        '\$\([^)]*\)|||检测到 $(...) 命令替换'
+        '`[^`]*`|||检测到反引号命令替换'
+        '\b(sh|bash|env)\s+-c\b|||检测到 sh/bash -c 包装命令'
+        '\bpython[0-9.]*\s+-c\b|||检测到 python -c 内联脚本'
+        '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||命令操作关键系统路径'
+    )
+fi
 
 # 警告级安全规则（仅警告，用户可继续）
 # 格式：'模式|||原因'
-readonly -a _FUCK_SECURITY_WARN_RULES=(
-    'rm[[:space:]]+-rf\b|||发现 rm -rf，执行前请再次确认'
-    'chmod[[:space:]]+.*777\b|||检测到 chmod 777 权限'
-    'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf 风险'
-    '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||重定向输出到敏感系统文件'
-)
+if [ -z "${_FUCK_SECURITY_WARN_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_WARN_RULES=(
+        'rm[[:space:]]+-rf\b|||发现 rm -rf，执行前请再次确认'
+        'chmod[[:space:]]+.*777\b|||检测到 chmod 777 权限'
+        'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf 风险'
+        '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||重定向输出到敏感系统文件'
+    )
+fi
 
 # 从配置获取当前安全模式
 # 输出："strict"、"balanced" 或 "off"

@@ -728,39 +728,45 @@ _fuck_spinner() {
 
 # Block-level security rules (highest severity - execution denied)
 # Format: 'pattern|||reason'
-readonly -a _FUCK_SECURITY_BLOCK_RULES=(
-    '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||Recursive delete targeting root filesystem'
-    'rm[[:space:]]+-rf[[:space:]]+/\*|||Recursive delete using /* under root'
-    'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||rm --no-preserve-root against /'
-    'rm[[:space:]]+-rf[[:space:]]+\.\*|||Recursive delete targeting hidden/system files'
-    '\bdd\b[^#\n]*\b(of|if)=/dev/|||Raw disk write via dd targeting /dev devices'
-    '\bmkfs(\.\w+)?\b|||Filesystem format command detected'
-    '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||Partition or disk wipe command detected'
-    ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||Fork bomb function detected'
-)
+if [ -z "${_FUCK_SECURITY_BLOCK_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_BLOCK_RULES=(
+        '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||Recursive delete targeting root filesystem'
+        'rm[[:space:]]+-rf[[:space:]]+/\*|||Recursive delete using /* under root'
+        'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||rm --no-preserve-root against /'
+        'rm[[:space:]]+-rf[[:space:]]+\.\*|||Recursive delete targeting hidden/system files'
+        '\bdd\b[^#\n]*\b(of|if)=/dev/|||Raw disk write via dd targeting /dev devices'
+        '\bmkfs(\.\w+)?\b|||Filesystem format command detected'
+        '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||Partition or disk wipe command detected'
+        ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||Fork bomb function detected'
+    )
+fi
 
 # Challenge-level security rules (requires explicit user confirmation)
 # Format: 'pattern|||reason'
-readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
-    'curl[^|]*\|\s*(bash|sh)|||Remote script execution via curl pipeline'
-    'wget[^|]*\|\s*(bash|sh)|||Remote script execution via wget pipeline'
-    '\bsource\s+https?://|||Sourcing a remote file over HTTP(S)'
-    '\beval\b|\bexec\b|||Explicit eval/exec usage'
-    '\$\([^)]*\)|||Command substitution using $()'
-    '`[^`]*`|||Command substitution using backticks'
-    '\b(sh|bash|env)\s+-c\b|||Nested shell invocation through -c'
-    '\bpython[0-9.]*\s+-c\b|||Inline interpreter execution via -c'
-    '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
-)
+if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
+        'curl[^|]*\|\s*(bash|sh)|||Remote script execution via curl pipeline'
+        'wget[^|]*\|\s*(bash|sh)|||Remote script execution via wget pipeline'
+        '\bsource\s+https?://|||Sourcing a remote file over HTTP(S)'
+        '\beval\b|\bexec\b|||Explicit eval/exec usage'
+        '\$\([^)]*\)|||Command substitution using $()'
+        '`[^`]*`|||Command substitution using backticks'
+        '\b(sh|bash|env)\s+-c\b|||Nested shell invocation through -c'
+        '\bpython[0-9.]*\s+-c\b|||Inline interpreter execution via -c'
+        '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
+    )
+fi
 
 # Warn-level security rules (warning only, user can proceed)
 # Format: 'pattern|||reason'
-readonly -a _FUCK_SECURITY_WARN_RULES=(
-    'rm[[:space:]]+-rf\b|||Recursive delete request detected'
-    'chmod[[:space:]]+.*777\b|||World-writable permission change detected'
-    'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf detected'
-    '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||Output redirection into sensitive system files'
-)
+if [ -z "${_FUCK_SECURITY_WARN_RULES:-}" ]; then
+    readonly -a _FUCK_SECURITY_WARN_RULES=(
+        'rm[[:space:]]+-rf\b|||Recursive delete request detected'
+        'chmod[[:space:]]+.*777\b|||World-writable permission change detected'
+        'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf detected'
+        '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||Output redirection into sensitive system files'
+    )
+fi
 
 # Gets the current security mode from configuration
 # Outputs: "strict", "balanced", or "off"
