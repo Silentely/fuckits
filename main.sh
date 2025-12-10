@@ -111,7 +111,10 @@ _installer_detect_profile() {
 
 # --- System Information Collection ---
 # Cache file for static system information (persisted across runs)
-readonly FUCK_SYSINFO_CACHE_FILE="$INSTALL_DIR/.sysinfo.cache"
+# Only define if not already set (prevents read-only variable errors)
+if [ -z "${FUCK_SYSINFO_CACHE_FILE:-}" ]; then
+    readonly FUCK_SYSINFO_CACHE_FILE="$INSTALL_DIR/.sysinfo.cache"
+fi
 # Cache state tracking variables
 _FUCK_STATIC_CACHE_LOADED=0
 _FUCK_STATIC_CACHE_DIRTY=0
@@ -409,8 +412,47 @@ _fuck_collect_sysinfo_string() {
 
 # Escapes a string for use in a JSON payload
 _fuck_json_escape() {
-    # Basic escape for quotes, backslashes, and control characters
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\"/g' -e 's/\n/\\n/g' -e 's/\r/\\r/g' -e 's/\t/\\t/g'
+    local input="$1"
+    # Use printf to properly handle control characters
+    printf '%s' "$input" | sed -e '
+        # First escape backslashes (must be first)
+        s/\\/\\\\/g
+        # Escape double quotes
+        s/"/\\"/g
+        # Escape control characters (ASCII 0-31)
+        s/\x00/\\u0000/g
+        s/\x01/\\u0001/g
+        s/\x02/\\u0002/g
+        s/\x03/\\u0003/g
+        s/\x04/\\u0004/g
+        s/\x05/\\u0005/g
+        s/\x06/\\u0006/g
+        s/\x07/\\u0007/g
+        s/\x08/\\b/g
+        s/\x09/\\t/g
+        s/\x0A/\\n/g
+        s/\x0B/\\u000B/g
+        s/\x0C/\\f/g
+        s/\x0D/\\r/g
+        s/\x0E/\\u000E/g
+        s/\x0F/\\u000F/g
+        s/\x10/\\u0010/g
+        s/\x11/\\u0011/g
+        s/\x12/\\u0012/g
+        s/\x13/\\u0013/g
+        s/\x14/\\u0014/g
+        s/\x15/\\u0015/g
+        s/\x16/\\u0016/g
+        s/\x17/\\u0017/g
+        s/\x18/\\u0018/g
+        s/\x19/\\u0019/g
+        s/\x1A/\\u001A/g
+        s/\x1B/\\u001B/g
+        s/\x1C/\\u001C/g
+        s/\x1D/\\u001D/g
+        s/\x1E/\\u001E/g
+        s/\x1F/\\u001F/g
+    '
 }
 
 _fuck_should_use_local_api() {
