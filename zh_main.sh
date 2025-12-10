@@ -400,7 +400,6 @@ _fuck_spinner() {
         printf " %c " "$spinstr"
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
-        printf "\b\b\b"
     done
     printf "   \b\b\b"
     
@@ -635,15 +634,16 @@ _fuck_execute_prompt() {
     local response=""
     local exit_code=0
     if _fuck_should_use_local_api; then
-        echo -ne "${C_YELLOW}使用本地 API Key...${C_RESET} "
+        printf "${C_YELLOW}使用本地 API Key... ${C_RESET}"
         response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     else
-        echo -ne "${C_YELLOW}思考中...${C_RESET} "
+        printf "${C_YELLOW}思考中... ${C_RESET}"
         response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     fi
 
+    printf "\r" # Clear the line before printing a newline
     echo ""
 
     if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
