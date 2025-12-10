@@ -213,6 +213,11 @@ You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the do
 
 Run `fuck config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
 
+> [!NOTE]
+> **Configuration file update reminder**
+>
+> If you installed before 2025-12-06, you may need to manually add new configuration options (like `FUCK_ADMIN_KEY`). Run `fuck config` to auto-fill missing entries, or reference `config.example.sh` for the latest template.
+
 ---
 
 ## Developer Guide (For tinkerers)

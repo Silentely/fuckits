@@ -736,16 +736,17 @@ _fuck_debug() {
 _fuck_spinner() {
     local pid=$1
     local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local -a frames=("|" "/" "-" "\\")
+    local frame_count=${#frames[@]}
+    local frame_idx=0
     
     # Hide cursor
     tput civis 2>/dev/null || printf "\033[?25l"
 
     while kill -0 "$pid" 2>/dev/null; do
-        local temp=${spinstr#?}
-        printf " %c " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
+        printf " %s " "${frames[$frame_idx]}"
+        frame_idx=$(( (frame_idx + 1) % frame_count ))
+        sleep "$delay"
         printf "\b\b\b"
     done
     printf "   \b\b\b"

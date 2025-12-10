@@ -243,6 +243,12 @@ Cloudflare Workers 配置文件：
 # 自定义 API 端点
 export FUCK_API_ENDPOINT="https://your-domain.workers.dev/"
 
+# 本地 OpenAI API Key（推荐，绕过共享演示限制）
+export FUCK_OPENAI_API_KEY="sk-..."
+
+# 管理员免额度密钥（需向项目维护者申请）
+export FUCK_ADMIN_KEY="adm-..."
+
 # 额外别名
 export FUCK_ALIAS="pls"
 
@@ -258,6 +264,23 @@ export FUCK_DEBUG=false
 # 禁用默认别名
 export FUCK_DISABLE_DEFAULT_ALIAS=false
 ```
+
+### 配置文件更新说明
+
+如果你使用的是旧版本安装脚本（2025-12-06 之前），你的配置文件可能缺少某些新功能（如 `FUCK_ADMIN_KEY`）。
+
+**检查配置文件版本**：
+```bash
+ls -la ~/.fuck/config.sh
+```
+
+**手动添加新配置项**：
+1. 编辑配置文件：`vim ~/.fuck/config.sh`
+2. 添加缺失的配置项（参考上面的可用配置项）
+3. 或者重新生成：`fuck config`
+
+**建议的完整配置模板**：
+参考 `config.example.sh` 获取最新的配置模板。
 
 ### Worker 环境变量
 通过 `wrangler secret put` 设置：

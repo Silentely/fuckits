@@ -236,6 +236,11 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 通过 `fuck config` 可以快速查看文件路径并创建默认示例。
 安装脚本会自动将 `~/.fuck/config.sh` 的权限设置为 `chmod 600`，确保你的密钥只保留在本地。
 
+> [!NOTE]
+> **配置文件更新提醒**
+>
+> 如果你是 2025-12-06 之前的用户，可能需要手动添加新的配置项（如 `FUCK_ADMIN_KEY`）。运行 `fuck config` 会自动补全缺失的配置项，或参考 `config.example.sh` 获取最新模板。
+
 ---
 
 ## 开发者指南
