@@ -43,6 +43,9 @@ logs/
 # Test coverage
 coverage/
 
+# Test frameworks (local installations)
+.bats/
+
 # Temporary files
 *.tmp
 .temp/
