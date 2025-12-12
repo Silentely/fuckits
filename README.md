@@ -15,15 +15,7 @@
 * **全量双语 CLI + Worker**：英文 `main.sh` / 中文 `zh_main.sh` 以及 Worker 端 locale 自适应，脚本构建流程（`npm run build`）自动将两种安装脚本打包进 Worker。
 * **可视化配置能力**：`fuck config` 会生成示例文件、自动 `chmod 600`，并罗列所有可切换的旗标（API 端点、Alias、Auto-Exec、Timeout、Admin Key 等）。
 * **一键部署/Setup 流程**：`npm run setup` / `npm run one-click-deploy` 覆盖登录、Secret 写入（包括新增管理员密钥）、构建与部署，用脚本化方式保证步骤统一。
-* **安全提示与文档体系**：README / DEPLOY / SUMMARY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格、以及 Amber 重构计划，方便 fork 二开的后续协作。
-
-
-  
-
-> [!IMPORTANT]
-> **本项目正在重构中**
-> 
-> 受[Linux.do佬友们的启发和建议](https://linux.do/t/topic/1099746)，此项目将用[Amber](https://amber-lang.com)语言重构，并加入完善的版本管理、更新提示，以及自定义llm key，自定义alias、个人偏好设置、ui风格（猫娘、御姐等）等更多新功能。
+* **安全提示与文档体系**：README / DEPLOY / SUMMARY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格，方便 fork 二开的后续协作。
 
 **我他妈忘了那条命令了。**
 
@@ -42,22 +34,26 @@
 
 *   **自然语言转换**: 直接将你的日常语言转换成可执行的 Shell 命令。
 *   **AI 驱动**: 利用大语言模型的强大能力，理解复杂指令。
+*   **三级安全检测**: 内置安全引擎提供三级防护（Block/Challenge/Warn），识别危险命令（如 `rm -rf /`、`dd` 等），保护你的系统安全。
+*   **系统信息缓存**: 智能缓存操作系统、包管理器等静态信息，减少重复检测开销，提升响应速度。
 *   **交互式确认**: 在执行任何命令之前，都会显示并请求你的确认，确保安全。
 *   **双模式运行**: 支持一键安装以长期使用，也支持无需安装的临时运行模式。
 *   **跨平台支持**: 可在 macOS 和主流 Linux 发行版上运行。
 *   **多语言**: 提供完整的中英文双语体验。
 *   **智能上下文**: 自动检测操作系统、包管理器等信息，为 AI 提供更准确的上下文。
+*   **配额管理**: 支持 KV 和内存双模式配额管理，确保共享演示限额可靠生效。
 *   **轻松卸载**: 一条命令即可将脚本从你的系统中完全移除。
 
 ## 🔧 重构亮点
 
-* `~/.fuck/config.sh` 配置文件：支持自定义 API 入口、命令别名、自动执行、超时时间等。
-* 本地密钥优先：`fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 200 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
-* 新增 `fuck config` 命令：一键定位配置文件并查看可用开关。
-* 自动执行模式：`FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
-* 自定义别名：通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
-* CLI 与 Worker 构建脚本重构：`npm run build` 自动嵌入最新的安装脚本。
-* 一键部署：`npm run one-click-deploy` 帮你完成依赖、登录、构建、部署全流程。
+* **代码质量提升**: 创建 `scripts/common.sh` 消除约 90 行重复代码，所有脚本遵循 DRY 原则，统一错误处理和编码参数。
+* **配置文件系统**: `~/.fuck/config.sh` 配置文件支持自定义 API 入口、命令别名、自动执行、超时时间等。
+* **本地密钥优先**: `fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 200 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
+* **快速配置命令**: 新增 `fuck config` 命令，一键定位配置文件并查看可用开关。
+* **自动执行模式**: `FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
+* **自定义别名**: 通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
+* **构建脚本重构**: `npm run build` 自动嵌入最新的安装脚本，支持跨平台编码和错误处理。
+* **一键部署**: `npm run one-click-deploy` 帮你完成依赖、登录、构建、部署全流程。
 
 ---
 
@@ -325,16 +321,16 @@ name = "your-worker-name"
 
 ---
 
-## 🧠 头脑风暴
+## 🧠 未来规划
 
-* Amber 版本重构：用 Amber 语言实现跨平台 CLI 与 UI。
-* 多模型路由：在 OpenAI、Anthropic、DeepSeek、硅基流动等模型之间自动切换。
-* 命令历史 & 收藏：支持 `fuck history`、一键回放常用命令。
-* 场景模板：内置运维、开发、数据等场景的提示词模板。
-* UI 皮肤：猫娘/御姐/严肃模式随心切换，提供更多人设。
-* 团队模式：共享自定义 alias、API key、调优模板。
+* **多模型路由**: 在 OpenAI、Anthropic、DeepSeek、硅基流动等模型之间自动切换或负载均衡。
+* **命令历史 & 收藏**: 支持 `fuck history`、一键回放常用命令，建立个人命令库。
+* **场景模板**: 内置运维、开发、数据分析等场景的提示词模板，快速切换工作场景。
+* **UI 皮肤**: 可选猫娘/御姐/严肃模式等不同人设风格，让命令行更有趣。
+* **团队模式**: 共享自定义 alias、API key、调优模板，适合团队协作。
+* **跨平台桌面应用**: 提供 GUI 界面，降低命令行门槛。
 
-欢迎在 Issue 中继续脑暴更多好玩的点子。
+欢迎在 [Issue](https://github.com/Silentely/fuckits/issues) 中继续脑暴更多好玩的点子。
 
 ---
 
@@ -346,7 +342,7 @@ name = "your-worker-name"
 
 ## Star History
 
-[![Star History Chart](https://app.repohistory.com/api/svg?repo=faithleysath/fuckits&type=Date&background=FFFFFF&color=f86262)](https://app.repohistory.com/star-history)
+[![Star History Chart](https://api.star-history.com/svg?repos=Silentely/fuckits&type=Date)](https://star-history.com/#Silentely/fuckits&Date)
 
 ## Stargazers over time
-[![Stargazers over time](https://starchart.cc/faithleysath/fuckits.svg?background=%23FFFFFF&axis=%23333333&line=%23e76060)](https://starchart.cc/faithleysath/fuckits)
+[![Stargazers over time](https://starchart.cc/Silentely/fuckits.svg?variant=adaptive)](https://starchart.cc/Silentely/fuckits)
