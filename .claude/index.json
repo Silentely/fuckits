@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-12-06T00:00:00.000Z",
+  "timestamp": "2025-12-12T09:15:03.000Z",
   "project": "fuckits",
   "version": "2.0.0",
   "summary": {
-    "total_files_scanned": 19,
-    "estimated_total_files": 25,
-    "coverage_percentage": 76,
+    "total_files_scanned": 25,
+    "estimated_total_files": 30,
+    "coverage_percentage": 83,
     "truncated": false,
-    "scan_strategy": "hybrid"
+    "scan_strategy": "adaptive_phase_b"
   },
   "modules": [
     {
@@ -30,12 +30,12 @@
         "config.example.sh"
       ],
       "coverage": {
-        "files_scanned": 11,
-        "total_estimated": 15,
-        "percentage": 73,
+        "files_scanned": 14,
+        "total_estimated": 16,
+        "percentage": 87,
         "gaps": [
-          "No automated tests",
-          "Missing CI/CD configuration"
+          "无自动化测试",
+          "缺少 CI/CD 配置"
         ]
       }
     },
@@ -58,17 +58,17 @@
         "total_estimated": 4,
         "percentage": 100,
         "gaps": [
-          "No test scripts",
-          "No rollback functionality"
+          "无测试脚本",
+          "无回滚功能"
         ]
       }
     }
   ],
   "architecture": {
     "type": "client_server",
-    "frontend": "Bash scripts (main.sh, zh_main.sh)",
-    "backend": "Cloudflare Worker (worker.js)",
-    "build_system": "npm scripts + bash automation",
+    "frontend": "Bash 脚本（main.sh, zh_main.sh）",
+    "backend": "Cloudflare Worker（worker.js）",
+    "build_system": "npm scripts + bash 自动化",
     "deployment": "Cloudflare Workers + Wrangler CLI"
   },
   "technologies": [
@@ -81,7 +81,7 @@
   ],
   "key_files": {
     "worker.js": {
-      "purpose": "Cloudflare Worker handling API requests and serving installer scripts",
+      "purpose": "Cloudflare Worker 处理 API 请求并提供安装脚本",
       "lines": 186,
       "functions": [
         "handleGetRequest",
@@ -89,46 +89,89 @@
         "handleHealthCheck",
         "b64_to_utf8",
         "isBrowserRequest",
-        "resolveLocale"
+        "resolveLocale",
+        "checkSharedQuota",
+        "resolveSharedLimit",
+        "resolveQuotaStore"
+      ],
+      "features": [
+        "Base64 解码嵌入式脚本",
+        "共享配额管理（内存/KV）",
+        "管理员密钥绕过",
+        "健康检查端点",
+        "中英双语支持"
       ]
     },
     "main.sh": {
-      "purpose": "English installer and runner script",
+      "purpose": "英文安装和运行脚本",
       "lines": 460,
       "functions": [
         "_fuck_execute_prompt",
         "_install_script",
         "_uninstall_script",
-        "_fuck_show_config_help"
+        "_fuck_show_config_help",
+        "_fuck_collect_sysinfo_string",
+        "_fuck_security_evaluate_command",
+        "_fuck_spinner"
+      ],
+      "features": [
+        "安装/临时双模式",
+        "系统信息缓存",
+        "安全检测引擎",
+        "本地/远程 API 切换",
+        "配置管理"
       ]
     },
     "zh_main.sh": {
-      "purpose": "Chinese installer and runner script",
+      "purpose": "中文安装和运行脚本",
       "lines": 475,
       "functions": [
         "_fuck_execute_prompt",
         "_install_script",
         "_uninstall_script",
-        "_fuck_show_config_help"
+        "_fuck_show_config_help",
+        "_fuck_collect_sysinfo_string",
+        "_fuck_security_evaluate_command",
+        "_fuck_spinner"
+      ],
+      "features": [
+        "完整中文界面",
+        "与英文版功能对等",
+        "卸载彩蛋"
       ]
     },
     "scripts/build.sh": {
-      "purpose": "Build script that embeds installers into worker.js",
+      "purpose": "构建脚本，将安装脚本嵌入 worker.js",
       "lines": 82,
       "platforms": ["macOS", "Linux"]
     },
     "scripts/deploy.sh": {
-      "purpose": "Deployment script for Cloudflare Workers",
+      "purpose": "部署脚本",
       "lines": 34
     },
     "scripts/one-click-deploy.sh": {
-      "purpose": "Complete automated deployment workflow",
+      "purpose": "完整自动化部署工作流",
       "lines": 179,
-      "features": ["Environment check", "Interactive setup", "Error handling"]
+      "features": ["环境检查", "交互式设置", "错误处理"]
     },
     "scripts/setup.sh": {
-      "purpose": "Interactive configuration wizard",
+      "purpose": "交互式配置向导",
       "lines": 104
+    },
+    "config.example.sh": {
+      "purpose": "配置文件模板",
+      "variables": [
+        "FUCK_API_ENDPOINT",
+        "FUCK_OPENAI_API_KEY",
+        "FUCK_ADMIN_KEY",
+        "FUCK_OPENAI_MODEL",
+        "FUCK_OPENAI_API_BASE",
+        "FUCK_ALIAS",
+        "FUCK_AUTO_EXEC",
+        "FUCK_TIMEOUT",
+        "FUCK_DEBUG",
+        "FUCK_DISABLE_DEFAULT_ALIAS"
+      ]
     }
   },
   "ignore_patterns": [
@@ -158,44 +201,48 @@
     "coverage/**",
     "*.tmp",
     ".temp/**",
-    ".serena"
+    ".serena",
+    ".claude",
+    ".codex"
   ],
   "documentation": {
     "root_claude_md": {
       "status": "updated",
+      "timestamp": "2025-12-12T09:15:03.000Z",
       "sections": [
-        "Changelog",
-        "Project Vision",
-        "Architecture Overview",
-        "Module Structure Diagram (Mermaid)",
-        "Module Index",
-        "Operations & Development",
-        "Testing Strategy",
-        "Coding Standards",
-        "AI Usage Guide",
-        "Core Files",
-        "Configuration System",
-        "Deployment Process",
-        "Troubleshooting",
-        "Project Statistics",
-        "Extension Plans",
-        "Resources"
+        "变更记录",
+        "项目愿景",
+        "架构总览",
+        "模块结构图（Mermaid）",
+        "模块索引",
+        "运行与开发",
+        "测试策略",
+        "编码规范",
+        "AI 使用指引",
+        "核心文件说明",
+        "配置系统",
+        "部署流程",
+        "故障排查",
+        "项目统计",
+        "扩展计划",
+        "相关资源"
       ]
     },
     "scripts_claude_md": {
       "status": "updated",
+      "timestamp": "2025-12-12T09:15:03.000Z",
       "breadcrumb_added": true,
       "sections": [
-        "Changelog",
-        "Module Responsibilities",
-        "Entry & Startup",
-        "Script Details",
-        "Dependencies & Configuration",
-        "Data Model",
-        "Testing & Quality",
-        "FAQ",
-        "File List",
-        "Extension Suggestions"
+        "变更记录",
+        "模块职责",
+        "入口与启动",
+        "脚本详解",
+        "关键依赖与配置",
+        "数据模型",
+        "测试与质量",
+        "常见问题",
+        "相关文件清单",
+        "扩展建议"
       ]
     }
   },
@@ -214,18 +261,20 @@
       "scripts/CLAUDE.md",
       "CLAUDE.md",
       "README.md",
-      "LICENSE",
+      "README.en.md",
       "CHANGELOG.md",
       "DEPLOY.md",
-      "README.en.md",
       "SUMMARY.md",
-      ".gitignore"
+      "LICENSE",
+      ".gitignore",
+      "preview.gif",
+      "dist/fuckits.en.sh",
+      "dist/fuckits.zh.sh"
     ],
     "missed_patterns": [
-      "Potential test files in test/ or tests/",
-      "CI/CD configuration files (.github/workflows/)",
-      "Documentation files beyond READMEs",
-      "Template or example files"
+      "可能的测试文件在 test/ 或 tests/",
+      "CI/CD 配置文件（.github/workflows/）",
+      "额外的文档文件"
     ],
     "quality_metrics": {
       "has_automated_tests": false,
@@ -234,29 +283,32 @@
       "has_configuration_management": true,
       "has_error_handling": true,
       "has_logging": true,
-      "deployment_automation": true
+      "deployment_automation": true,
+      "security_engine": true,
+      "i18n_support": true,
+      "caching_system": true
     }
   },
   "recommendations": {
     "priority_improvements": [
-      "Add automated testing suite",
-      "Implement CI/CD pipeline",
-      "Add shell script unit tests",
-      "Create integration tests",
-      "Add error monitoring"
+      "添加自动化测试套件",
+      "实现 CI/CD 流水线",
+      "添加 shell 脚本单元测试",
+      "创建集成测试",
+      "添加错误监控"
     ],
     "future_enhancements": [
-      "Multi-language support beyond English/Chinese",
-      "Command history and favorites",
-      "Scenario templates",
-      "Team configuration sharing",
-      "UI themes and personalities"
+      "多语言支持扩展",
+      "命令历史与收藏功能",
+      "场景模板",
+      "团队配置共享",
+      "UI 主题和人设"
     ],
     "next_scan_priorities": [
-      "Look for test directories",
-      "Check for CI/CD configurations",
-      "Review documentation completeness",
-      "Examine configuration templates"
+      "查找测试目录",
+      "检查 CI/CD 配置",
+      "审查文档完整性",
+      "检查配置模板"
     ]
   }
 }
