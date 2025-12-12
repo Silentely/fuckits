@@ -1,0 +1,28 @@
+{
+  "mockSuccessResponse": {
+    "choices": [
+      {
+        "message": {
+          "content": "ls -la"
+        }
+      }
+    ]
+  },
+  "mockErrorResponse": {
+    "error": {
+      "message": "API request failed",
+      "type": "invalid_request_error"
+    }
+  },
+  "mockQuotaExceededResponse": {
+    "error": "DEMO_LIMIT_EXCEEDED",
+    "message": "Daily quota exceeded",
+    "limit": 10,
+    "remaining": 0
+  },
+  "mockHealthCheckResponse": {
+    "status": "ok",
+    "hasApiKey": true,
+    "timestamp": "2025-12-12T00:00:00.000Z"
+  }
+}

@@ -19,6 +19,12 @@
 
 set -euo pipefail
 
+# --- Prevent Re-definition of readonly Variables ---
+# This guard allows the script to be sourced multiple times (e.g., in tests)
+if [[ -z "${FUCKITS_CONSTANTS_DEFINED:-}" ]]; then
+    # Mark constants as being defined (export to make visible to subshells)
+    export FUCKITS_CONSTANTS_DEFINED=1
+
 # --- Color Definitions ---
 readonly C_RESET='\033[0m'
 readonly C_RED_BOLD='\033[1;31m'
@@ -44,6 +50,8 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+
+fi  # End of readonly constants guard
 
 
 # --- Core Logic (Embedded as a string) ---
@@ -774,8 +782,9 @@ _fuck_spinner() {
 
 # Block-level security rules (highest severity - execution denied)
 # Format: 'pattern|||reason'
-if [ -z "${_FUCK_SECURITY_BLOCK_RULES:-}" ]; then
-    readonly -a _FUCK_SECURITY_BLOCK_RULES=(
+# Note: Not using 'readonly' to ensure compatibility with function-scoped sourcing
+if [ -z "${_FUCK_SECURITY_BLOCK_RULES+x}" ] || [[ ${#_FUCK_SECURITY_BLOCK_RULES[@]} -eq 0 ]] 2>/dev/null; then
+    _FUCK_SECURITY_BLOCK_RULES=(
         '(^|[;&|[:space:]])rm[[:space:]]+-rf[[:space:]]+/([[:space:]]|$)|||Recursive delete targeting root filesystem'
         'rm[[:space:]]+-rf[[:space:]]+/\*|||Recursive delete using /* under root'
         'rm[[:space:]]+-rf[[:space:]]+--no-preserve-root|||rm --no-preserve-root against /'
@@ -783,14 +792,15 @@ if [ -z "${_FUCK_SECURITY_BLOCK_RULES:-}" ]; then
         '\bdd\b[^#\n]*\b(of|if)=/dev/|||Raw disk write via dd targeting /dev devices'
         '\bmkfs(\.\w+)?\b|||Filesystem format command detected'
         '\bfdisk\b|\bparted\b|\bformat\b|\bwipefs\b|\bshred\b|||Partition or disk wipe command detected'
-        ':\(\)\s*{\s*:\s*\|\s*:;\s*}\s*;?\s*:|||Fork bomb function detected'
+        ':\(\)[[:space:]]*\{[[:space:]]*:[[:space:]]*\|[[:space:]]*:[[:space:]]*&[[:space:]]*\}[[:space:]]*;[[:space:]]*:|||Fork bomb function detected'
     )
 fi
 
 # Challenge-level security rules (requires explicit user confirmation)
 # Format: 'pattern|||reason'
-if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES:-}" ]; then
-    readonly -a _FUCK_SECURITY_CHALLENGE_RULES=(
+# Note: Not using 'readonly' to ensure compatibility with function-scoped sourcing
+if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES+x}" ] || [[ ${#_FUCK_SECURITY_CHALLENGE_RULES[@]} -eq 0 ]] 2>/dev/null; then
+    _FUCK_SECURITY_CHALLENGE_RULES=(
         'curl[^|]*\|\s*(bash|sh)|||Remote script execution via curl pipeline'
         'wget[^|]*\|\s*(bash|sh)|||Remote script execution via wget pipeline'
         '\bsource\s+https?://|||Sourcing a remote file over HTTP(S)'
@@ -799,17 +809,18 @@ if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES:-}" ]; then
         '`[^`]*`|||Command substitution using backticks'
         '\b(sh|bash|env)\s+-c\b|||Nested shell invocation through -c'
         '\bpython[0-9.]*\s+-c\b|||Inline interpreter execution via -c'
-        '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
+        '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
     )
 fi
 
 # Warn-level security rules (warning only, user can proceed)
 # Format: 'pattern|||reason'
-if [ -z "${_FUCK_SECURITY_WARN_RULES:-}" ]; then
-    readonly -a _FUCK_SECURITY_WARN_RULES=(
+# Note: Not using 'readonly' to ensure compatibility with function-scoped sourcing
+if [ -z "${_FUCK_SECURITY_WARN_RULES+x}" ] || [[ ${#_FUCK_SECURITY_WARN_RULES[@]} -eq 0 ]] 2>/dev/null; then
+    _FUCK_SECURITY_WARN_RULES=(
+        'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf detected'
         'rm[[:space:]]+-rf\b|||Recursive delete request detected'
         'chmod[[:space:]]+.*777\b|||World-writable permission change detected'
-        'sudo[[:space:]]+[^;&|]*rm[[:space:]]+-rf|||sudo rm -rf detected'
         '>[[:space:]]*/(etc/(passwd|shadow|sudoers)|dev/sd[a-z]+)|||Output redirection into sensitive system files'
     )
 fi
@@ -1501,6 +1512,13 @@ CFG
 
 
 # --- Main Script Entrypoint ---
+
+# If being sourced for testing, load core logic and skip entrypoint
+if [ -n "${BATS_TEST_DIRNAME:-}" ] || [ -n "${BATS_TEST_FILENAME:-}" ]; then
+    # Load core logic functions for testing
+    _fuck_source_core
+    return 0
+fi
 
 # If arguments are passed (e.g., "bash -s ...")
 if [ "$#" -gt 0 ]; then
