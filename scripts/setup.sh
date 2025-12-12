@@ -14,50 +14,9 @@ readonly C_CYAN='\033[0;36m'
 readonly C_BOLD='\033[1m'
 readonly C_RESET='\033[0m'
 
-update_wrangler_var() {
-    local key="$1"
-    local value="$2"
-
-    if [ -z "$value" ]; then
-        echo -e "${C_YELLOW}⚠️ Skipping ${key}: empty value${C_RESET}"
-        return
-    fi
-
-    if ! command -v python3 > /dev/null; then
-        echo -e "${C_RED}❌ python3 is required to edit wrangler.toml vars${C_RESET}"
-        echo -e "${C_YELLOW}Please install python3 or edit wrangler.toml manually.${C_RESET}"
-        return 1
-    fi
-
-    python3 - "$key" "$value" <<'PY'
-import re, sys
-from pathlib import Path
-
-key = sys.argv[1]
-value = sys.argv[2]
-escaped = value.replace('\\', '\\\\').replace('"', '\\"')
-path = Path('wrangler.toml')
-text = path.read_text()
-
-if '[vars]' not in text:
-    text = text.rstrip() + '\n\n[vars]\n'
-
-pattern = rf'(?m)^\s*{re.escape(key)}\s*=.*$'
-if re.search(pattern, text):
-    text = re.sub(pattern, f'{key} = "{escaped}"', text, count=1)
-else:
-    match = re.search(r'(\[vars\]\s*\n)', text)
-    if match:
-        start = match.end()
-        text = text[:start] + f'{key} = "{escaped}"\n' + text[start:]
-    else:
-        text = text.rstrip() + f'\n\n[vars]\n{key} = "{escaped}"\n'
-
-path.write_text(text)
-PY
-
-    echo -e "${C_GREEN}✅ Updated ${key} in wrangler.toml${C_RESET}"
-}
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
 
 echo -e "${C_CYAN}${C_BOLD}🚀 fuckits Setup Script${C_RESET}"
 echo -e "${C_CYAN}================================${C_RESET}\n"
