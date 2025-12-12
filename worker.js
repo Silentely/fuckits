@@ -118,8 +118,14 @@ function resolveLocale(url, headers) {
   }
 
   const langParam = (url.searchParams.get('lang') || '').toLowerCase();
-  if (langParam.startsWith('zh')) {
-    return 'zh';
+  if (langParam) {
+    // 明确指定的 lang 参数优先级最高（仅次于 URL 路径）
+    if (langParam.startsWith('zh')) {
+      return 'zh';
+    }
+    if (langParam.startsWith('en')) {
+      return 'en';
+    }
   }
 
   const acceptLanguage = (headers.get('Accept-Language') || '').toLowerCase();
@@ -135,19 +141,44 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    if (request.method === 'OPTIONS') {
+      return addCorsHeaders(handleOptionsRequest());
+    }
+
     if (request.method === 'GET' && url.pathname === '/health') {
-      return handleHealthCheck(env);
+      return addCorsHeaders(handleHealthCheck(env));
     }
 
     if (request.method === 'GET') {
-      return handleGetRequest(request);
+      return addCorsHeaders(await handleGetRequest(request));
     } else if (request.method === 'POST') {
-      return handlePostRequest(request, env);
+      return addCorsHeaders(await handlePostRequest(request, env));
     } else {
-      return new Response('Expected GET or POST', { status: 405 });
+      return addCorsHeaders(new Response('Expected GET or POST', { status: 405 }));
     }
   },
 };
+
+function handleOptionsRequest() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
+function addCorsHeaders(response) {
+  const newHeaders = new Headers(response.headers);
+  newHeaders.set('Access-Control-Allow-Origin', '*');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
 
 function handleHealthCheck(env) {
   const payload = {
@@ -169,16 +200,23 @@ function handleHealthCheck(env) {
  */
 function handleGetRequest(request) {
   const userAgent = request.headers.get('User-Agent') || '';
+  console.log('[DEBUG] User-Agent received:', userAgent);
+  console.log('[DEBUG] User-Agent type:', typeof userAgent);
+
   const url = new URL(request.url);
   const locale = resolveLocale(url, request.headers);
   const isBrowser = isBrowserRequest(userAgent);
+  console.log('[DEBUG] isBrowser result:', isBrowser);
 
   // If the request comes from a browser, redirect to the appropriate README.
   if (isBrowser) {
+    console.log('[DEBUG] Taking redirect branch');
     const docsUrl = locale === 'zh' ? README_URL_ZH : README_URL_EN;
+    console.log('[DEBUG] Redirecting to:', docsUrl);
     return Response.redirect(docsUrl, 302);
   }
 
+  console.log('[DEBUG] Taking script serving branch');
   // Otherwise, serve the installer script based on the resolved locale.
   const script = locale === 'zh' ? INSTALLER_SCRIPT_ZH : INSTALLER_SCRIPT;
   const filename = locale === 'zh' ? INSTALLER_FILENAME_ZH : INSTALLER_FILENAME_EN;
@@ -201,8 +239,26 @@ async function handlePostRequest(request, env) {
   try {
     const { sysinfo, prompt, adminKey } = await request.json();
 
-    if (!prompt) {
-      return new Response('Missing "prompt" in request body', { status: 400 });
+    // 验证 sysinfo
+    if (!sysinfo || sysinfo.trim() === '') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or empty "sysinfo" in request body' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // 验证 prompt
+    if (!prompt || prompt.trim() === '') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or empty "prompt" in request body' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     }
     if (!env.OPENAI_API_KEY) {
       return new Response('Missing OPENAI_API_KEY secret', { status: 500 });
