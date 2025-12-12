@@ -23,12 +23,28 @@
     "deploy": "bash scripts/deploy.sh",
     "one-click-deploy": "bash scripts/one-click-deploy.sh",
     "setup": "bash scripts/setup.sh",
-    "dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "test": "npm run test:js && npm run test:bash",
+    "test:js": "vitest run",
+    "test:js:watch": "vitest watch",
+    "test:js:coverage": "vitest run --coverage",
+    "test:bash": "bats tests/unit/bash tests/integration",
+    "test:security": "bats tests/unit/bash/security.bats",
+    "test:build": "bats tests/integration/build-deploy.bats",
+    "test:all": "npm run test && npm run test:js:coverage"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "wrangler": "^3.80.0"
+    "wrangler": "^3.80.0",
+    "vitest": "^1.0.0",
+    "miniflare": "^3.0.0",
+    "@cloudflare/workers-types": "^4.0.0",
+    "c8": "^9.0.0",
+    "bats": "^1.10.0",
+    "bats-support": "^0.3.0",
+    "bats-assert": "^2.1.0",
+    "undici": "^6.0.0"
   }
 }

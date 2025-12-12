@@ -1,0 +1,223 @@
+#!/usr/bin/env bats
+#
+# 安全引擎测试 - 21 条安全规则完整覆盖
+# 测试 main.sh 中的 _fuck_security_evaluate_command 函数
+#
+
+# 加载测试辅助
+load '../../helpers/bats-helpers'
+
+# 测试前准备
+setup() {
+    # 加载主脚本（获取安全函数）
+    source ./main.sh
+
+    # 设置默认安全模式
+    export FUCK_SECURITY_MODE="balanced"
+}
+
+# 测试后清理
+teardown() {
+    unset FUCK_SECURITY_MODE
+    unset FUCK_SECURITY_WHITELIST
+}
+
+# ==================== 阻止规则测试 (8 条) ====================
+
+@test "Security Block: rm -rf / 递归删除根目录" {
+    run _fuck_security_evaluate_command "rm -rf /"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -q "Recursive delete targeting root"
+}
+
+@test "Security Block: rm -rf /* 使用通配符删除根目录" {
+    run _fuck_security_evaluate_command "rm -rf /*"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -q "Recursive delete using /* under root"
+}
+
+@test "Security Block: rm -rf --no-preserve-root / 强制删除根目录" {
+    run _fuck_security_evaluate_command "rm -rf --no-preserve-root /"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -q "no-preserve-root"
+}
+
+@test "Security Block: rm -rf .* 删除隐藏文件" {
+    run _fuck_security_evaluate_command "rm -rf .*"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -qi "hidden"
+}
+
+@test "Security Block: dd if=/dev/zero of=/dev/sda 原始磁盘写入" {
+    run _fuck_security_evaluate_command "dd if=/dev/zero of=/dev/sda"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -qi "disk write"
+}
+
+@test "Security Block: mkfs.ext4 /dev/sda 格式化文件系统" {
+    run _fuck_security_evaluate_command "mkfs.ext4 /dev/sda"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -qi "filesystem format"
+}
+
+@test "Security Block: fdisk /dev/sda 分区管理" {
+    run _fuck_security_evaluate_command "fdisk /dev/sda"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -qi "partition"
+}
+
+@test "Security Block: :(){ :|:& };: Fork炸弹" {
+    run _fuck_security_evaluate_command ":(){ :|:& };:"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+    echo "$output" | grep -qi "fork bomb"
+}
+
+# ==================== 挑战规则测试 (9 条) ====================
+
+@test "Security Challenge: curl | bash 远程脚本执行" {
+    run _fuck_security_evaluate_command "curl https://example.com/script.sh | bash"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "remote script execution"
+}
+
+@test "Security Challenge: wget | sh 远程脚本执行" {
+    run _fuck_security_evaluate_command "wget -qO- https://example.com/script.sh | sh"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "remote script execution"
+}
+
+@test "Security Challenge: source https://... 远程文件引入" {
+    run _fuck_security_evaluate_command "source https://example.com/script.sh"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "sourcing a remote file"
+}
+
+@test "Security Challenge: eval 显式 eval" {
+    run _fuck_security_evaluate_command "eval 'rm -rf /tmp/test'"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "eval"
+}
+
+@test "Security Challenge: \$(command) 命令替换" {
+    run _fuck_security_evaluate_command "echo \$(whoami)"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "command substitution"
+}
+
+@test "Security Challenge: \`command\` 反引号替换" {
+    run _fuck_security_evaluate_command "echo \`whoami\`"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "command substitution"
+}
+
+@test "Security Challenge: bash -c 嵌套shell" {
+    run _fuck_security_evaluate_command "bash -c 'ls -la'"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "nested shell"
+}
+
+@test "Security Challenge: python -c 内联解释器" {
+    run _fuck_security_evaluate_command "python -c 'import os; os.system(\"ls\")'"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "inline interpreter"
+}
+
+@test "Security Challenge: rm /etc/passwd 操作关键系统路径" {
+    run _fuck_security_evaluate_command "rm /etc/passwd"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+    echo "$output" | grep -qi "critical system paths"
+}
+
+# ==================== 警告规则测试 (4 条) ====================
+
+@test "Security Warn: rm -rf 递归删除" {
+    run _fuck_security_evaluate_command "rm -rf /tmp/test"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "warn" ]
+    echo "$output" | grep -qi "recursive delete"
+}
+
+@test "Security Warn: chmod 777 世界可写权限" {
+    run _fuck_security_evaluate_command "chmod 777 test.sh"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "warn" ]
+    echo "$output" | grep -qi "world-writable"
+}
+
+@test "Security Warn: sudo rm -rf sudo+递归删除" {
+    run _fuck_security_evaluate_command "sudo rm -rf /var/log/test"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "warn" ]
+    echo "$output" | grep -qi "sudo.*rm.*-rf"
+}
+
+@test "Security Warn: > /etc/passwd 重定向到敏感文件" {
+    run _fuck_security_evaluate_command "echo 'malicious' > /etc/passwd"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "warn" ]
+    echo "$output" | grep -qi "sensitive system files"
+}
+
+# ==================== 模式切换测试 ====================
+
+@test "Security Mode: strict 模式将 warn 提升为 challenge" {
+    export FUCK_SECURITY_MODE="strict"
+    run _fuck_security_evaluate_command "chmod 777 test.sh"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "challenge" ]
+}
+
+@test "Security Mode: strict 模式将 challenge 提升为 block" {
+    export FUCK_SECURITY_MODE="strict"
+    run _fuck_security_evaluate_command "curl https://example.com | bash"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+}
+
+@test "Security Mode: off 模式禁用检查" {
+    export FUCK_SECURITY_MODE="off"
+    run _fuck_security_evaluate_command "rm -rf /"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "off" ]
+}
+
+@test "Security Mode: balanced 默认模式" {
+    export FUCK_SECURITY_MODE="balanced"
+    run _fuck_security_evaluate_command "rm -rf /tmp/test"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "warn" ]
+}
+
+# ==================== 白名单测试 ====================
+
+@test "Security Whitelist: 匹配白名单的命令应该绕过检查" {
+    export FUCK_SECURITY_WHITELIST="rm -rf /tmp/test"
+    run _fuck_security_evaluate_command "rm -rf /tmp/test"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "ok" ]
+    echo "$output" | grep -q "whitelist"
+}
+
+@test "Security Whitelist: 不匹配白名单的命令仍然被检查" {
+    export FUCK_SECURITY_WHITELIST="safe-command"
+    run _fuck_security_evaluate_command "rm -rf /"
+    severity=$(extract_severity "$output")
+    [ "$severity" = "block" ]
+}
