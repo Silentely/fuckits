@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      actions: write  # Required for deleting old workflow runs
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -193,6 +194,7 @@ jobs:
           exit $DEPLOY_EXIT_CODE
 
       - name: Delete workflow runs older than 3 days
+        continue-on-error: true  # Don't fail the entire workflow if cleanup fails
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
