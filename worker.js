@@ -110,6 +110,34 @@ function checkSharedQuotaInMemory(ip, limit) {
   };
 }
 
+/**
+ * 使用 KV 存储检查并更新配额计数器
+ *
+ * ⚠️ 竞态条件警告 (Race Condition Notice)
+ * =========================================
+ * 此函数采用非原子的 get → check → put 模式，存在以下已知限制：
+ *
+ * 1. 竞态窗口：在 kv.get() 和 kv.put() 之间（约 10-50ms），
+ *    并发请求可能读取到相同的旧计数值，导致多个请求同时"通过"检查
+ *
+ * 2. 最坏情况：如果 N 个请求在竞态窗口内同时到达，
+ *    理论上所有 N 个请求都可能被放行，实际超出限额 N-1 次
+ *
+ * 3. KV 最终一致性：跨 PoP 边缘节点的传播延迟（通常 < 60s）
+ *    可能导致不同地区看到的计数值不一致
+ *
+ * 设计决策：对于演示配额系统，这是可接受的权衡：
+ * - 目标是防止明显滥用，而非提供计费级别精度
+ * - 简单实现优于复杂的分布式锁
+ * - 偶发的超额（可能 1-3 次/天）不影响核心功能
+ *
+ * 如需严格配额：请迁移到 Cloudflare Durable Objects（提供强一致性）
+ *
+ * @param {object} kv - KV 命名空间绑定
+ * @param {string} ip - 客户端 IP 地址
+ * @param {number} limit - 每日请求限额
+ * @returns {Promise<{allowed: boolean, remaining: number, count: number}>}
+ */
 async function checkSharedQuotaKV(kv, ip, limit) {
   const today = new Date().toISOString().slice(0, 10);
   const key = `quota:${today}:${ip || 'anonymous'}`;
@@ -117,13 +145,25 @@ async function checkSharedQuotaKV(kv, ip, limit) {
 
   try {
     const raw = await kv.get(key);
-    let count = Number(raw) || 0;
-    count += 1;
-    await kv.put(key, String(count), { expirationTtl: ttl > 0 ? ttl : SECONDS_IN_DAY });
+    const currentCount = Number(raw) || 0;
+
+    // 预检查：如果已达到或超过限额，立即拒绝
+    // 这减少（但不能完全消除）竞态条件的影响
+    if (currentCount >= limit) {
+      return {
+        allowed: false,
+        remaining: 0,
+        count: currentCount,
+      };
+    }
+
+    const newCount = currentCount + 1;
+    await kv.put(key, String(newCount), { expirationTtl: ttl > 0 ? ttl : SECONDS_IN_DAY });
+
     return {
-      allowed: count <= limit,
-      remaining: Math.max(limit - count, 0),
-      count,
+      allowed: newCount <= limit,
+      remaining: Math.max(limit - newCount, 0),
+      count: newCount,
     };
   } catch (error) {
     console.error('Failed to persist quota counter, falling back to in-memory map', error);
@@ -139,6 +179,72 @@ function secondsUntilNextUtcMidnight() {
 
 function isBrowserRequest(userAgent = '') {
   return /Mozilla|Chrome|Safari|Firefox|Edg/.test(userAgent);
+}
+
+/**
+ * 清理和验证 AI 返回的命令
+ * 从各种 AI 响应格式中提取可执行命令
+ *
+ * 支持的格式:
+ * 1. 纯命令文本 (无 markdown)
+ * 2. 单个 fenced 代码块 (```bash ... ```)
+ * 3. 带解释文字的响应 (提取首个代码块)
+ * 4. 内联代码 (`command`)
+ * 5. 多个代码块 (提取首个)
+ *
+ * @param {string} rawCommand AI 返回的原始命令
+ * @returns {string} 清理后的命令
+ */
+function sanitizeCommand(rawCommand) {
+  if (!rawCommand || typeof rawCommand !== 'string') {
+    return '';
+  }
+
+  let command = rawCommand.trim();
+
+  // 策略 1: 尝试提取首个 fenced 代码块 (```bash ... ``` 或 ```sh ... ``` 等)
+  // 注意: 不使用 ^ 和 $ 锚点，允许代码块出现在任意位置
+  const fencedBlockPattern = /```(?:bash|sh|shell|zsh|command)?\s*\n([\s\S]*?)\n```/;
+  const fencedMatch = command.match(fencedBlockPattern);
+  if (fencedMatch && fencedMatch[1].trim()) {
+    command = fencedMatch[1].trim();
+  } else {
+    // 策略 2: 尝试提取单行 fenced 代码块 (```command```)
+    const inlineFencedPattern = /```(?:bash|sh|shell|zsh|command)?\s*([^\n`]+?)\s*```/;
+    const inlineFencedMatch = command.match(inlineFencedPattern);
+    if (inlineFencedMatch && inlineFencedMatch[1].trim()) {
+      command = inlineFencedMatch[1].trim();
+    } else {
+      // 策略 3: 尝试提取内联代码 (`command`)
+      // 只在响应看起来像是带解释文字时使用
+      if (command.includes('`') && /[a-zA-Z].*:/.test(command)) {
+        const inlineCodePattern = /`([^`]+)`/;
+        const inlineMatch = command.match(inlineCodePattern);
+        if (inlineMatch && inlineMatch[1].trim()) {
+          // 验证提取的内容看起来像命令 (包含常见命令或路径)
+          const extracted = inlineMatch[1].trim();
+          if (/^[a-zA-Z_\/\.]/.test(extracted) && !extracted.includes(' is ')) {
+            command = extracted;
+          }
+        }
+      }
+    }
+  }
+
+  // 移除 shebang 行 (#!/bin/bash, #!/usr/bin/env bash, 等)
+  command = command.replace(/^#!\/(?:usr\/)?(?:bin\/)?(?:env\s+)?(?:ba)?sh\s*\n?/gm, '');
+
+  // 移除 shell 注释行 (以 # 开头的行，但保留 #! 开头的已处理)
+  // 注意: 只移除整行注释，不处理行内注释以避免破坏合法命令
+  command = command.replace(/^[^\S\n]*#(?!!)[^\n]*\n?/gm, '');
+
+  // 移除开头的空行
+  command = command.replace(/^\s*\n+/, '');
+
+  // 移除结尾的空行
+  command = command.replace(/\n+\s*$/, '');
+
+  return command.trim();
 }
 
 function resolveLocale(url, headers) {
@@ -230,23 +336,16 @@ function handleHealthCheck(env) {
  */
 function handleGetRequest(request) {
   const userAgent = request.headers.get('User-Agent') || '';
-  console.log('[DEBUG] User-Agent received:', userAgent);
-  console.log('[DEBUG] User-Agent type:', typeof userAgent);
 
   const url = new URL(request.url);
   const locale = resolveLocale(url, request.headers);
   const isBrowser = isBrowserRequest(userAgent);
-  console.log('[DEBUG] isBrowser result:', isBrowser);
 
   // If the request comes from a browser, redirect to the appropriate README.
   if (isBrowser) {
-    console.log('[DEBUG] Taking redirect branch');
     const docsUrl = locale === 'zh' ? README_URL_ZH : README_URL_EN;
-    console.log('[DEBUG] Redirecting to:', docsUrl);
     return Response.redirect(docsUrl, 302);
   }
-
-  console.log('[DEBUG] Taking script serving branch');
   // Otherwise, serve the installer script based on the resolved locale.
   const script = locale === 'zh' ? INSTALLER_SCRIPT_ZH : INSTALLER_SCRIPT;
   const filename = locale === 'zh' ? INSTALLER_FILENAME_ZH : INSTALLER_FILENAME_EN;
@@ -395,7 +494,14 @@ The user's system info is: ${sysinfo}`;
       return new Response('The AI returned an empty command.', { status: 500 });
     }
 
-    return new Response(command, {
+    // 清理 AI 返回的命令（移除 markdown 格式、shebang 等）
+    const cleanedCommand = sanitizeCommand(command);
+
+    if (!cleanedCommand) {
+      return new Response('The AI returned an invalid command after sanitization.', { status: 500 });
+    }
+
+    return new Response(cleanedCommand, {
       headers: { 'Content-Type': 'text/plain' },
     });
   } catch (error) {
