@@ -1316,8 +1316,8 @@ _fuck_execute_prompt() {
         response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     else
-        local spinner_label="${C_YELLOW}思考中💭 ${C_RESET}"
-        printf '%b' "$spinner_label"
+        local spinner_label="思考中💭 "
+        printf '%s' "$spinner_label"
         response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout" "$spinner_label")
         exit_code=$?
     fi
