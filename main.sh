@@ -1,31 +1,31 @@
 #!/bin/bash
 #
-# This script is the installer and temporary runner for fuckits
+# fuckits - 安装脚本和临时执行器
 #
-# --- RECOMMENDED SECURE USAGE ---
+# --- 推荐的安全使用方式 ---
 #
-# 1. Download:
+# 1. 下载:
 #    curl -o fuckits https://fuckits.25500552.xyz
 #
-# 2. Inspect:
+# 2. 检查内容:
 #    less fuckits
 #
-# 3. Run (Install):
+# 3. 安装运行:
 #    bash fuckits
 #
-# 4. Run (Temporary):
+# 4. 临时运行:
 #    bash fuckits "your prompt"
 #
 
 set -euo pipefail
 
-# --- Prevent Re-definition of readonly Variables ---
-# This guard allows the script to be sourced multiple times (e.g., in tests)
+# --- 防止 readonly 变量重复定义 ---
+# 此守卫允许脚本被多次 source（例如在测试中）
 if [[ -z "${FUCKITS_CONSTANTS_DEFINED:-}" ]]; then
-    # Mark constants as being defined (export to make visible to subshells)
+    # 标记常量已定义（export 使子 shell 可见）
     export FUCKITS_CONSTANTS_DEFINED=1
 
-# --- Color Definitions ---
+# --- 颜色定义 ---
 readonly C_RESET='\033[0m'
 readonly C_RED_BOLD='\033[1;31m'
 readonly C_RED='\033[0;31m'
@@ -42,7 +42,7 @@ readonly FCKN="${C_RED}F*CKING${C_RESET}"
 readonly FUCKITS_LOCALE="en"
 
 
-# --- Configuration ---
+# --- 配置 ---
 if [ -z "${HOME:-}" ]; then
     echo -e "\033[1;31mFUCK!\033[0m \033[0;31mYour HOME variable isn't set. I don't know where to install this shit. Set it yourself (e.g., export HOME=/root).\033[0m" >&2
     exit 1
@@ -51,16 +51,16 @@ readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
 
-fi  # End of readonly constants guard
+fi  # readonly 常量守卫结束
 
 
-# --- Core Logic (Embedded as a string) ---
+# --- 核心逻辑（嵌入为字符串）---
 read -r -d '' CORE_LOGIC <<'EOF' || true
 
-# --- Begin Core Logic for fuckits ---
+# --- fuckits 核心逻辑开始 ---
 
-# --- Color Definitions ---
-# Only define colors if they haven't been defined yet (for temp mode)
+# --- 颜色定义 ---
+# 仅在尚未定义时定义颜色（用于临时模式）
 if [ -z "${C_RESET:-}" ]; then
     readonly C_RESET='\033[0m'
     readonly C_RED_BOLD='\033[1;31m'
@@ -94,7 +94,7 @@ if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
     readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
 fi
 
-# --- Secure Config Validation ---
+# --- 安全配置验证 ---
 # Validates config file content before sourcing to prevent code injection
 # Arguments: $1 - file path to validate
 # Returns: 0 if safe, 1 if unsafe or error
@@ -194,7 +194,7 @@ _fuck_safe_source_config() {
     fi
 }
 
-# --- Load User Configuration (with validation) ---
+# --- 加载用户配置（带验证）---
 # Now that validation functions are defined, safely load the config
 _fuck_safe_source_config "$CONFIG_FILE"
 
@@ -218,7 +218,7 @@ _installer_detect_profile() {
     fi
 }
 
-# --- System Information Collection ---
+# --- 系统信息收集 ---
 # Cache file for static system information (persisted across runs)
 # Only define if not already set (prevents read-only variable errors)
 if [ -z "${FUCK_SYSINFO_CACHE_FILE:-}" ]; then
@@ -905,7 +905,7 @@ _fuck_spinner() {
 }
 
 # Detects potentially dangerous commands and prints a warning
-# --- Security Detection Engine (Phase 2) ---
+# --- 安全检测引擎（第二阶段）---
 
 # Block-level security rules (highest severity - execution denied)
 # Format: 'pattern|||reason'
@@ -1067,6 +1067,11 @@ _fuck_security_match_rule() {
     local table="$2"
     local -a rules=()
 
+    # SECURITY NOTE: This eval is SAFE because:
+    # - $table only receives hardcoded internal array names from callers within this script
+    # - Valid values: _FUCK_SECURITY_BLOCK_RULES, _FUCK_SECURITY_CHALLENGE_RULES, _FUCK_SECURITY_WARN_RULES
+    # - No user input can reach this variable; it's purely for dynamic array name resolution
+    # - This pattern is a standard Bash idiom for indirect array access (Bash 3.x compatible)
     eval "rules=(\"\${${table}[@]}\")"
 
     local rule pattern reason
@@ -1488,6 +1493,24 @@ _fuck_execute_prompt() {
     fi
 
     if [ "$should_exec" = "true" ]; then
+        # SECURITY NOTE: eval 执行 AI 生成命令的安全措施说明
+        # =====================================================
+        #
+        # 现有保护层：
+        # 1. 服务端清洗 (sanitizeCommand): 提取代码块、移除 markdown fences/shebang/注释行
+        # 2. 本地安全引擎: 21 条正则规则 (8 block + 9 challenge + 4 warn) 扫描危险模式
+        # 3. Block 级命令 (rm -rf /, fork bombs 等) 在此之前已被拒绝
+        # 4. Challenge 级命令需要用户输入确认短语
+        # 5. 用户确认提示: 除非 FUCK_AUTO_EXEC=true，否则需手动批准
+        #
+        # ⚠️ 已知限制（正则引擎无法完全覆盖）：
+        # - 复杂命令链: 嵌套的 && / || / | 可能绕过单一模式匹配
+        # - 命令替换: $(...) 和 `...` 内的嵌套命令难以静态分析
+        # - 变量展开: 间接执行 (如 $cmd) 无法在执行前确定内容
+        # - 编码绕过: base64/hex 编码的 payload 可能逃逸检测
+        #
+        # 设计理念: 安全引擎是"减速带"而非"防弹墙"，最终安全依赖用户审查
+        # The $response variable has already passed _fuck_security_handle_decision() above
         eval "$response"
         local exit_code=$?
         if [ $exit_code -ne 0 ]; then
@@ -1516,10 +1539,10 @@ _fuck_define_aliases() {
 
 _fuck_define_aliases
 
-# --- End Core Logic ---
+# --- 核心逻辑结束 ---
 EOF
 
-# --- End of Core Logic Heredoc ---
+# --- 核心逻辑 Heredoc 结束 ---
 
 # Helper to materialize the embedded core logic into a file (used for install/temp execution)
 _fuck_write_core() {
@@ -1538,7 +1561,7 @@ _fuck_source_core() {
 }
 
 
-# --- Installer Functions (Run by the outer script) ---
+# --- 安装器函数（由外层脚本运行）---
 
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
@@ -1649,7 +1672,7 @@ CFG
 }
 
 
-# --- Main Script Entrypoint ---
+# --- 脚本主入口 ---
 
 # If being sourced for testing, load core logic and skip entrypoint
 if [ -n "${BATS_TEST_DIRNAME:-}" ] || [ -n "${BATS_TEST_FILENAME:-}" ]; then
