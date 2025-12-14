@@ -111,6 +111,19 @@ _fuck_validate_config_file() {
     local line_num=0
     local line
 
+    # 预定义正则表达式变量（zsh 兼容性：变量形式避免特殊字符解析问题）
+    local re_cmd_sub='\$\('
+    local re_backtick='`'
+    local re_arith='\$\(\('
+    local re_semi=';'
+    local re_and='&&'
+    local re_or='\|\|'
+    local re_pipe='\|'
+    local re_gt='>'
+    local re_lt='<'
+    local re_amp='&'
+    local re_esc='\\\$'
+
     while IFS= read -r line || [ -n "$line" ]; do
         line_num=$((line_num + 1))
 
@@ -126,17 +139,17 @@ _fuck_validate_config_file() {
 
         # 检查危险的 shell 元字符和命令替换
         # 拒绝：$(), ``, $((), ;, &&, ||, | (管道), >, <, &, 换行转义
-        if [[ "$line" =~ \$\( ]] || \
-           [[ "$line" =~ \` ]] || \
-           [[ "$line" =~ \$\(\( ]] || \
-           [[ "$line" =~ \; ]] || \
-           [[ "$line" =~ \&\& ]] || \
-           [[ "$line" =~ \|\| ]] || \
-           [[ "$line" =~ \| ]] || \
-           [[ "$line" =~ \> ]] || \
-           [[ "$line" =~ \< ]] || \
-           [[ "$line" =~ \& ]] || \
-           [[ "$line" =~ \\\$ ]]; then
+        if [[ "$line" =~ $re_cmd_sub ]] || \
+           [[ "$line" =~ $re_backtick ]] || \
+           [[ "$line" =~ $re_arith ]] || \
+           [[ "$line" =~ $re_semi ]] || \
+           [[ "$line" =~ $re_and ]] || \
+           [[ "$line" =~ $re_or ]] || \
+           [[ "$line" =~ $re_pipe ]] || \
+           [[ "$line" =~ $re_gt ]] || \
+           [[ "$line" =~ $re_lt ]] || \
+           [[ "$line" =~ $re_amp ]] || \
+           [[ "$line" =~ $re_esc ]]; then
             _fuck_debug "配置验证失败，第 $line_num 行：检测到危险元字符"
             echo -e "$FUCK ${C_RED}配置文件不安全：第 $line_num 行包含危险的 shell 元字符${C_RESET}" >&2
             return 1
