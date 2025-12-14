@@ -88,14 +88,102 @@ if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}"
     fi
 fi
 
-# Load user configuration if it exists
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-fi
+# Note: Config loading is done AFTER validation functions are defined (see below)
 
 if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
     readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
 fi
+
+# --- Secure Config Validation ---
+# Validates config file content before sourcing to prevent code injection
+# Arguments: $1 - file path to validate
+# Returns: 0 if safe, 1 if unsafe or error
+_fuck_validate_config_file() {
+    local file="$1"
+
+    # File must exist and be readable
+    if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+        return 1
+    fi
+
+    # Check file permissions - should be owned by current user
+    if [ "$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file" 2>/dev/null)" != "$(id -u)" ]; then
+        echo -e "$FUCK ${C_RED}Config file not owned by current user, refusing to source.${C_RESET}" >&2
+        return 1
+    fi
+
+    local line_num=0
+    local line
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        line_num=$((line_num + 1))
+
+        # Skip empty lines
+        if [ -z "$line" ] || [[ "$line" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # Skip comment lines (# at start, optionally with leading whitespace)
+        if [[ "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+
+        # Check for dangerous shell metacharacters and command substitution
+        # Reject: $(), ``, $((), ;, &&, ||, | (pipe), >, <, &, newline escapes
+        if [[ "$line" =~ \$\( ]] || \
+           [[ "$line" =~ \` ]] || \
+           [[ "$line" =~ \$\(\( ]] || \
+           [[ "$line" =~ \; ]] || \
+           [[ "$line" =~ \&\& ]] || \
+           [[ "$line" =~ \|\| ]] || \
+           [[ "$line" =~ \| ]] || \
+           [[ "$line" =~ \> ]] || \
+           [[ "$line" =~ \< ]] || \
+           [[ "$line" =~ \& ]] || \
+           [[ "$line" =~ \\\$ ]]; then
+            _fuck_debug "Config validation failed at line $line_num: dangerous metacharacter detected"
+            echo -e "$FUCK ${C_RED}Unsafe config file: dangerous shell metacharacter at line $line_num${C_RESET}" >&2
+            return 1
+        fi
+
+        # Only allow: export FUCK_*=... or FUCK_*=... (with optional whitespace)
+        # Also allow: export FUCKITS_LOCALE=...
+        if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?(FUCK_[A-Z_]+|FUCKITS_LOCALE)= ]]; then
+            continue
+        fi
+
+        # Reject anything else
+        _fuck_debug "Config validation failed at line $line_num: unrecognized pattern"
+        echo -e "$FUCK ${C_RED}Unsafe config file: unrecognized pattern at line $line_num${C_RESET}" >&2
+        return 1
+    done < "$file"
+
+    return 0
+}
+
+# Safely source a config file after validation
+# Arguments: $1 - file path to source
+# Returns: 0 if sourced successfully, 1 if validation failed or file doesn't exist
+_fuck_safe_source_config() {
+    local file="$1"
+
+    if [ ! -f "$file" ]; then
+        return 0  # No file is fine
+    fi
+
+    if _fuck_validate_config_file "$file"; then
+        # shellcheck disable=SC1090
+        source "$file"
+        return $?
+    else
+        echo -e "${C_YELLOW}Config file validation failed, skipping: $file${C_RESET}" >&2
+        return 1
+    fi
+}
+
+# --- Load User Configuration (with validation) ---
+# Now that validation functions are defined, safely load the config
+_fuck_safe_source_config "$CONFIG_FILE"
 
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
@@ -836,6 +924,17 @@ if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES+x}" ] || [[ ${#_FUCK_SECURITY_CHALLENG
         '\b(sh|bash|env)\s+-c\b|||Nested shell invocation through -c'
         '\bpython[0-9.]*\s+-c\b|||Inline interpreter execution via -c'
         '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*/(etc|boot|sys|proc|dev)\b|||Operation touches critical system paths'
+        '\bperl\s+-e\b|||Inline Perl execution via -e'
+        '\bruby\s+-e\b|||Inline Ruby execution via -e'
+        '\bnode\s+-e\b|||Inline Node.js execution via -e'
+        '\bphp\s+-r\b|||Inline PHP execution via -r'
+        'base64[^|]*\|\s*(bash|sh|eval)|||Base64 encoded command execution'
+        '\bxargs\b.*(-I|-i|{}).*\b(sh|bash|rm|chmod)\b|||Command execution via xargs'
+        '\bfind\b[^|;]*-exec\b|||Command execution via find -exec'
+        '\b(awk|gawk|nawk|mawk)\b[^|;]*system\s*\(|||Indirect command execution via awk system()'
+        '\bprintf\b.*\\\\x[0-9a-fA-F]|||Potential hex-encoded command injection'
+        '\$\{[^}]*#\}|||Parameter expansion that may alter command'
+        'echo\s+[^|]*\|\s*(bash|sh|eval)|||Echo pipeline to shell execution'
     )
 fi
 

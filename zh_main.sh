@@ -88,10 +88,98 @@ if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}"
     fi
 fi
 
-# 如果存在配置文件则加载
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-fi
+# 注意：配置文件加载在验证函数定义之后进行（见下方）
+
+# --- 安全配置验证 ---
+# 在 source 配置文件前验证其内容，防止代码注入
+# 参数：$1 - 要验证的文件路径
+# 返回：0 如果安全，1 如果不安全或出错
+_fuck_validate_config_file() {
+    local file="$1"
+
+    # 文件必须存在且可读
+    if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+        return 1
+    fi
+
+    # 检查文件权限 - 必须由当前用户拥有
+    if [ "$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file" 2>/dev/null)" != "$(id -u)" ]; then
+        echo -e "$FUCK ${C_RED}配置文件不属于当前用户，拒绝加载。${C_RESET}" >&2
+        return 1
+    fi
+
+    local line_num=0
+    local line
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        line_num=$((line_num + 1))
+
+        # 跳过空行
+        if [ -z "$line" ] || [[ "$line" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # 跳过注释行（以 # 开头，可有前导空白）
+        if [[ "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+
+        # 检查危险的 shell 元字符和命令替换
+        # 拒绝：$(), ``, $((), ;, &&, ||, | (管道), >, <, &, 换行转义
+        if [[ "$line" =~ \$\( ]] || \
+           [[ "$line" =~ \` ]] || \
+           [[ "$line" =~ \$\(\( ]] || \
+           [[ "$line" =~ \; ]] || \
+           [[ "$line" =~ \&\& ]] || \
+           [[ "$line" =~ \|\| ]] || \
+           [[ "$line" =~ \| ]] || \
+           [[ "$line" =~ \> ]] || \
+           [[ "$line" =~ \< ]] || \
+           [[ "$line" =~ \& ]] || \
+           [[ "$line" =~ \\\$ ]]; then
+            _fuck_debug "配置验证失败，第 $line_num 行：检测到危险元字符"
+            echo -e "$FUCK ${C_RED}配置文件不安全：第 $line_num 行包含危险的 shell 元字符${C_RESET}" >&2
+            return 1
+        fi
+
+        # 只允许：export FUCK_*=... 或 FUCK_*=...（可有前导空白）
+        # 也允许：export FUCKITS_LOCALE=...
+        if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?(FUCK_[A-Z_]+|FUCKITS_LOCALE)= ]]; then
+            continue
+        fi
+
+        # 拒绝其他任何内容
+        _fuck_debug "配置验证失败，第 $line_num 行：无法识别的模式"
+        echo -e "$FUCK ${C_RED}配置文件不安全：第 $line_num 行包含无法识别的内容${C_RESET}" >&2
+        return 1
+    done < "$file"
+
+    return 0
+}
+
+# 验证后安全地加载配置文件
+# 参数：$1 - 要加载的文件路径
+# 返回：0 如果成功加载，1 如果验证失败或文件不存在
+_fuck_safe_source_config() {
+    local file="$1"
+
+    if [ ! -f "$file" ]; then
+        return 0  # 没有文件也没关系
+    fi
+
+    if _fuck_validate_config_file "$file"; then
+        # shellcheck disable=SC1090
+        source "$file"
+        return $?
+    else
+        echo -e "${C_YELLOW}配置文件验证失败，已跳过加载：$file${C_RESET}" >&2
+        return 1
+    fi
+}
+
+# --- 加载用户配置（带验证）---
+# 验证函数已定义，现在可以安全地加载配置
+_fuck_safe_source_config "$CONFIG_FILE"
 
 if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
     readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/zh"
@@ -830,6 +918,17 @@ if [ -z "${_FUCK_SECURITY_CHALLENGE_RULES:-}" ]; then
         '\b(sh|bash|env)\s+-c\b|||检测到 sh/bash -c 包装命令'
         '\bpython[0-9.]*\s+-c\b|||检测到 python -c 内联脚本'
         '(^|[;&|[:space:]])(cp|mv|rm|chmod|chown|sed|tee|cat)[^;&|]*\b/(etc|boot|sys|proc|dev)\b|||命令操作关键系统路径'
+        '\bperl\s+-e\b|||检测到 perl -e 内联执行'
+        '\bruby\s+-e\b|||检测到 ruby -e 内联执行'
+        '\bnode\s+-e\b|||检测到 node -e 内联执行'
+        '\bphp\s+-r\b|||检测到 php -r 内联执行'
+        'base64[^|]*\|\s*(bash|sh|eval)|||检测到 base64 编码命令执行'
+        '\bxargs\b.*(-I|-i|{}).*\b(sh|bash|rm|chmod)\b|||检测到通过 xargs 执行命令'
+        '\bfind\b[^|;]*-exec\b|||检测到通过 find -exec 执行命令'
+        '\b(awk|gawk|nawk|mawk)\b[^|;]*system\s*\(|||检测到通过 awk system() 间接执行'
+        '\bprintf\b.*\\\\x[0-9a-fA-F]|||检测到可能的十六进制编码命令注入'
+        '\$\{[^}]*#\}|||检测到可能改变命令的参数展开'
+        'echo\s+[^|]*\|\s*(bash|sh|eval)|||检测到 echo 管道到 shell 执行'
     )
 fi
 
