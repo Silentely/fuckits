@@ -115,6 +115,19 @@ _fuck_validate_config_file() {
     local line_num=0
     local line
 
+    # Pre-define regex patterns as variables (zsh compatibility: avoids special character parsing issues)
+    local re_cmd_sub='\$\('
+    local re_backtick='`'
+    local re_arith='\$\(\('
+    local re_semi=';'
+    local re_and='&&'
+    local re_or='\|\|'
+    local re_pipe='\|'
+    local re_gt='>'
+    local re_lt='<'
+    local re_amp='&'
+    local re_esc='\\\$'
+
     while IFS= read -r line || [ -n "$line" ]; do
         line_num=$((line_num + 1))
 
@@ -130,17 +143,17 @@ _fuck_validate_config_file() {
 
         # Check for dangerous shell metacharacters and command substitution
         # Reject: $(), ``, $((), ;, &&, ||, | (pipe), >, <, &, newline escapes
-        if [[ "$line" =~ \$\( ]] || \
-           [[ "$line" =~ \` ]] || \
-           [[ "$line" =~ \$\(\( ]] || \
-           [[ "$line" =~ \; ]] || \
-           [[ "$line" =~ \&\& ]] || \
-           [[ "$line" =~ \|\| ]] || \
-           [[ "$line" =~ \| ]] || \
-           [[ "$line" =~ \> ]] || \
-           [[ "$line" =~ \< ]] || \
-           [[ "$line" =~ \& ]] || \
-           [[ "$line" =~ \\\$ ]]; then
+        if [[ "$line" =~ $re_cmd_sub ]] || \
+           [[ "$line" =~ $re_backtick ]] || \
+           [[ "$line" =~ $re_arith ]] || \
+           [[ "$line" =~ $re_semi ]] || \
+           [[ "$line" =~ $re_and ]] || \
+           [[ "$line" =~ $re_or ]] || \
+           [[ "$line" =~ $re_pipe ]] || \
+           [[ "$line" =~ $re_gt ]] || \
+           [[ "$line" =~ $re_lt ]] || \
+           [[ "$line" =~ $re_amp ]] || \
+           [[ "$line" =~ $re_esc ]]; then
             _fuck_debug "Config validation failed at line $line_num: dangerous metacharacter detected"
             echo -e "$FUCK ${C_RED}Unsafe config file: dangerous shell metacharacter at line $line_num${C_RESET}" >&2
             return 1
