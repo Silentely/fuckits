@@ -52,6 +52,12 @@ read -r -d '' CORE_LOGIC <<'EOF' || true
 
 # --- fuckits 核心逻辑开始 ---
 
+# --- 语言设置 ---
+# 中文版脚本，强制设置语言环境
+if [ -z "${FUCKITS_LOCALE:-}" ]; then
+    readonly FUCKITS_LOCALE="zh"
+fi
+
 # --- 颜色定义 ---
 # 只有在没定义过颜色的情况下才定义 (临时模式用)
 if [ -z "${C_RESET:-}" ]; then
@@ -497,9 +503,35 @@ _fuck_should_use_local_api() {
 _fuck_local_system_prompt() {
     local sysinfo="$1"
     if [ "$FUCKITS_LOCALE" = "zh" ]; then
-        printf '你是一个专业的 shell 脚本生成器。用户会提供他们的系统信息和一个命令。你的任务是返回一个可执行的、原始的 shell 脚本来完成他们的目标。脚本可以是多行的。不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）。只需要原始的脚本内容。用户的系统信息是：%s' "$sysinfo"
+        printf '你是一个专业的 shell 命令生成器。用户会用自然语言描述他们想要完成的任务。你的任务是生成直接可执行的 shell 命令来完成用户的目标。
+
+重要规则：
+1. 用户输入是自然语言描述意图，不是命令参数。例如"列出目录"意思是执行 ls 命令，而不是 ls "列出目录"
+2. 生成直接可执行的命令，不要生成带参数判断的脚本模板（如 if [ $# -eq 0 ]）
+3. 对于简单任务直接返回单条命令，复杂任务可以是多行脚本
+4. 不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）
+
+示例：
+- 用户说"列出目录" → 输出: ls
+- 用户说"显示详细文件列表" → 输出: ls -la
+- 用户说"查找大于10MB的文件" → 输出: find . -type f -size +10M
+
+用户的系统信息是：%s' "$sysinfo"
     else
-        printf 'You are an expert shell script generator. A user will provide their system information and a prompt. Your task is to return a raw, executable shell script that accomplishes their goal. The script can be multi-line. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash). Just the raw script content. The user'"'"'s system info is: %s' "$sysinfo"
+        printf 'You are an expert shell command generator. Users describe tasks in natural language. Your task is to generate directly executable shell commands to accomplish their goals.
+
+Important rules:
+1. User input is natural language intent, NOT command arguments. For example, "list directory" means run ls, not ls "list directory"
+2. Generate directly executable commands, not script templates with parameter handling (like if [ $# -eq 0 ])
+3. For simple tasks return single commands, complex tasks can be multi-line scripts
+4. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash)
+
+Examples:
+- User says "list directory" → Output: ls
+- User says "show detailed file list" → Output: ls -la
+- User says "find files larger than 10MB" → Output: find . -type f -size +10M
+
+The user'"'"'s system info is: %s' "$sysinfo"
     fi
 }
 
@@ -1285,7 +1317,7 @@ _fuck_execute_prompt() {
         exit_code=$?
     else
         local spinner_label="${C_YELLOW}思考中💭 ${C_RESET}"
-        printf '%s' "$spinner_label"
+        printf '%b' "$spinner_label"
         response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout" "$spinner_label")
         exit_code=$?
     fi
