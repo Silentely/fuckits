@@ -48,16 +48,18 @@ beforeAll(async () => {
     .reply(200, mockResponses.mockSuccessResponse)
     .persist(); // 持久化 mock，允许多次调用
 
-  // 读取 worker.js 内容
-  const workerScript = readFileSync('./worker.js', 'utf-8');
-
   // 初始化 Miniflare
   mf = new Miniflare({
-    // Worker 脚本内容
-    script: workerScript,
+    // Worker 脚本路径（支持 ES 模块 import/export）
+    scriptPath: './worker.js',
 
     // 启用 ES 模块格式
     modules: true,
+
+    // 模块规则：告诉 Miniflare 所有 .js 文件都是 ES 模块
+    modulesRules: [
+      { type: 'ESModule', include: ['**/*.js'], fallthrough: true }
+    ],
 
     // 模拟 KV 命名空间
     kvNamespaces: ['QUOTA_KV'],
