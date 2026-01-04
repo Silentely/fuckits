@@ -13,8 +13,6 @@
 import { Miniflare } from 'miniflare';
 import { beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
 // 全局 Miniflare 实例
 let mf;
@@ -26,7 +24,9 @@ let mockAgent;
  * 测试套件开始前初始化 Miniflare
  */
 beforeAll(async () => {
-  // 动态导入 Miniflare 内部使用的 undici MockAgent
+  // 注意：必须从 Miniflare 内部导入 MockAgent
+  // Miniflare 会验证 MockAgent 实例类型，直接从 undici 导入会失败
+  // 这是 Miniflare 的设计限制，不是最佳实践但是必需的
   const { MockAgent } = await import('miniflare/node_modules/undici/index.js');
 
   // 读取 mock 响应数据
@@ -120,7 +120,7 @@ export async function makeRequest(method, path, options = {}) {
 }
 
 /**
- * 创建 POST 请求
+ * 创建 POST 请求（自动处理 JSON）
  * @param {string} path - 请求路径
  * @param {object} body - 请求体
  * @param {object} headers - 请求头
@@ -133,6 +133,20 @@ export async function post(path, body, headers = {}) {
       ...headers,
     },
     body: JSON.stringify(body),
+  });
+}
+
+/**
+ * 创建原始 POST 请求（不自动处理 JSON，用于边界测试）
+ * @param {string} path - 请求路径
+ * @param {string|object} body - 原始请求体
+ * @param {object} headers - 请求头（不会自动添加 Content-Type）
+ * @returns {Promise<Response>} 响应对象
+ */
+export async function postRaw(path, body, headers = {}) {
+  return await makeRequest('POST', path, {
+    headers,
+    body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 }
 

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { get, post, options } from '../../helpers/test-env.js';
+import { get, post, postRaw, options } from '../../helpers/test-env.js';
 
 describe('请求处理系统', () => {
   describe('GET 请求处理', () => {
@@ -133,11 +133,12 @@ describe('请求处理系统', () => {
 
   describe('错误处理', () => {
     it('无效的 JSON 应该返回 400', async () => {
-      const response = await post('/', 'invalid json', {
+      // 使用 postRaw 发送真正的无效 JSON
+      const response = await postRaw('/', 'invalid json {not: valid}', {
         'Content-Type': 'application/json',
       });
 
-      // 注意：这个测试可能需要根据实际 Worker 行为调整
+      // Worker 应该拒绝无效的 JSON
       expect([400, 500]).toContain(response.status);
     });
 

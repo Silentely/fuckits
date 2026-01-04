@@ -1596,11 +1596,14 @@ _install_script() {
     
     # Write the embedded core logic to the main.sh file
     _fuck_write_core "$MAIN_SH"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "$FUCK ${C_RED}Can't write to the file. Check your damn permissions.${C_RESET}" >&2
         return 1
     fi
+
+    # Make main.sh executable
+    chmod +x "$MAIN_SH"
 
     # Create a default config file if it doesn't exist
     if [ ! -f "$CONFIG_FILE" ]; then

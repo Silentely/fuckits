@@ -1586,11 +1586,14 @@ _install_script() {
     
     # 把核心逻辑写进 main.sh
     _fuck_write_core "$MAIN_SH"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "$FUCK ${C_RED}无法写入文件，请检查目录权限。${C_RESET}" >&2
         return 1
     fi
+
+    # Make main.sh executable
+    chmod +x "$MAIN_SH"
 
     # 如果没有配置文件则生成一个示例
     if [ ! -f "$CONFIG_FILE" ]; then

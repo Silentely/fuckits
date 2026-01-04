@@ -9,17 +9,11 @@ load '../helpers/bats-helpers'
 
 # ==================== 测试环境设置 ====================
 
-# 测试使用的临时目录
-TEST_HOME=""
-TEST_INSTALL_DIR=""
-ORIGINAL_HOME=""
-
 setup_file() {
     # 创建临时测试目录
-    TEST_HOME=$(mktemp -d)
-    TEST_INSTALL_DIR="$TEST_HOME/.fuck"
-    ORIGINAL_HOME="$HOME"
-    export TEST_HOME TEST_INSTALL_DIR ORIGINAL_HOME
+    export TEST_HOME=$(mktemp -d)
+    export TEST_INSTALL_DIR="$TEST_HOME/.fuck"
+    export ORIGINAL_HOME="$HOME"
 }
 
 teardown_file() {
@@ -34,6 +28,8 @@ setup() {
     export HOME="$TEST_HOME"
     # 清理可能存在的安装
     rm -rf "$TEST_INSTALL_DIR"
+    # Unset BATS variables to prevent main.sh from detecting test environment
+    unset BATS_TEST_DIRNAME BATS_TEST_FILENAME BATS_TEST_NAME
 }
 
 teardown() {
@@ -45,9 +41,10 @@ teardown() {
 
 # ==================== 安装流程测试 ====================
 
-@test "E2E Install: 脚本应该成功安装到 ~/.fuck 目录" {
-    # 模拟安装（不带参数运行脚本）
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Install: script should install successfully to ~/.fuck directory" {
+    # Simulate installation (run script without arguments)
+    # HOME is already set by setup() function
+    bash ./main.sh <<< ""
 
     # 验证安装目录存在
     [ -d "$TEST_INSTALL_DIR" ]
@@ -59,10 +56,10 @@ teardown() {
     [ -f "$TEST_INSTALL_DIR/config.sh" ]
 }
 
-@test "E2E Install: 配置文件应该有正确的权限 (600)" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Install: config file should have correct permissions (600)" {
+    bash ./main.sh <<< ""
 
-    # 检查配置文件权限
+    # Check config file permissions
     local perms
     if [[ "$OSTYPE" == "darwin"* ]]; then
         perms=$(stat -f '%A' "$TEST_INSTALL_DIR/config.sh")
@@ -73,26 +70,32 @@ teardown() {
     [ "$perms" = "600" ]
 }
 
-@test "E2E Install: main.sh 应该可执行" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Install: main.sh should be executable" {
+    bash ./main.sh <<< ""
 
     # 检查可执行权限
     [ -x "$TEST_INSTALL_DIR/main.sh" ]
 }
 
-@test "E2E Install: 配置文件应该包含必要的变量定义" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Install: config file should contain necessary variable definitions" {
+    bash ./main.sh <<< ""
 
-    # 检查配置文件内容
+    # Check config file content
     grep -q "FUCK_API_ENDPOINT" "$TEST_INSTALL_DIR/config.sh"
 }
 
 # ==================== 临时模式测试 ====================
 
-@test "E2E Temp Mode: 带参数运行不应该安装" {
+@test "E2E Temp Mode: should not install when run with arguments" {
     # 使用临时模式（带参数）
     # 这里我们 mock API 调用，只测试脚本不安装
-    HOME="$TEST_HOME" timeout 5 bash ./main.sh "list files" 2>&1 || true
+    # 跨平台超时：macOS 使用 gtimeout，Linux 使用 timeout
+    local timeout_cmd="timeout"
+    if command -v gtimeout >/dev/null 2>&1; then
+        timeout_cmd="gtimeout"
+    fi
+
+    HOME="$TEST_HOME" $timeout_cmd 5 bash ./main.sh "list files" 2>&1 || true
 
     # 应该不存在安装目录（或只有缓存）
     # 注意：临时模式可能会创建目录但不会完整安装
@@ -101,21 +104,21 @@ teardown() {
 
 # ==================== 配置系统测试 ====================
 
-@test "E2E Config: 配置文件应该能被正确加载" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Config: config file should be loaded correctly" {
+    bash ./main.sh <<< ""
 
-    # 写入测试配置
+    # Write test config
     echo 'export FUCK_API_ENDPOINT="https://test.example.com/"' >> "$TEST_INSTALL_DIR/config.sh"
 
-    # source 脚本并验证配置加载
+    # Source script and verify config loading
     (
         source "$TEST_INSTALL_DIR/config.sh"
         [ "$FUCK_API_ENDPOINT" = "https://test.example.com/" ]
     )
 }
 
-@test "E2E Config: 恶意配置应该被拒绝" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Config: malicious config should be rejected" {
+    bash ./main.sh <<< ""
 
     # 写入恶意配置（命令注入）
     echo 'export FUCK_API_ENDPOINT="$(rm -rf /tmp/evil)"' > "$TEST_INSTALL_DIR/config.sh"
@@ -127,24 +130,24 @@ teardown() {
 
 # ==================== 卸载流程测试 ====================
 
-@test "E2E Uninstall: 卸载应该移除安装目录" {
-    # 先安装
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Uninstall: uninstall should remove installation directory" {
+    # Install first
+    bash ./main.sh <<< ""
     [ -d "$TEST_INSTALL_DIR" ]
 
-    # 执行卸载
-    HOME="$TEST_HOME" bash -c "
+    # Execute uninstall
+    bash -c "
         source '$TEST_INSTALL_DIR/main.sh'
         _uninstall_script <<< 'y'
     " 2>&1 || true
 
-    # 验证安装目录被移除
+    # Verify installation directory was removed
     [ ! -d "$TEST_INSTALL_DIR" ]
 }
 
-@test "E2E Uninstall: 卸载应该从 shell 配置中移除 source 行" {
+@test "E2E Uninstall: uninstall should remove source line from shell config" {
     # 先安装
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+    bash ./main.sh <<< ""
 
     # 检查是否添加了 source 行
     local profile_file=""
@@ -158,7 +161,7 @@ teardown() {
     # 如果有 profile 文件
     if [ -n "$profile_file" ]; then
         # 执行卸载
-        HOME="$TEST_HOME" bash -c "
+        bash -c "
             source '$TEST_INSTALL_DIR/main.sh'
             _uninstall_script <<< 'y'
         " 2>&1 || true
@@ -170,10 +173,10 @@ teardown() {
 
 # ==================== 安全引擎集成测试 ====================
 
-@test "E2E Security: 安全引擎应该在安装后可用" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Security: security engine should be available after installation" {
+    bash ./main.sh <<< ""
 
-    # 验证安全函数可用
+    # Verify security functions are available
     run bash -c "
         source '$TEST_INSTALL_DIR/main.sh'
         type _fuck_security_evaluate_command
@@ -181,8 +184,8 @@ teardown() {
     [ "$status" -eq 0 ]
 }
 
-@test "E2E Security: Block 级别命令应该被阻止" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Security: Block level commands should be blocked" {
+    bash ./main.sh <<< ""
 
     run bash -c "
         export FUCK_SECURITY_MODE='balanced'
@@ -192,8 +195,8 @@ teardown() {
     echo "$output" | grep -q "block"
 }
 
-@test "E2E Security: 安全模式应该能正确切换" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Security: security modes should switch correctly" {
+    bash ./main.sh <<< ""
 
     # 测试 strict 模式
     run bash -c "
@@ -207,48 +210,48 @@ teardown() {
 
 # ==================== 系统信息收集测试 ====================
 
-@test "E2E Sysinfo: 系统信息收集函数应该返回有效数据" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Sysinfo: system info collection function should return valid data" {
+    bash ./main.sh <<< ""
 
     run bash -c "
         source '$TEST_INSTALL_DIR/main.sh'
         _fuck_collect_sysinfo_string
     "
     [ "$status" -eq 0 ]
-    # 应该包含 OS 信息
+    # Should contain OS information
     echo "$output" | grep -qE "OS=|SHELL="
 }
 
-@test "E2E Sysinfo: 系统信息缓存应该工作" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Sysinfo: system info cache should work" {
+    bash ./main.sh <<< ""
 
-    # 第一次调用
+    # Call functions that trigger cache creation
     run bash -c "
         source '$TEST_INSTALL_DIR/main.sh'
-        _fuck_collect_sysinfo_string
-        _fuck_collect_sysinfo_string
+        _fuck_detect_distro
+        _fuck_persist_static_cache
     "
     [ "$status" -eq 0 ]
 
-    # 检查缓存文件存在
-    [ -f "$TEST_INSTALL_DIR/sysinfo.cache" ] || [ -f "$TEST_HOME/.fuck/sysinfo.cache" ]
+    # Check cache file exists (note: filename has leading dot)
+    [ -f "$TEST_INSTALL_DIR/.sysinfo.cache" ]
 }
 
 # ==================== 别名系统测试 ====================
 
-@test "E2E Alias: 默认别名应该被正确设置" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Alias: default alias should be set correctly" {
+    bash ./main.sh <<< ""
 
-    # 验证别名设置函数存在
+    # Verify alias function exists
     run bash -c "
         source '$TEST_INSTALL_DIR/main.sh'
-        type _fuck_setup_alias
+        type _fuck_define_aliases
     "
     [ "$status" -eq 0 ]
 }
 
-@test "E2E Alias: 自定义别名应该能够配置" {
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Alias: custom alias should be configurable" {
+    bash ./main.sh <<< ""
 
     # 添加自定义别名配置
     echo 'export FUCK_ALIAS="pls"' >> "$TEST_INSTALL_DIR/config.sh"
@@ -263,26 +266,26 @@ teardown() {
 
 # ==================== 重复安装测试 ====================
 
-@test "E2E Reinstall: 重复安装应该能正常工作" {
-    # 第一次安装
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+@test "E2E Reinstall: repeated installation should work normally" {
+    # First installation
+    bash ./main.sh <<< ""
     [ -d "$TEST_INSTALL_DIR" ]
 
-    # 第二次安装（应该覆盖或正常处理）
-    HOME="$TEST_HOME" bash ./main.sh <<< "" 2>&1 || true
+    # Second installation (should overwrite or handle normally)
+    bash ./main.sh <<< "" 2>&1 || true
     [ -d "$TEST_INSTALL_DIR" ]
     [ -f "$TEST_INSTALL_DIR/main.sh" ]
 }
 
-@test "E2E Reinstall: 重复安装应该保留用户配置" {
+@test "E2E Reinstall: repeated installation should preserve user config" {
     # 第一次安装
-    HOME="$TEST_HOME" bash ./main.sh <<< ""
+    bash ./main.sh <<< ""
 
     # 添加用户自定义配置
     echo 'export FUCK_CUSTOM_VAR="user_value"' >> "$TEST_INSTALL_DIR/config.sh"
 
     # 第二次安装
-    HOME="$TEST_HOME" bash ./main.sh <<< "" 2>&1 || true
+    bash ./main.sh <<< "" 2>&1 || true
 
     # 验证用户配置被保留
     grep -q "FUCK_CUSTOM_VAR" "$TEST_INSTALL_DIR/config.sh"
@@ -290,13 +293,13 @@ teardown() {
 
 # ==================== 错误处理测试 ====================
 
-@test "E2E Error: HOME 未设置时应该报错" {
+@test "E2E Error: should error when HOME is not set" {
     run bash -c "unset HOME; bash ./main.sh" 2>&1
-    # 应该有错误信息
+    # Should have error message
     echo "$output" | grep -qi "HOME\|variable\|set"
 }
 
-@test "E2E Error: 安装目录无法创建时应该报错" {
+@test "E2E Error: should error when install directory cannot be created" {
     # 创建一个只读目录
     local readonly_dir="$TEST_HOME/readonly"
     mkdir -p "$readonly_dir"
