@@ -4,6 +4,11 @@
   <strong>English</strong> | <a href="./README.md">简体中文</a>
 </p>
 
+<div align="center">
+<img src="https://img.shields.io/badge/Built%20with-Pollinations-8a2be2?style=for-the-badge&logo=data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%20124%20124%22%3E%3Ccircle%20cx%3D%2262%22%20cy%3D%2262%22%20r%3D%2262%22%20fill%3D%22%23ffffff%22/%3E%3C/svg%3E&logoColor=white&labelColor=6a0dad">
+<br>
+</div>
+
 ## 🧩 Origin & Fork Notes
 
 This repository (maintained by Silentely) is a derivative of [faithleysath/fuckits](https://github.com/faithleysath/fuckits). Huge thanks to the original author and contributors — please support the upstream project with stars/issues. Our fork keeps the spirit of the original CLI while expanding the deployment story and quota controls.
