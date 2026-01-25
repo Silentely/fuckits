@@ -194,6 +194,39 @@ _fuck_safe_source_config() {
 # 验证函数已定义，现在可以安全地加载配置
 _fuck_safe_source_config "$CONFIG_FILE"
 
+# --- 审计日志 ---
+# 记录命令执行到审计日志文件
+# 参数: $1 - 事件类型 (如 "EXEC", "BLOCK", "ABORT"), $2 - 命令, $3 - 退出码（可选）
+_fuck_audit_log() {
+    # 检查是否启用审计日志
+    if [ "${FUCK_AUDIT_LOG:-false}" != "true" ]; then
+        return 0
+    fi
+    
+    local event="$1"
+    local command="$2"
+    local exit_code="${3:--}"
+    local timestamp
+    timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')
+    local log_file="${FUCK_AUDIT_LOG_FILE:-$INSTALL_DIR/.audit.log}"
+    
+    # 确保日志目录存在
+    mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
+    
+    # 清理命令用于日志记录（移除换行符，限制长度）
+    local sanitized_cmd
+    sanitized_cmd=$(echo "$command" | tr '\n' ' ' | head -c 200)
+    if [ ${#command} -gt 200 ]; then
+        sanitized_cmd="${sanitized_cmd}..."
+    fi
+    
+    # 写入日志文件（格式：时间戳|用户|事件|退出码|命令）
+    echo "${timestamp}|${USER:-unknown}|${event}|${exit_code}|${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
+    
+    # 保护日志文件
+    chmod 600 "$log_file" 2>/dev/null || true
+}
+
 if [ -z "${DEFAULT_API_ENDPOINT+x}" ]; then
     readonly DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/zh"
 fi
@@ -1157,6 +1190,7 @@ _fuck_security_handle_decision() {
             return 1
             ;;
         block)
+            _fuck_audit_log "BLOCK" "$command"
             _fuck_security_block_message "${reason:-命令被安全策略阻止}"
             return 1
             ;;
@@ -1323,6 +1357,20 @@ _fuck_ensure_config_exists() {
 
 # 禁用内置 fuck 别名
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
+
+# --- 安全设置 ---
+# 安全模式：strict（严格）, balanced（均衡，默认）, off（关闭）
+# export FUCK_SECURITY_MODE="balanced"
+
+# 白名单可信命令模式（逗号分隔）
+# export FUCK_SECURITY_WHITELIST="docker rm -f,rm -rf /tmp/safe-dir"
+
+# --- 审计日志 ---
+# 启用审计日志记录所有执行的命令
+# export FUCK_AUDIT_LOG=true
+
+# 自定义审计日志文件路径（默认：~/.fuck/.audit.log）
+# export FUCK_AUDIT_LOG_FILE="$HOME/.fuck/.audit.log"
 CFG
 
     _fuck_seed_config_placeholders
@@ -1484,6 +1532,7 @@ _fuck_execute_prompt() {
                     ;;
                 "n"|"no"|"否")
                     should_exec=false
+                    _fuck_audit_log "ABORT" "$response"
                     echo -e "${C_YELLOW}❌ 已取消。${C_RESET}" >&2
                     break
                     ;;
@@ -1497,6 +1546,10 @@ _fuck_execute_prompt() {
     if [ "$should_exec" = "true" ]; then
         eval "$response"
         local exit_code=$?
+        
+        # 记录命令执行
+        _fuck_audit_log "EXEC" "$response" "$exit_code"
+        
         if [ $exit_code -ne 0 ]; then
             echo -e "${C_RED_BOLD}错误！${C_RED}命令执行失败，退出码 $exit_code。${C_RESET}" >&2
         fi
