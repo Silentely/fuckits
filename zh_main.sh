@@ -20,6 +20,12 @@
 
 set -euo pipefail
 
+# --- 防止 readonly 变量重复定义 ---
+# 此守卫允许脚本被多次 source（例如在测试中）
+if [[ -z "${FUCKITS_ZH_CONSTANTS_DEFINED:-}" ]]; then
+    # 标记常量已定义（export 使子 shell 可见）
+    export FUCKITS_ZH_CONSTANTS_DEFINED=1
+
 # --- 颜色定义 ---
 readonly C_RESET='\033[0m'
 readonly C_RED_BOLD='\033[1;31m'
@@ -45,6 +51,8 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+
+fi  # readonly 常量守卫结束
 
 
 # --- 核心逻辑 (塞进一个字符串里) ---
@@ -1596,13 +1604,6 @@ _fuck_source_core() {
     source "$tmp_core"
     rm -f "$tmp_core"
 }
-
-# 将内嵌核心逻辑写入指定文件（安装与临时执行会用到）
-_fuck_write_core() {
-    local target="$1"
-    printf '%s\n' "$CORE_LOGIC" > "$target"
-}
-
 
 # --- 安装函数 (由外部脚本运行) ---
 
