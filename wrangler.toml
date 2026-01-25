@@ -9,3 +9,12 @@ custom_domain = true
 [vars]
 OPENAI_API_MODEL = "gpt-5-nano"
 OPENAI_API_BASE = "https://api.openai.com/v1"
+
+# Environment-specific configurations
+[env.staging]
+name = "fuckits-staging"
+vars = { OPENAI_API_MODEL = "gpt-3.5-turbo" }
+
+[env.production]
+name = "fuckits-production"
+vars = { OPENAI_API_MODEL = "gpt-5-nano" }

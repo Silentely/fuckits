@@ -198,6 +198,39 @@ _fuck_safe_source_config() {
 # Now that validation functions are defined, safely load the config
 _fuck_safe_source_config "$CONFIG_FILE"
 
+# --- Audit Logging ---
+# Logs command execution to audit log file
+# Arguments: $1 - event (e.g., "EXEC", "BLOCK", "ABORT"), $2 - command, $3 - exit code (optional)
+_fuck_audit_log() {
+    # Check if audit logging is enabled
+    if [ "${FUCK_AUDIT_LOG:-false}" != "true" ]; then
+        return 0
+    fi
+    
+    local event="$1"
+    local command="$2"
+    local exit_code="${3:--}"
+    local timestamp
+    timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')
+    local log_file="${FUCK_AUDIT_LOG_FILE:-$INSTALL_DIR/.audit.log}"
+    
+    # Ensure log directory exists
+    mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
+    
+    # Sanitize command for logging (remove newlines, limit length)
+    local sanitized_cmd
+    sanitized_cmd=$(echo "$command" | tr '\n' ' ' | head -c 200)
+    if [ ${#command} -gt 200 ]; then
+        sanitized_cmd="${sanitized_cmd}..."
+    fi
+    
+    # Write to log file (format: timestamp|user|event|exit_code|command)
+    echo "${timestamp}|${USER:-unknown}|${event}|${exit_code}|${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
+    
+    # Secure the log file
+    chmod 600 "$log_file" 2>/dev/null || true
+}
+
 # Helper to find the user's shell profile file
 _installer_detect_profile() {
     if [ -n "${SHELL:-}" ] && echo "$SHELL" | grep -q "zsh"; then
@@ -1169,6 +1202,7 @@ _fuck_security_handle_decision() {
             return 1
             ;;
         block)
+            _fuck_audit_log "BLOCK" "$command"
             _fuck_security_block_message "${reason:-Command blocked by policy}"
             return 1
             ;;
@@ -1335,6 +1369,20 @@ _fuck_ensure_config_exists() {
 
 # Disable the built-in 'fuck' alias
 # export FUCK_DISABLE_DEFAULT_ALIAS=false
+
+# --- Security Settings ---
+# Security mode: strict, balanced (default), or off
+# export FUCK_SECURITY_MODE="balanced"
+
+# Whitelist trusted command patterns (comma-separated)
+# export FUCK_SECURITY_WHITELIST="docker rm -f,rm -rf /tmp/safe-dir"
+
+# --- Audit Logging ---
+# Enable audit logging of all executed commands
+# export FUCK_AUDIT_LOG=true
+
+# Custom audit log file path (default: ~/.fuck/.audit.log)
+# export FUCK_AUDIT_LOG_FILE="$HOME/.fuck/.audit.log"
 CFG
 
     _fuck_seed_config_placeholders
@@ -1482,6 +1530,7 @@ _fuck_execute_prompt() {
                     ;;
                 "n"|"no")
                     should_exec=false
+                    _fuck_audit_log "ABORT" "$response"
                     echo -e "${C_YELLOW}❌ Aborted.${C_RESET}" >&2
                     break
                     ;;
@@ -1513,6 +1562,10 @@ _fuck_execute_prompt() {
         # The $response variable has already passed _fuck_security_handle_decision() above
         eval "$response"
         local exit_code=$?
+        
+        # Log command execution
+        _fuck_audit_log "EXEC" "$response" "$exit_code"
+        
         if [ $exit_code -ne 0 ]; then
             echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
         fi
