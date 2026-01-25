@@ -20,6 +20,12 @@
 
 set -euo pipefail
 
+# --- 防止 readonly 变量重复定义 ---
+# 此守卫允许脚本被多次 source（例如在测试中）
+if [[ -z "${FUCKITS_ZH_CONSTANTS_DEFINED:-}" ]]; then
+    # 标记常量已定义（export 使子 shell 可见）
+    export FUCKITS_ZH_CONSTANTS_DEFINED=1
+
 # --- 颜色定义 ---
 readonly C_RESET='\033[0m'
 readonly C_RED_BOLD='\033[1;31m'
@@ -46,6 +52,7 @@ readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
 
+fi  # readonly 常量守卫结束
 
 # --- 核心逻辑 (塞进一个字符串里) ---
 read -r -d '' CORE_LOGIC <<'EOF' || true
@@ -213,15 +220,16 @@ _fuck_audit_log() {
     # 确保日志目录存在
     mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
     
-    # 清理命令用于日志记录（移除换行符，限制长度）
+    # 清理命令用于日志记录（规范换行、转义分隔符、限制长度）
     local sanitized_cmd
-    sanitized_cmd=$(echo "$command" | tr '\n' ' ' | head -c 200)
-    if [ ${#command} -gt 200 ]; then
+    local raw_len=${#command}
+    sanitized_cmd=$(printf '%s' "$command" | tr '\r\n' '  ' | sed 's/|/\\|/g' | head -c 200)
+    if [ "$raw_len" -gt 200 ]; then
         sanitized_cmd="${sanitized_cmd}..."
     fi
     
     # 写入日志文件（格式：时间戳|用户|事件|退出码|命令）
-    echo "${timestamp}|${USER:-unknown}|${event}|${exit_code}|${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
+    printf '%s|%s|%s|%s|%s\n' "${timestamp}" "${USER:-unknown}" "${event}" "${exit_code}" "${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
     
     # 保护日志文件
     chmod 600 "$log_file" 2>/dev/null || true
@@ -1596,13 +1604,6 @@ _fuck_source_core() {
     source "$tmp_core"
     rm -f "$tmp_core"
 }
-
-# 将内嵌核心逻辑写入指定文件（安装与临时执行会用到）
-_fuck_write_core() {
-    local target="$1"
-    printf '%s\n' "$CORE_LOGIC" > "$target"
-}
-
 
 # --- 安装函数 (由外部脚本运行) ---
 

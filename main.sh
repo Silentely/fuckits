@@ -217,15 +217,16 @@ _fuck_audit_log() {
     # Ensure log directory exists
     mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
     
-    # Sanitize command for logging (remove newlines, limit length)
+    # Sanitize command for logging (normalize newlines, escape delimiter, limit length)
     local sanitized_cmd
-    sanitized_cmd=$(echo "$command" | tr '\n' ' ' | head -c 200)
-    if [ ${#command} -gt 200 ]; then
+    local raw_len=${#command}
+    sanitized_cmd=$(printf '%s' "$command" | tr '\r\n' '  ' | sed 's/|/\\|/g' | head -c 200)
+    if [ "$raw_len" -gt 200 ]; then
         sanitized_cmd="${sanitized_cmd}..."
     fi
     
     # Write to log file (format: timestamp|user|event|exit_code|command)
-    echo "${timestamp}|${USER:-unknown}|${event}|${exit_code}|${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
+    printf '%s|%s|%s|%s|%s\n' "${timestamp}" "${USER:-unknown}" "${event}" "${exit_code}" "${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
     
     # Secure the log file
     chmod 600 "$log_file" 2>/dev/null || true
