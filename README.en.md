@@ -179,7 +179,7 @@ After deployment, map `fuckits.25500552.xyz` to this Worker via the Works (Cloud
 curl -sS https://fuckits.25500552.xyz/health | jq
 ```
 
-You should see `status: "ok"` and `hasApiKey: true`. If not, double-check the domain binding and OpenAI secrets.
+You should see `status: "ok"` and `services.apiKey: true`. The response also includes `stats.totalCalls` and `stats.uniqueIPs` for daily usage statistics. If not, double-check the domain binding and OpenAI secrets.
 
 > [!TIP]
 > Forking the repo? Swap the domain and regenerate `FUCK_API_ENDPOINT` in your config before sharing binaries.

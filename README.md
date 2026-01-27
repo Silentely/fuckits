@@ -196,7 +196,7 @@ npm run one-click-deploy
 curl -sS https://fuckits.25500552.xyz/health | jq
 ```
 
-若返回 `status: "ok"` 且 `hasApiKey: true`，说明 Worker 能正确调用 OpenAI。否则请检查自定义域与 secret 设置。
+若返回 `status: "ok"` 且 `services.apiKey: true`，说明 Worker 能正确调用 OpenAI。健康检查还包含 `stats.totalCalls` 和 `stats.uniqueIPs` 显示当日使用统计。否则请检查自定义域与 secret 设置。
 
 > [!TIP]
 > Fork 本项目时，自定义域名和 `FUCK_API_ENDPOINT` 也要替换成你自己的值。
@@ -210,7 +210,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 ### 部署后自检
 
 1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。
-2. 运行 `curl -sS https://<你的域>/health | jq`，确认 Status 与 `hasApiKey` 返回正常。
+2. 运行 `curl -sS https://<你的域>/health | jq`，确认 `status: "ok"` 与 `services.apiKey: true` 返回正常。
 3. 使用 `curl -sS https://<你的域> | bash -s "echo ok"` 以及 `/zh` 版本做一次真实 round-trip。
 4. 最后再运行 `fuck config`，把本地 CLI 的 `FUCK_API_ENDPOINT` 更新为新域。
 
