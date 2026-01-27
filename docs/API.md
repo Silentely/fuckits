@@ -219,9 +219,11 @@ Health check endpoint for monitoring and deployment verification.
 - `config`: Current worker configuration
   - `model`: AI model in use
   - `sharedLimit`: Daily quota limit for shared demo mode
-- `stats`: Daily usage statistics
-  - `totalCalls`: Total API calls for the current day
-  - `uniqueIPs`: Number of unique client IPs for the current day
+- `stats`: Daily usage statistics (excludes admin bypass requests)
+  - `totalCalls`: Total API calls for the current day (non-admin only)
+  - `uniqueIPs`: Number of unique client IPs for the current day (non-admin only)
+
+> **Note:** Requests using `adminKey` bypass the quota system and are **not** counted in `stats`. This is by design—admin users do not consume shared quota.
 
 **Example:**
 

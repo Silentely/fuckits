@@ -65,9 +65,11 @@ fuckits uses a multi-layered monitoring approach:
 - `config`: Runtime configuration
   - `model`: AI model in use
   - `sharedLimit`: Daily demo quota limit
-- `stats`: Daily usage statistics
-  - `totalCalls`: Total API calls today
-  - `uniqueIPs`: Unique client IPs today
+- `stats`: Daily usage statistics (excludes admin bypass requests)
+  - `totalCalls`: Total API calls today (non-admin only)
+  - `uniqueIPs`: Unique client IPs today (non-admin only)
+
+> **Note:** Requests using `adminKey` bypass the quota system and are **not** counted in `stats`. This is by design—admin users do not consume shared quota.
 
 **Monitoring Checks:**
 

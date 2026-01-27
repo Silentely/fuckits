@@ -125,7 +125,7 @@ npx wrangler deploy
 curl -sS https://fuckits.25500552.xyz/health | jq
 ```
 
-如果返回 `status: ok` 且 `services.apiKey: true`，说明 DNS 与 secret 均已正确配置。响应还包含 `stats.totalCalls` 和 `stats.uniqueIPs` 显示当日使用统计。
+如果返回 `status: ok` 且 `services.apiKey: true`，说明 DNS 与 secret 均已正确配置。响应还包含 `stats.totalCalls` 和 `stats.uniqueIPs` 显示当日使用统计（注意：管理员调用不计入统计）。
 
 > 注意：Custom Domain 仅支持裸域名（`fuckits.25500552.xyz`），不要在 `wrangler.toml` 或 Dashboard 中添加 `*` 或 `/zh`，否则部署会直接报错。`/zh` 路由由 Worker 脚本处理。
 
@@ -344,7 +344,7 @@ Use the health endpoint to verify DNS/SSL propagation:
 curl -sS https://fuckits.25500552.xyz/health | jq
 ```
 
-Expect `status: ok` and `services.apiKey: true`. The response also includes `stats.totalCalls` and `stats.uniqueIPs` for daily usage statistics.
+Expect `status: ok` and `services.apiKey: true`. The response also includes `stats.totalCalls` and `stats.uniqueIPs` for daily usage statistics (note: admin bypass requests are not counted).
 
 > Reminder: Cloudflare Custom Domains must be bare domains only. Do **not** include `*` or `/zh` in `wrangler.toml` or the dashboard; those requests are routed inside the Worker itself.
 
