@@ -177,6 +177,52 @@ function secondsUntilNextUtcMidnight() {
   return Math.ceil((midnight - now.getTime()) / 1000);
 }
 
+/**
+ * 获取当日调用统计信息
+ * @param {object|null} quotaStore - KV 存储或 null
+ * @returns {Promise<{totalCalls: number, uniqueIPs: number}>}
+ */
+async function getDailyStats(quotaStore) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 内存存储统计
+  if (!quotaStore) {
+    if (lastQuotaDate !== today) {
+      return { totalCalls: 0, uniqueIPs: 0 };
+    }
+    let totalCalls = 0;
+    for (const count of sharedUsage.values()) {
+      totalCalls += count;
+    }
+    return { totalCalls, uniqueIPs: sharedUsage.size };
+  }
+
+  // KV 存储统计
+  try {
+    const prefix = `quota:${today}:`;
+    const keys = await quotaStore.list({ prefix });
+    let totalCalls = 0;
+    const uniqueIPs = keys.keys.length;
+
+    // 并行获取所有计数值
+    const counts = await Promise.all(
+      keys.keys.map(async (k) => {
+        const raw = await quotaStore.get(k.name);
+        return Number(raw) || 0;
+      })
+    );
+
+    for (const count of counts) {
+      totalCalls += count;
+    }
+
+    return { totalCalls, uniqueIPs };
+  } catch (error) {
+    console.error('Failed to get daily stats from KV', error);
+    return { totalCalls: -1, uniqueIPs: -1 };
+  }
+}
+
 function isBrowserRequest(userAgent = '') {
   return /Mozilla|Chrome|Safari|Firefox|Edg/.test(userAgent);
 }
@@ -282,7 +328,7 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname === '/health') {
-      return addCorsHeaders(handleHealthCheck(env));
+      return addCorsHeaders(await handleHealthCheck(env));
     }
 
     if (request.method === 'GET') {
@@ -294,6 +340,57 @@ export default {
     }
   },
 };
+
+// 错误码定义
+const ERROR_CODES = {
+  MISSING_SYSINFO: 'MISSING_SYSINFO',
+  MISSING_PROMPT: 'MISSING_PROMPT',
+  MISSING_API_KEY: 'MISSING_API_KEY',
+  DEMO_LIMIT_EXCEEDED: 'DEMO_LIMIT_EXCEEDED',
+  AI_API_ERROR: 'AI_API_ERROR',
+  EMPTY_RESPONSE: 'EMPTY_RESPONSE',
+  INVALID_RESPONSE: 'INVALID_RESPONSE',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  REQUEST_TOO_LARGE: 'REQUEST_TOO_LARGE',
+};
+
+// 请求体大小限制 (64KB)
+const MAX_REQUEST_BODY_SIZE = 64 * 1024;
+
+/**
+ * 生成唯一请求追踪 ID
+ * @returns {string} UUID v4 格式的请求 ID
+ */
+function generateRequestId() {
+  return crypto.randomUUID();
+}
+
+/**
+ * 生成结构化错误响应
+ * @param {string} code 错误码
+ * @param {string} message 错误消息
+ * @param {number} status HTTP 状态码
+ * @param {object} extra 额外字段
+ * @param {string} [requestId] 请求追踪 ID
+ * @returns {Response}
+ */
+function createErrorResponse(code, message, status, extra = {}, requestId = null) {
+  const payload = {
+    error: code,
+    message,
+    timestamp: new Date().toISOString(),
+    ...(requestId && { requestId }),
+    ...extra,
+  };
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  };
+  if (requestId) {
+    headers['X-Request-ID'] = requestId;
+  }
+  return new Response(JSON.stringify(payload), { status, headers });
+}
 
 function handleOptionsRequest() {
   return new Response(null, {
@@ -316,11 +413,33 @@ function addCorsHeaders(response) {
   });
 }
 
-function handleHealthCheck(env) {
+/**
+ * 健康检查端点处理函数
+ * 返回服务状态、版本信息、依赖服务连接状态和当日调用统计
+ * @param {object} env 环境变量
+ * @returns {Promise<Response>} JSON 格式的健康状态响应
+ */
+async function handleHealthCheck(env) {
+  const quotaStore = resolveQuotaStore(env);
+  const stats = await getDailyStats(quotaStore);
+
   const payload = {
     status: 'ok',
+    version: '2.1.0',
     timestamp: new Date().toISOString(),
-    hasApiKey: Boolean(env?.OPENAI_API_KEY),
+    services: {
+      apiKey: Boolean(env?.OPENAI_API_KEY),
+      adminKey: Boolean(env?.ADMIN_ACCESS_KEY),
+      kvStorage: quotaStore !== null,
+    },
+    config: {
+      model: env?.OPENAI_API_MODEL || 'gpt-5-nano',
+      sharedLimit: resolveSharedLimit(env),
+    },
+    stats: {
+      totalCalls: stats.totalCalls,
+      uniqueIPs: stats.uniqueIPs,
+    },
   };
 
   return new Response(JSON.stringify(payload), {
@@ -365,32 +484,54 @@ function handleGetRequest(request) {
  * @returns {Promise<Response>} A promise that resolves to the AI's response.
  */
 async function handlePostRequest(request, env) {
+  // 生成请求追踪 ID
+  const requestId = generateRequestId();
+
+  // 请求体大小检查（在解析 JSON 之前）
+  const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
+  if (contentLength > MAX_REQUEST_BODY_SIZE) {
+    return createErrorResponse(
+      ERROR_CODES.REQUEST_TOO_LARGE,
+      `Request body too large: ${contentLength} bytes exceeds limit of ${MAX_REQUEST_BODY_SIZE} bytes`,
+      413,
+      {},
+      requestId
+    );
+  }
+
   try {
     const { sysinfo, prompt, adminKey } = await request.json();
 
     // 验证 sysinfo
     if (!sysinfo || sysinfo.trim() === '') {
-      return new Response(
-        JSON.stringify({ error: 'Missing or empty "sysinfo" in request body' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return createErrorResponse(
+        ERROR_CODES.MISSING_SYSINFO,
+        'Missing or empty "sysinfo" in request body',
+        400,
+        {},
+        requestId
       );
     }
 
     // 验证 prompt
     if (!prompt || prompt.trim() === '') {
-      return new Response(
-        JSON.stringify({ error: 'Missing or empty "prompt" in request body' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return createErrorResponse(
+        ERROR_CODES.MISSING_PROMPT,
+        'Missing or empty "prompt" in request body',
+        400,
+        {},
+        requestId
       );
     }
+
     if (!env.OPENAI_API_KEY) {
-      return new Response('Missing OPENAI_API_KEY secret', { status: 500 });
+      return createErrorResponse(
+        ERROR_CODES.MISSING_API_KEY,
+        'Server configuration error: missing API key',
+        500,
+        {},
+        requestId
+      );
     }
 
     const normalizedAdminKey = typeof adminKey === 'string' ? adminKey.trim() : '';
@@ -404,18 +545,30 @@ async function handlePostRequest(request, env) {
     if (!hasAdminBypass) {
       const sharedLimit = resolveSharedLimit(env);
       const quota = await checkSharedQuota(clientIp, sharedLimit, env);
+
+      // 配额消耗日志
+      console.log(JSON.stringify({
+        event: 'quota_check',
+        requestId,
+        clientIp: clientIp.substring(0, 8) + '***', // 脱敏处理
+        allowed: quota.allowed,
+        remaining: quota.remaining,
+        limit: sharedLimit,
+        timestamp: new Date().toISOString(),
+      }));
+
       if (!quota.allowed) {
-        const message = {
-          error: 'DEMO_LIMIT_EXCEEDED',
-          message: `Shared demo quota exceeded (max ${sharedLimit} calls per day).`,
-          hint: 'Configure FUCK_OPENAI_API_KEY in ~/.fuck/config.sh to use your own key.',
-          remaining: quota.remaining,
-          limit: sharedLimit,
-        };
-        return new Response(JSON.stringify(message), {
-          status: 429,
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-        });
+        return createErrorResponse(
+          ERROR_CODES.DEMO_LIMIT_EXCEEDED,
+          `Shared demo quota exceeded (max ${sharedLimit} calls per day).`,
+          429,
+          {
+            hint: 'Configure FUCK_OPENAI_API_KEY in ~/.fuck/config.sh to use your own key.',
+            remaining: quota.remaining,
+            limit: sharedLimit,
+          },
+          requestId
+        );
       }
     }
 
@@ -484,27 +637,54 @@ The user's system info is: ${sysinfo}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      return new Response(`AI API Error: ${errorText}`, { status: aiResponse.status });
+      return createErrorResponse(
+        ERROR_CODES.AI_API_ERROR,
+        `AI API request failed: ${errorText}`,
+        aiResponse.status,
+        {},
+        requestId
+      );
     }
 
     const aiJson = await aiResponse.json();
     const command = aiJson.choices[0]?.message?.content.trim();
 
     if (!command) {
-      return new Response('The AI returned an empty command.', { status: 500 });
+      return createErrorResponse(
+        ERROR_CODES.EMPTY_RESPONSE,
+        'The AI returned an empty command.',
+        500,
+        {},
+        requestId
+      );
     }
 
     // 清理 AI 返回的命令（移除 markdown 格式、shebang 等）
     const cleanedCommand = sanitizeCommand(command);
 
     if (!cleanedCommand) {
-      return new Response('The AI returned an invalid command after sanitization.', { status: 500 });
+      return createErrorResponse(
+        ERROR_CODES.INVALID_RESPONSE,
+        'The AI returned an invalid command after sanitization.',
+        500,
+        {},
+        requestId
+      );
     }
 
     return new Response(cleanedCommand, {
-      headers: { 'Content-Type': 'text/plain' },
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-Request-ID': requestId,
+      },
     });
   } catch (error) {
-    return new Response(`Error: ${error.message}`, { status: 500 });
+    return createErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      `Internal server error: ${error.message}`,
+      500,
+      {},
+      requestId
+    );
   }
 }

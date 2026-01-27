@@ -4,6 +4,8 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-01-27 | 健康检查统计增强 | 新增 `getDailyStats()` 函数，健康检查端点增加 `stats.totalCalls` 和 `stats.uniqueIPs` 每日统计；更新 API.md 和 MONITORING.md |
+| 2026-01-27 | 代码审查问题修复 | 完成代码审查五项修复：结构化错误响应(ERROR_CODES)、请求体大小限制(64KB)、请求追踪ID(X-Request-ID)、健康检查增强(services/config)、配额日志；更新 API.md 和 MONITORING.md |
 | 2026-01-04 22:05:00 | 测试修复与文档完善 | 修复所有 bats 测试问题（UTF-8、HOME 变量、可执行权限、缓存、别名），达成 70/70 (100%) 通过率；新增"测试问题详解"章节 |
 | 2026-01-04 17:32:30 | 架构增量更新 | 验证并确认项目结构完整性，补充测试模块信息，整体覆盖率维持在 85% |
 | 2025-12-12 19:14:30 | 架构验证 | 确认完整架构文档已初始化，验证模块结构图和面包屑导航完整性 |
@@ -258,15 +260,18 @@ GitHub Actions 在每次 push/PR 时自动运行所有测试，失败则阻止�
 ## 核心文件说明
 
 ### worker.js
-Cloudflare Worker 主文件（约 500 行，含嵌入的 base64 脚本），处理：
+Cloudflare Worker 主文件（约 640 行，含嵌入的 base64 脚本），处理：
 - GET 请求：根据 User-Agent 返回安装脚本或重定向到 GitHub
-- GET `/health`：返回 JSON 健康检查（含 hasApiKey）供部署自检
+- GET `/health`：返回 JSON 健康检查（含 services 和 config 状态）供部署自检
 - POST 请求：接收用户提示词，调用 OpenAI API，返回生成的命令
 
 **关键函数**：
 - `handleGetRequest()` - 处理脚本下载和浏览器访问
 - `handlePostRequest()` - 处理 AI 命令生成请求
-- `handleHealthCheck()` - 健康检查端点
+- `handleHealthCheck()` - 健康检查端点（含服务状态、配置信息和每日统计）
+- `getDailyStats()` - 获取每日调用统计（总调用次数和独立 IP 数）
+- `createErrorResponse()` - 生成结构化错误响应（含 ERROR_CODES）
+- `generateRequestId()` - 生成 UUID v4 请求追踪 ID
 - `b64_to_utf8()` - Base64 解码工具函数
 - `isBrowserRequest()` - User-Agent 检测
 - `resolveLocale()` - 语言自适应
@@ -279,9 +284,14 @@ Cloudflare Worker 主文件（约 500 行，含嵌入的 base64 脚本），处�
 - Base64 解码嵌入式脚本
 - 共享配额管理（内存/KV）
 - 管理员密钥绕过
-- 健康检查端点
+- 健康检查端点（含依赖服务状态和每日统计）
 - 中英双语支持
 - 命令注入防护
+- 结构化错误响应（ERROR_CODES 常量）
+- 请求体大小限制（64KB）
+- 请求追踪 ID（X-Request-ID）
+- 配额消费日志（带请求关联）
+- 每日调用统计（totalCalls/uniqueIPs）
 
 ### main.sh / zh_main.sh
 安装和运行脚本，支持两种模式：
@@ -692,7 +702,7 @@ teardown() {
 
 - **总文件数**：约 38 个核心文件（已扫描 32 个，覆盖率 85%）
 - **代码行数**：
-  - worker.js: ~500 行（含 base64 嵌入）
+  - worker.js: ~640 行（含 base64 嵌入）
   - main.sh: ~700 行
   - zh_main.sh: ~720 行
   - scripts: ~490 行（build 82 + deploy 34 + one-click-deploy 179 + setup 104 + common 90）

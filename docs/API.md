@@ -71,18 +71,49 @@ sudo apt update && sudo apt install -y git
 ```
 Returns plain text command directly.
 
+**Response Headers:**
+- `X-Request-ID`: Unique request tracking ID (UUID v4) - returned on all responses
+
 **Errors:**
+
+All error responses use a standardized JSON format with the following structure:
+
+```json
+{
+  "error": "ERROR_CODE",
+  "message": "Human-readable error description",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  ...additionalFields
+}
+```
 
 **400 Bad Request:**
 ```json
 {
-  "error": "Missing or empty \"sysinfo\" in request body"
+  "error": "MISSING_SYSINFO",
+  "message": "Missing or empty \"sysinfo\" in request body",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 or
 ```json
 {
-  "error": "Missing or empty \"prompt\" in request body"
+  "error": "MISSING_PROMPT",
+  "message": "Missing or empty \"prompt\" in request body",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**413 Request Entity Too Large:**
+```json
+{
+  "error": "REQUEST_TOO_LARGE",
+  "message": "Request body too large: 70000 bytes exceeds limit of 65536 bytes",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -93,21 +124,38 @@ or
   "message": "Shared demo quota exceeded (max 10 calls per day).",
   "hint": "Configure FUCK_OPENAI_API_KEY in ~/.fuck/config.sh to use your own key.",
   "remaining": 0,
-  "limit": 10
+  "limit": 10,
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
 **500 Internal Server Error:**
-```
-Missing OPENAI_API_KEY secret
+```json
+{
+  "error": "MISSING_API_KEY",
+  "message": "Missing OPENAI_API_KEY secret",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
+}
 ```
 or
-```
-AI API Error: {error details}
+```json
+{
+  "error": "AI_API_ERROR",
+  "message": "AI API Error: rate limit exceeded",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
+}
 ```
 or
-```
-The AI returned an empty command.
+```json
+{
+  "error": "EMPTY_RESPONSE",
+  "message": "The AI returned an empty command.",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
+}
 ```
 
 **Examples:**
@@ -143,8 +191,20 @@ Health check endpoint for monitoring and deployment verification.
 {
   "status": "ok",
   "version": "2.1.0",
-  "timestamp": "2025-01-25T12:00:00.000Z",
-  "hasApiKey": true
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "services": {
+    "apiKey": true,
+    "adminKey": false,
+    "kvStorage": true
+  },
+  "config": {
+    "model": "gpt-5-nano",
+    "sharedLimit": 10
+  },
+  "stats": {
+    "totalCalls": 42,
+    "uniqueIPs": 15
+  }
 }
 ```
 
@@ -152,7 +212,16 @@ Health check endpoint for monitoring and deployment verification.
 - `status`: Always "ok" if worker is running
 - `version`: Current worker version
 - `timestamp`: Current server time (ISO 8601)
-- `hasApiKey`: Whether OPENAI_API_KEY is configured
+- `services`: Dependency services status
+  - `apiKey`: Whether OPENAI_API_KEY is configured
+  - `adminKey`: Whether ADMIN_ACCESS_KEY is configured
+  - `kvStorage`: Whether KV storage is available for quota persistence
+- `config`: Current worker configuration
+  - `model`: AI model in use
+  - `sharedLimit`: Daily quota limit for shared demo mode
+- `stats`: Daily usage statistics
+  - `totalCalls`: Total API calls for the current day
+  - `uniqueIPs`: Number of unique client IPs for the current day
 
 **Example:**
 
@@ -172,6 +241,51 @@ Headers:
 - `Access-Control-Allow-Origin: *`
 - `Access-Control-Allow-Methods: GET, POST, OPTIONS`
 - `Access-Control-Allow-Headers: Content-Type`
+
+---
+
+## Request Limits
+
+### Request Body Size
+
+The POST endpoint enforces a maximum request body size of **64KB (65536 bytes)**.
+
+**Validation Method:**
+- Checked via `Content-Length` header before body parsing
+- Returns `413 Request Entity Too Large` if exceeded
+
+**Error Response:**
+```json
+{
+  "error": "REQUEST_TOO_LARGE",
+  "message": "Request body too large: {actual} bytes exceeds limit of 65536 bytes"
+}
+```
+
+---
+
+## Request Tracking
+
+All POST requests are assigned a unique tracking ID for debugging and observability.
+
+### X-Request-ID Header
+
+**Format:** UUID v4 (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+
+**Behavior:**
+- Generated server-side for every POST request
+- Returned in `X-Request-ID` response header
+- Included in error response JSON as `requestId` field
+- Logged with quota events for correlation
+
+**Usage for Debugging:**
+```bash
+# Extract Request ID from response header
+curl -X POST https://fuckits.25500552.xyz \
+  -H "Content-Type: application/json" \
+  -d '{"sysinfo":"OS=Linux","prompt":"test"}' \
+  -i 2>&1 | grep -i x-request-id
+```
 
 ---
 
@@ -200,12 +314,35 @@ When `FUCK_ADMIN_KEY` matches `ADMIN_ACCESS_KEY` on server:
 
 ## Error Codes Summary
 
-| Code | Meaning | Solution |
-|------|---------|----------|
-| 400 | Bad Request | Check request body contains valid `sysinfo` and `prompt` |
-| 429 | Quota Exceeded | Configure local API key or wait for daily reset |
-| 500 | Server Error | Check Worker configuration or OpenAI API status |
-| 502 | Bad Gateway | OpenAI API is down or unreachable |
+### HTTP Status Codes
+
+| Status | Code | Meaning | Solution |
+|--------|------|---------|----------|
+| 400 | MISSING_SYSINFO | Missing system info | Include `sysinfo` field in request body |
+| 400 | MISSING_PROMPT | Missing prompt | Include `prompt` field in request body |
+| 413 | REQUEST_TOO_LARGE | Request body exceeds 64KB | Reduce request payload size |
+| 429 | DEMO_LIMIT_EXCEEDED | Quota exceeded | Configure local API key or wait for daily reset |
+| 500 | MISSING_API_KEY | Server misconfigured | Contact administrator to set OPENAI_API_KEY |
+| 500 | AI_API_ERROR | OpenAI API failure | Check OpenAI status or retry later |
+| 500 | EMPTY_RESPONSE | AI returned empty result | Rephrase prompt or retry |
+| 500 | INVALID_RESPONSE | AI response format invalid | Retry request |
+| 500 | INTERNAL_ERROR | Unexpected server error | Check Worker logs |
+
+### ERROR_CODES Reference
+
+```javascript
+const ERROR_CODES = {
+  MISSING_SYSINFO: 'MISSING_SYSINFO',     // 400 - Missing sysinfo field
+  MISSING_PROMPT: 'MISSING_PROMPT',       // 400 - Missing prompt field
+  MISSING_API_KEY: 'MISSING_API_KEY',     // 500 - No OPENAI_API_KEY configured
+  DEMO_LIMIT_EXCEEDED: 'DEMO_LIMIT_EXCEEDED', // 429 - Quota exceeded
+  AI_API_ERROR: 'AI_API_ERROR',           // 500 - OpenAI API error
+  EMPTY_RESPONSE: 'EMPTY_RESPONSE',       // 500 - AI returned empty command
+  INVALID_RESPONSE: 'INVALID_RESPONSE',   // 500 - AI response parsing failed
+  INTERNAL_ERROR: 'INTERNAL_ERROR',       // 500 - Unexpected error
+  REQUEST_TOO_LARGE: 'REQUEST_TOO_LARGE', // 413 - Body exceeds 64KB limit
+};
+```
 
 ---
 
@@ -291,6 +428,13 @@ print(command)  # Output: docker ps -a
 ---
 
 ## Changelog
+
+### v2.1.1 (2025-01-27)
+- Added structured error responses with standardized ERROR_CODES
+- Added request body size limit (64KB) with 413 error response
+- Added request tracking with X-Request-ID header (UUID v4)
+- Enhanced `/health` endpoint with `services` and `config` fields
+- Added quota consumption logging with request correlation
 
 ### v2.1.0 (2025-01-25)
 - Added version field to `/health` endpoint

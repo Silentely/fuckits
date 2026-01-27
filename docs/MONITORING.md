@@ -37,10 +37,37 @@ fuckits uses a multi-layered monitoring approach:
 {
   "status": "ok",
   "version": "2.1.0",
-  "timestamp": "2025-01-25T12:00:00.000Z",
-  "hasApiKey": true
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "services": {
+    "apiKey": true,
+    "adminKey": false,
+    "kvStorage": true
+  },
+  "config": {
+    "model": "gpt-5-nano",
+    "sharedLimit": 10
+  },
+  "stats": {
+    "totalCalls": 42,
+    "uniqueIPs": 15
+  }
 }
 ```
+
+**Fields Explained:**
+- `status`: Worker running state ("ok")
+- `version`: Current version number
+- `timestamp`: Server UTC time
+- `services`: Dependency status
+  - `apiKey`: OpenAI API key configured
+  - `adminKey`: Admin bypass key configured
+  - `kvStorage`: KV storage available for quota persistence
+- `config`: Runtime configuration
+  - `model`: AI model in use
+  - `sharedLimit`: Daily demo quota limit
+- `stats`: Daily usage statistics
+  - `totalCalls`: Total API calls today
+  - `uniqueIPs`: Unique client IPs today
 
 **Monitoring Checks:**
 
@@ -49,10 +76,19 @@ fuckits uses a multi-layered monitoring approach:
 curl -f https://fuckits.25500552.xyz/health || echo "DOWN"
 
 # Check API key configuration
-curl -s https://fuckits.25500552.xyz/health | jq -r '.hasApiKey'
+curl -s https://fuckits.25500552.xyz/health | jq -r '.services.apiKey'
+
+# Check KV storage status
+curl -s https://fuckits.25500552.xyz/health | jq -r '.services.kvStorage'
+
+# Check daily usage stats
+curl -s https://fuckits.25500552.xyz/health | jq '.stats'
 
 # Monitor response time
 time curl -s https://fuckits.25500552.xyz/health
+
+# Full health status
+curl -s https://fuckits.25500552.xyz/health | jq '.'
 ```
 
 ### Recommended Monitoring Tools
@@ -68,6 +104,7 @@ time curl -s https://fuckits.25500552.xyz/health
 - **Keyword**: `"status":"ok"`
 - **Interval**: 5 minutes
 - **Alert Contacts**: Email, Slack, Discord
+- **Advanced Check**: Verify `services.apiKey` is `true`
 
 ---
 
@@ -208,7 +245,7 @@ awk -F'|' '{print $5}' ~/.fuck/.audit.log | sort | uniq -c | sort -rn | head -10
    - Channels: Slack, Email
 
 3. **API Key Missing**
-   - Condition: `hasApiKey: false` in health check
+   - Condition: `services.apiKey: false` in health check
    - Action: Immediate investigation
    - Channels: Slack, Email
 
@@ -458,5 +495,5 @@ git log --oneline -5
 
 ---
 
-**Last Updated**: 2025-01-25
+**Last Updated**: 2025-01-27
 **Maintainer**: faithleysath

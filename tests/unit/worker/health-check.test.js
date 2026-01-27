@@ -18,7 +18,9 @@ describe('健康检查边界情况', () => {
     const body = await response.json();
 
     expect(body.status).toBe('ok');
-    expect(body).toHaveProperty('hasApiKey');
+    expect(body).toHaveProperty('services');
+    expect(body.services).toHaveProperty('apiKey');
+    expect(body).toHaveProperty('stats');
   });
 
   it('健康检查不应该受配额限制', async () => {

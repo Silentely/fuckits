@@ -161,7 +161,8 @@ npm run test:debug
 
 - **健康检查**：
   - GET `/health` → 返回 JSON 状态
-  - 包含 `hasApiKey` 字段
+  - 包含 `services.apiKey` 字段
+  - 包含 `stats.totalCalls` 和 `stats.uniqueIPs` 统计
   - 版本信息正确
 
 - **CORS 支持**：

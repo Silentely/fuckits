@@ -127,9 +127,8 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('AI API Error');
-      // TODO: 应该返回 JSON 格式的错误消息
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
     });
 
     it('503 Service Unavailable - Worker 直接透传错误状态码', async () => {
@@ -170,12 +169,11 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('INTERNAL_ERROR');
     });
 
-    it('缺少 choices 字段 - Worker 返回文本错误', async () => {
+    it('缺少 choices 字段 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -194,12 +192,11 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('INTERNAL_ERROR');
     });
 
-    it('空的 choices 数组 - Worker 返回文本错误', async () => {
+    it('空的 choices 数组 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -218,12 +215,11 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('The AI returned');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('EMPTY_RESPONSE');
     });
 
-    it('缺少 message.content - Worker 返回文本错误', async () => {
+    it('缺少 message.content - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -251,14 +247,13 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('INTERNAL_ERROR');
     });
   });
 
   describe('网络错误', () => {
-    it('连接超时 - Worker 返回文本错误', async () => {
+    it('连接超时 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -271,12 +266,11 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('AI API Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
     });
 
-    it('网络断开 - Worker 返回文本错误', async () => {
+    it('网络断开 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -289,12 +283,11 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('AI API Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
     });
 
-    it('DNS 解析失败 - Worker 返回文本错误', async () => {
+    it('DNS 解析失败 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -307,14 +300,13 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('AI API Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
     });
   });
 
   describe('特殊响应场景', () => {
-    it('空响应体 - Worker 返回文本错误', async () => {
+    it('空响应体 - Worker 返回 JSON 错误', async () => {
       const pool = mockAgent.get('https://api.openai.com');
       pool.intercept({
         path: '/v1/chat/completions',
@@ -327,9 +319,8 @@ describe('OpenAI API 错误响应处理', () => {
       });
 
       expect(response.status).toBe(500);
-      const body = await response.text();
-      expect(body).toContain('Error');
-      // TODO: 应该返回 JSON 格式的错误
+      const body = await response.json();
+      expect(body.error).toBe('INTERNAL_ERROR');
     });
 
     it('超大响应 - 应该能正确处理', async () => {

@@ -176,7 +176,12 @@ describe('配额管理系统', () => {
 
       const body = await response.json();
       expect(body.status).toBe('ok');
-      expect(body).toHaveProperty('hasApiKey');
+      expect(body).toHaveProperty('services');
+      expect(body.services).toHaveProperty('apiKey');
+      expect(typeof body.services.apiKey).toBe('boolean');
+      expect(body).toHaveProperty('stats');
+      expect(body.stats).toHaveProperty('totalCalls');
+      expect(body.stats).toHaveProperty('uniqueIPs');
     });
   });
 });
