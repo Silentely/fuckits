@@ -8,6 +8,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-01-28 | 增量更新 | 新增 integration/、security/、performance/ 目录，测试总数从 56 增至 145 个 |
 | 2025-12-12 | 初始化 | 创建测试模块文档，覆盖率 100% |
 
 ---
@@ -34,12 +35,28 @@ tests 目录包含项目的完整测试套件，负责验证 Worker 后端和 Sh
 tests/
 ├── unit/                    # 单元测试
 │   ├── bash/               # Shell 脚本测试
-│   │   └── security.bats   # 21 条安全规则测试
-│   └── worker/             # Worker 功能测试
-│       ├── handlers.test.js   # 请求处理测试
-│       ├── locale.test.js     # 中英文语言测试
-│       └── quota.test.js      # 配额管理测试
-├── integration/            # 集成测试（预留）
+│   │   └── security.bats   # 21 条安全规则测试 (27 tests)
+│   └── worker/             # Worker 功能测试 (75 tests)
+│       ├── handlers.test.js       # 请求处理测试 (14 tests)
+│       ├── locale.test.js         # 中英文语言测试 (9 tests)
+│       ├── quota.test.js          # 配额管理测试 (6 tests)
+│       ├── api-errors.test.js     # OpenAI API 错误响应 (14 tests)
+│       ├── health-check.test.js   # 健康检查端点 (3 tests)
+│       ├── cors.test.js           # CORS 支持 (3 tests)
+│       ├── user-agent.test.js     # UA 检测 (5 tests)
+│       ├── url-paths.test.js      # URL 路径处理 (5 tests)
+│       ├── post-requests.test.js  # POST 请求处理 (6 tests)
+│       ├── ip-address.test.js     # IP 地址处理 (3 tests)
+│       ├── quota-edge-cases.test.js # 配额边界条件 (3 tests)
+│       ├── sysinfo.test.js        # 系统信息处理 (3 tests)
+│       └── concurrent-requests.test.js # 并发请求 (1 test)
+├── integration/            # 集成测试 (43 tests)
+│   ├── build-deploy.bats  # 构建部署流程 (23 tests)
+│   └── e2e.bats           # 端到端用户流程 (20 tests)
+├── security/               # 安全测试
+│   └── fuzzing.bats       # 模糊测试 (17 tests)
+├── performance/            # 性能测试
+│   └── quota-benchmark.test.js # 配额性能基准 (9 tests)
 ├── fixtures/               # 测试数据
 │   └── mock-responses.json
 └── helpers/                # 测试辅助工具
@@ -56,13 +73,13 @@ tests/
 ### 快速运行
 
 ```bash
-# 运行所有测试（56 个）
+# 运行所有测试（145 个）
 npm test
 
-# 仅 JavaScript 测试（29 个）
+# 仅 JavaScript 测试（75 个）
 npm run test:js
 
-# 仅 Bash 测试（27 个）
+# 仅 Bash 测试（70 个）
 npm run test:bash
 
 # 生成覆盖率报告
@@ -377,19 +394,29 @@ setup() {
 
 ## 测试覆盖率
 
-### 当前状态（2025-12-12）
+### 当前状态（2026-01-28）
 
-**总体**：56/56 测试通过 (100%)
+**总体**：145/145 测试通过 (100%)
 
-**JavaScript 测试**：29 个
-- handlers: 12 个
-- locale: 6 个
-- quota: 11 个
+**JavaScript 测试**：75 个（13 个测试文件）
+- handlers.test.js: 14 个
+- locale.test.js: 9 个
+- quota.test.js: 6 个
+- api-errors.test.js: 14 个
+- health-check.test.js: 3 个
+- cors.test.js: 3 个
+- user-agent.test.js: 5 个
+- url-paths.test.js: 5 个
+- post-requests.test.js: 6 个
+- ip-address.test.js: 3 个
+- quota-edge-cases.test.js: 3 个
+- sysinfo.test.js: 3 个
+- concurrent-requests.test.js: 1 个
 
-**Bash 测试**：27 个
-- security rules: 21 个
-- mode switching: 3 个
-- whitelist: 3 个
+**Bash 测试**：70 个
+- unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
+- integration/build-deploy.bats: 23 个
+- integration/e2e.bats: 20 个
 
 **代码覆盖率**：
 - worker.js: 目标 80%+
@@ -423,25 +450,27 @@ steps:
 
 ## 扩展测试计划
 
-### 待补充测试
+### 已完成 ✅
 
 1. **集成测试** (`tests/integration/`):
-   - 端到端工作流（安装 → 执行 → 卸载）
+   - ✅ 端到端工作流（安装 → 配置 → 执行 → 卸载）- e2e.bats
+   - ✅ 构建和部署流程 - build-deploy.bats
+   - ✅ 跨平台兼容性（macOS/Linux）
+
+2. **性能测试** (`tests/performance/`):
+   - ✅ 配额管理性能 - quota-benchmark.test.js
+
+3. **安全测试** (`tests/security/`):
+   - ✅ 模糊测试 - fuzzing.bats
+
+### 待补充测试
+
+1. **真实 API 测试**:
    - 真实 OpenAI API 调用（使用测试 key）
-   - 跨平台兼容性（macOS/Linux）
 
-2. **性能测试**:
-   - Worker 响应时间
-   - 配额管理性能
-   - 大量并发请求
-
-3. **回归测试**:
+2. **回归测试**:
    - 历史 bug 防护
    - 边界条件覆盖
-
-4. **模糊测试**:
-   - 随机输入验证
-   - 异常命令处理
 
 ---
 
@@ -474,23 +503,38 @@ steps:
 tests/
 ├── unit/
 │   ├── bash/
-│   │   ├── security.bats                # 21 条安全规则测试（~600 行）
-│   │   └── security.bats.final          # 备份文件
+│   │   └── security.bats                # 21 条安全规则测试（~600 行）
 │   └── worker/
-│       ├── handlers.test.js             # 请求处理测试（~150 行）
-│       ├── locale.test.js               # 多语言测试（~80 行）
-│       └── quota.test.js                # 配额管理测试（183 行）
-├── integration/                          # 集成测试（预留）
+│       ├── handlers.test.js             # 请求处理测试（14 tests）
+│       ├── locale.test.js               # 多语言测试（9 tests）
+│       ├── quota.test.js                # 配额管理测试（6 tests）
+│       ├── api-errors.test.js           # API 错误响应（14 tests, 392 行）
+│       ├── health-check.test.js         # 健康检查（3 tests）
+│       ├── cors.test.js                 # CORS 支持（3 tests）
+│       ├── user-agent.test.js           # UA 检测（5 tests）
+│       ├── url-paths.test.js            # URL 路径（5 tests）
+│       ├── post-requests.test.js        # POST 请求（6 tests）
+│       ├── ip-address.test.js           # IP 处理（3 tests）
+│       ├── quota-edge-cases.test.js     # 配额边界（3 tests）
+│       ├── sysinfo.test.js              # 系统信息（3 tests）
+│       └── concurrent-requests.test.js  # 并发请求（1 test）
+├── integration/
+│   ├── build-deploy.bats               # 构建部署测试（23 tests, 304 行）
+│   └── e2e.bats                        # 端到端测试（20 tests, 317 行）
+├── security/
+│   └── fuzzing.bats                    # 模糊测试（17 tests, 239 行）
+├── performance/
+│   └── quota-benchmark.test.js         # 性能基准（9 tests, 255 行）
 ├── fixtures/
 │   └── mock-responses.json              # 模拟 API 响应
 └── helpers/
-    ├── test-env.js                      # Vitest 环境配置（~100 行）
-    └── bats-helpers.bash                # Bash 测试辅助（~50 行）
+    ├── test-env.js                      # Vitest 环境配置
+    └── bats-helpers.bash                # Bash 测试辅助
 ```
 
-**总代码量**：约 1200 行测试代码
+**总代码量**：约 2800 行测试代码
 
-**覆盖率**：100% (8/8 文件已扫描)
+**覆盖率**：100% (18/18 测试文件已扫描)
 
 ---
 

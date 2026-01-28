@@ -4,6 +4,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-01-28 | 架构增量更新 | 更新测试统计至 145 个（75 JS + 70 Bash），新增 integration/、security/、performance/ 测试目录，scripts/ 新增 common.sh |
 | 2026-01-27 | 健康检查统计增强 | 新增 `getDailyStats()` 函数，健康检查端点增加 `stats.totalCalls` 和 `stats.uniqueIPs` 每日统计；更新 API.md 和 MONITORING.md |
 | 2026-01-27 | 代码审查问题修复 | 完成代码审查五项修复：结构化错误响应(ERROR_CODES)、请求体大小限制(64KB)、请求追踪ID(X-Request-ID)、健康检查增强(services/config)、配额日志；更新 API.md 和 MONITORING.md |
 | 2026-01-04 22:05:00 | 测试修复与文档完善 | 修复所有 bats 测试问题（UTF-8、HOME 变量、可执行权限、缓存、别名），达成 70/70 (100%) 通过率；新增"测试问题详解"章节 |
@@ -49,7 +50,7 @@ fuckits 采用前后端分离架构：
 - **安全引擎**：三级安全检测（block/challenge/warn），保护用户免受危险命令影响
 - **系统缓存**：静态系统信息持久化缓存，减少重复检测开销
 - **双模密钥**：优先本地密钥（`FUCK_OPENAI_API_KEY`），回退共享 Worker
-- **全自动测试**：102 个测试（75 个 JS + 27 个 Bash）确保代码质量
+- **全自动测试**：145 个测试（75 个 JS + 70 个 Bash）确保代码质量
 
 ---
 
@@ -66,6 +67,9 @@ graph TD
     A --> H["tests/"];
     H --> I["unit/bash/security.bats"];
     H --> J["unit/worker/"];
+    H --> P["integration/"];
+    H --> Q["security/"];
+    H --> R["performance/"];
     A --> K["worker.js"];
     A --> L["main.sh"];
     A --> M["zh_main.sh"];
@@ -87,10 +91,10 @@ graph TD
 |---------|------|------|---------|--------|
 | `/` | 项目根目录，包含核心文件 | JavaScript/Bash | worker.js, main.sh, zh_main.sh | 90% (18/20) |
 | `/scripts` | 构建和部署脚本集合 | Bash | build.sh, deploy.sh, one-click-deploy.sh, setup.sh, common.sh | 100% (5/5) |
-| `/tests` | 测试套件（Worker + Shell） | JavaScript/Bash | unit/worker/*.test.js, unit/bash/*.bats | 100% (8/8) |
+| `/tests` | 测试套件（Worker + Shell） | JavaScript/Bash | unit/worker/*.test.js, unit/bash/*.bats, integration/*.bats | 100% (18/18) |
 | `/.github/workflows` | CI/CD 自动化流程 | YAML | deploy.yml | 100% (1/1) |
 
-**整体覆盖率**：85% (32/38 核心文件已扫描，排除 node_modules、dist、.git）
+**整体覆盖率**：92% (42/46 核心文件已扫描，排除 node_modules、dist、.git）
 
 ---
 
@@ -147,9 +151,9 @@ npm run dev
 - `npm run one-click-deploy` - 完整自动化部署
 - `npm run setup` - 交互式配置向导
 - `npm run dev` - 本地开发服务器
-- `npm test` - 运行所有测试（102 个）
+- `npm test` - 运行所有测试（145 个）
 - `npm run test:js` - 仅 JavaScript 测试（75 个）
-- `npm run test:bash` - 仅 Bash 测试（27 个）
+- `npm run test:bash` - 仅 Bash 测试（70 个）
 - `npm run test:js:coverage` - 生成 JavaScript 覆盖率报告
 
 ---
@@ -485,7 +489,7 @@ ls -la ~/.fuck/config.sh
 1. **代码检出**：克隆仓库代码
 2. **环境准备**：安装 Node.js 20.x
 3. **依赖安装**：`npm ci` 确保锁定版本
-4. **运行测试**：`npm test` 执行所有 102 个测试
+4. **运行测试**：`npm test` 执行所有 145 个测试
 5. **构建 Worker**：`npm run build` 嵌入安装脚本
 6. **下载配置**：从 `WRANGLER_TOML_URL` secret 获取完整 wrangler.toml
 7. **安全处理**：自动掩码敏感信息（API Keys、Account ID）
@@ -498,7 +502,7 @@ ls -la ~/.fuck/config.sh
 - `CLOUDFLARE_ACCOUNT_ID`：Cloudflare 账户 ID（可选，如 gist 中已包含）
 
 **关键特性**：
-- ✅ 全自动测试验证：每次 push/PR 都运行 102 个测试
+- ✅ 全自动测试验证：每次 push/PR 都运行 145 个测试
 - 分支保护：测试失败自动阻止部署
 - 敏感信息掩码：防止日志泄露
 - 配置外部化：gist 管理敏感配置
@@ -700,13 +704,13 @@ teardown() {
 
 ## 项目统计
 
-- **总文件数**：约 38 个核心文件（已扫描 32 个，覆盖率 85%）
+- **总文件数**：约 46 个核心文件（已扫描 42 个，覆盖率 92%）
 - **代码行数**：
-  - worker.js: ~640 行（含 base64 嵌入）
-  - main.sh: ~700 行
-  - zh_main.sh: ~720 行
-  - scripts: ~490 行（build 82 + deploy 34 + one-click-deploy 179 + setup 104 + common 90）
-  - tests: ~1200 行
+  - worker.js: ~690 行（含 base64 嵌入）
+  - main.sh: ~1752 行
+  - zh_main.sh: ~1735 行
+  - scripts: ~555 行（build 82 + deploy 34 + one-click-deploy 179 + setup 104 + common 65）
+  - tests: ~2800 行（unit + integration + security + performance）
 - **测试用例**：145 个（75 个 JS + 70 个 Bash）
 - **测试通过率**：100% (145/145) ✅
 - **支持语言**：中文、英文
