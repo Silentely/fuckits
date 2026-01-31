@@ -31,6 +31,8 @@ tmp/
 .fuck
 .claude
 .codex
+.omc
+.husky
 
 # OS
 .DS_Store
@@ -49,3 +51,4 @@ coverage/
 # Temporary files
 *.tmp
 .temp/
+.ace-tool/
