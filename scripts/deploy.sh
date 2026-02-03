@@ -27,9 +27,6 @@ fi
 echo -e "${C_CYAN}🔧 Running build script...${C_RESET}"
 bash scripts/build.sh
 
-echo -e "${C_CYAN}📤 Uploading scripts to R2...${C_RESET}"
-bash scripts/upload-scripts.sh "$@"
-
 echo -e "${C_CYAN}☁️ Deploying to Cloudflare Workers...${C_RESET}"
 npx wrangler deploy "$@"
 

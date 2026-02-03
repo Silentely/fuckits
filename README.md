@@ -135,6 +135,58 @@ fuck config
 - 调试模式
 - 自定义别名
 
+### 命令历史与收藏
+
+fuckits 提供了强大的历史记录和收藏功能，帮助你管理常用命令。
+
+**查看历史记录：**
+
+```bash
+# 查看最近 20 条命令历史（默认）
+fuck history
+
+# 查看最近 20 条命令历史
+fuck history 20
+```
+
+**搜索历史：**
+
+```bash
+# 搜索包含 "git" 的历史命令
+fuck history search git
+
+# 搜索包含 "install" 的历史命令
+fuck history search install
+```
+
+**管理收藏命令：**
+
+```bash
+# 添加收藏（保存常用命令提示词）
+fuck favorite add git-status "show git status"
+fuck fav add docker-ps "list all docker containers"
+
+# 查看收藏列表
+fuck favorite list
+fuck fav list
+
+# 运行收藏的命令（按序号）
+fuck favorite run 1
+fuck fav run 2
+
+# 删除收藏（按序号）
+fuck favorite delete 1
+fuck fav delete 2
+```
+
+> [!NOTE]
+> 历史记录和收藏功能需要安装 `jq` 工具：
+> - **macOS**: `brew install jq`
+> - **Ubuntu/Debian**: `sudo apt-get install jq`
+> - **CentOS/RHEL**: `sudo yum install jq`
+>
+> 历史文件存储在 `~/.fuck/history.json`，最多保存 1000 条记录。
+
 ### 卸载脚本
 
 如果你不想用我了，随时可以滚蛋：

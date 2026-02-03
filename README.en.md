@@ -124,6 +124,58 @@ The config file lives at `~/.fuck/config.sh`. You can tweak:
 - Request timeouts and debug output
 - Extra aliases (while keeping the default `fuck` command)
 
+### Command History & Favorites
+
+fuckits provides powerful history tracking and favorites management to help you organize frequently used commands.
+
+**View Command History:**
+
+```bash
+# View last 20 commands (default)
+fuck history
+
+# View last 20 commands
+fuck history 20
+```
+
+**Search History:**
+
+```bash
+# Search for commands containing "git"
+fuck history search git
+
+# Search for commands containing "install"
+fuck history search install
+```
+
+**Manage Favorite Commands:**
+
+```bash
+# Add favorites (save frequently used prompts)
+fuck favorite add git-status "show git status"
+fuck fav add docker-ps "list all docker containers"
+
+# List all favorites
+fuck favorite list
+fuck fav list
+
+# Run a favorite command (by index)
+fuck favorite run 1
+fuck fav run 2
+
+# Delete a favorite (by index)
+fuck favorite delete 1
+fuck fav delete 2
+```
+
+> [!NOTE]
+> History and favorites features require the `jq` tool to be installed:
+> - **macOS**: `brew install jq`
+> - **Ubuntu/Debian**: `sudo apt-get install jq`
+> - **CentOS/RHEL**: `sudo yum install jq`
+>
+> History data is stored in `~/.fuck/history.json` with a maximum of 1000 entries.
+
 ### Uninstall
 
 If you want to get rid of me, you can kick me out anytime:

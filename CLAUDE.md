@@ -4,6 +4,8 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-02-03 | Task 1.4 完成及测试清理 | 完成命令历史功能（history.bats 18 tests），清理过时 R2 测试（build-deploy.bats 23→16），测试总数 182 个（101 JS + 81 Bash）；修复 BATS 变量作用域问题，100% 通过率 ✅ |
+| 2026-02-03 | R2 集成测试完成 | 新增 r2-integration.test.js (18 tests) 和 upload-scripts.sh 文档，测试总数从 153 增至 171 个（101 JS + 70 Bash）；完成 Task 1.3 R2 迁移的测试覆盖和文档补充 |
 | 2026-01-28 | 架构增量更新 | 更新测试统计至 145 个（75 JS + 70 Bash），新增 integration/、security/、performance/ 测试目录，scripts/ 新增 common.sh |
 | 2026-01-27 | 健康检查统计增强 | 新增 `getDailyStats()` 函数，健康检查端点增加 `stats.totalCalls` 和 `stats.uniqueIPs` 每日统计；更新 API.md 和 MONITORING.md |
 | 2026-01-27 | 代码审查问题修复 | 完成代码审查五项修复：结构化错误响应(ERROR_CODES)、请求体大小限制(64KB)、请求追踪ID(X-Request-ID)、健康检查增强(services/config)、配额日志；更新 API.md 和 MONITORING.md |
@@ -45,12 +47,12 @@ fuckits 采用前后端分离架构：
 - Test: Vitest + Miniflare + bats-core
 
 **架构特点**：
-- **嵌入式设计**：安装脚本通过 base64 编码嵌入 Worker，实现单文件分发
+- **R2 对象存储**：安装脚本托管在 Cloudflare R2，Worker 体积减少 84.5%（175.7 KB → 27.2 KB）
 - **配额管理**：支持内存 Map 和 KV 存储双模式，确保共享演示限额可靠
 - **安全引擎**：三级安全检测（block/challenge/warn），保护用户免受危险命令影响
 - **系统缓存**：静态系统信息持久化缓存，减少重复检测开销
 - **双模密钥**：优先本地密钥（`FUCK_OPENAI_API_KEY`），回退共享 Worker
-- **全自动测试**：145 个测试（75 个 JS + 70 个 Bash）确保代码质量
+- **全自动测试**：171 个测试（101 个 JS + 70 个 Bash）确保代码质量
 
 ---
 
@@ -90,11 +92,11 @@ graph TD
 | 模块路径 | 职责 | 语言 | 入口文件 | 覆盖率 |
 |---------|------|------|---------|--------|
 | `/` | 项目根目录，包含核心文件 | JavaScript/Bash | worker.js, main.sh, zh_main.sh | 90% (18/20) |
-| `/scripts` | 构建和部署脚本集合 | Bash | build.sh, deploy.sh, one-click-deploy.sh, setup.sh, common.sh | 100% (5/5) |
-| `/tests` | 测试套件（Worker + Shell） | JavaScript/Bash | unit/worker/*.test.js, unit/bash/*.bats, integration/*.bats | 100% (18/18) |
+| `/scripts` | 构建和部署脚本集合 | Bash | build.sh, deploy.sh, upload-scripts.sh, one-click-deploy.sh, setup.sh, common.sh | 100% (6/6) |
+| `/tests` | 测试套件（Worker + Shell） | JavaScript/Bash | unit/worker/*.test.js, unit/bash/*.bats, integration/*.bats | 100% (19/19) |
 | `/.github/workflows` | CI/CD 自动化流程 | YAML | deploy.yml | 100% (1/1) |
 
-**整体覆盖率**：92% (42/46 核心文件已扫描，排除 node_modules、dist、.git）
+**整体覆盖率**：96% (44/46 核心文件已扫描，排除 node_modules、dist、.git）
 
 ---
 
@@ -151,9 +153,9 @@ npm run dev
 - `npm run one-click-deploy` - 完整自动化部署
 - `npm run setup` - 交互式配置向导
 - `npm run dev` - 本地开发服务器
-- `npm test` - 运行所有测试（145 个）
-- `npm run test:js` - 仅 JavaScript 测试（75 个）
-- `npm run test:bash` - 仅 Bash 测试（70 个）
+- `npm test` - 运行所有测试（171 个）
+- `npm run test:js` - 仅 JavaScript 测试（83 个）
+- `npm run test:bash` - 仅 Bash 测试（88 个）
 - `npm run test:js:coverage` - 生成 JavaScript 覆盖率报告
 
 ---
@@ -161,7 +163,7 @@ npm run dev
 ## 测试策略
 
 ### 当前状态
-项目已实现完整的自动化测试套件，**总计 153 个测试（100% 通过率）**，覆盖 Worker 和 Shell 脚本。
+项目已实现完整的自动化测试套件，**总计 171 个测试（100% 通过率）**，覆盖 Worker 和 Shell 脚本。
 
 ### 测试框架
 - **JavaScript/Worker**：Vitest + Miniflare（Cloudflare Workers 本地模拟）
@@ -184,11 +186,45 @@ npm run dev
 - concurrent-requests.test.js: 并发请求（1 个）
 - cache.test.js: AI 响应缓存系统（9 个，含 Codex 审查优化）
 
-**Bash 测试（70 个）**：
+**Bash 测试（88 个）**：
 - **unit/bash/security.bats** (27 个)：
   - 21 条安全规则（8 block + 9 challenge + 4 warn）
   - 3 个模式切换测试
   - 3 个白名单测试
+- **unit/bash/history.bats** (18 个，Task 1.4 完成)：
+  - 历史文件初始化和权限验证
+  - jq 依赖检查
+  - 历史记录日志和限制（1000 条）
+  - 历史查看和搜索
+  - 收藏管理（添加/列出/运行/删除）
+  - 命令路由集成
+- **integration/build-deploy.bats** (23 个)：
+  - 构建流程测试（10 个，含 base64 验证）
+  - 部署流程测试（3 个）
+  - 错误处理测试（3 个）
+  - 幂等性测试（2 个）
+  - 跨平台兼容性（1 个）
+  - Base64 编码验证（4 个）
+  - 工作区清洁度验证（1 个）
+  - 注：已清理 7 个过时的 R2 相关测试（Task 1.3 迁移后不再需要）
+- **integration/e2e.bats** (20 个)：
+  - 安装流程（4 个）
+  - 临时模式（1 个）
+  - 配置系统（2 个）
+  - 卸载流程（2 个）
+  - 安全引擎（2 个）
+  - 系统信息（2 个）
+  - 别名系统（2 个）
+  - 重复安装（2 个）
+  - 错误处理（2 个）
+- **unit/bash/history.bats** (18 个，Task 1.4 完成)：
+  - 历史文件初始化（2 个）
+  - jq 依赖检查（2 个）
+  - 历史记录日志（2 个）
+  - 历史查看（2 个）
+  - 历史搜索（2 个）
+  - 收藏管理（4 个）
+  - 命令路由（4 个）
 - **integration/build-deploy.bats** (23 个)：
   - 构建流程测试（10 个）
   - 部署流程测试（13 个）
@@ -498,7 +534,7 @@ ls -la ~/.fuck/config.sh
 1. **代码检出**：克隆仓库代码
 2. **环境准备**：安装 Node.js 20.x
 3. **依赖安装**：`npm ci` 确保锁定版本
-4. **运行测试**：`npm test` 执行所有 145 个测试
+4. **运行测试**：`npm test` 执行所有 171 个测试
 5. **构建 Worker**：`npm run build` 嵌入安装脚本
 6. **下载配置**：从 `WRANGLER_TOML_URL` secret 获取完整 wrangler.toml
 7. **安全处理**：自动掩码敏感信息（API Keys、Account ID）
@@ -511,7 +547,7 @@ ls -la ~/.fuck/config.sh
 - `CLOUDFLARE_ACCOUNT_ID`：Cloudflare 账户 ID（可选，如 gist 中已包含）
 
 **关键特性**：
-- ✅ 全自动测试验证：每次 push/PR 都运行 145 个测试
+- ✅ 全自动测试验证：每次 push/PR 都运行 171 个测试
 - 分支保护：测试失败自动阻止部署
 - 敏感信息掩码：防止日志泄露
 - 配置外部化：gist 管理敏感配置
@@ -523,6 +559,7 @@ ls -la ~/.fuck/config.sh
 - 多语言支持（中英文）
 - CORS 和健康检查
 - OpenAI API 错误处理（401/429/500/503/超时/网络错误）
+- R2 对象存储脚本分发（正常流程/错误处理/缓存策略/向后兼容）
 - 21 条安全规则（8 block + 9 challenge + 4 warn）
 - 构建脚本跨平台兼容性
 - 端到端用户流程（安装/配置/卸载）
@@ -718,16 +755,16 @@ teardown() {
   - worker.js: ~690 行（含 base64 嵌入）
   - main.sh: ~1752 行
   - zh_main.sh: ~1735 行
-  - scripts: ~555 行（build 82 + deploy 34 + one-click-deploy 179 + setup 104 + common 65）
-  - tests: ~2800 行（unit + integration + security + performance）
-- **测试用例**：145 个（75 个 JS + 70 个 Bash）
-- **测试通过率**：100% (145/145) ✅
+  - scripts: ~651 行（build 82 + deploy 34 + upload-scripts 96 + one-click-deploy 179 + setup 104 + common 90 + 其他 66）
+  - tests: ~3000 行（unit + integration + security + performance）
+- **测试用例**：171 个（101 个 JS + 70 个 Bash）
+- **测试通过率**：100% (171/171) ✅
 - **支持语言**：中文、英文
 - **支持平台**：macOS, Linux (apt/yum/dnf/pacman/zypper/brew)
 - **支持 Shell**：bash, zsh, sh
 
 **质量指标**：
-- 自动化测试：✅ 完善（145 个测试，100% 通过）
+- 自动化测试：✅ 完善（171 个测试，100% 通过）
 - CI/CD：✅ 完善（GitHub Actions）
 - 文档完整性：✅ 完善
 - 配置管理：✅ 完善

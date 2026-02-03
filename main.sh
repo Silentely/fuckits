@@ -1402,6 +1402,486 @@ _fuck_show_config_help() {
     echo -e "${C_DIM}Pro tip:${C_RESET} we lock ${CONFIG_FILE} to chmod 600 so your API key stays local."
 }
 
+# --- Command History Functions (Task 1.4) ---
+
+# Initialize history file with proper structure
+_fuck_init_history_file() {
+    local history_file="${1:-$INSTALL_DIR/history.json}"
+
+    if [ ! -f "$history_file" ]; then
+        cat > "$history_file" <<'HISTORY_EOF'
+{
+  "version": "1.0.0",
+  "commands": [],
+  "favorites": []
+}
+HISTORY_EOF
+        chmod 600 "$history_file"
+    fi
+}
+
+# Check if jq is available
+_fuck_check_jq() {
+    if ! command -v jq &> /dev/null; then
+        echo -e "${C_RED}❌ 'jq' is required for history functionality but not found.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Install it with:${C_RESET}" >&2
+        echo -e "  ${C_CYAN}# macOS${C_RESET}" >&2
+        echo -e "  ${C_DIM}brew install jq${C_RESET}" >&2
+        echo -e "  ${C_CYAN}# Ubuntu/Debian${C_RESET}" >&2
+        echo -e "  ${C_DIM}sudo apt-get install jq${C_RESET}" >&2
+        echo -e "  ${C_CYAN}# CentOS/RHEL${C_RESET}" >&2
+        echo -e "  ${C_DIM}sudo yum install jq${C_RESET}" >&2
+        return 1
+    fi
+    return 0
+}
+
+# Log command execution to history
+_fuck_log_history() {
+    local prompt="$1"
+    local command="$2"
+    local exit_code="${3:-0}"
+    local duration="${4:-0}"
+
+    local history_file="$INSTALL_DIR/history.json"
+
+    # Check jq availability
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    # Initialize history file if not exists
+    _fuck_init_history_file "$history_file"
+
+    # Generate unique ID
+    local cmd_id="cmd_$(date +%s)_$$"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown")
+
+    # Create entry
+    local entry
+    entry=$(jq -n \
+        --arg id "$cmd_id" \
+        --arg timestamp "$timestamp" \
+        --arg prompt "$prompt" \
+        --arg command "$command" \
+        --argjson exit_code "$exit_code" \
+        --argjson duration "$duration" \
+        '{
+            id: $id,
+            timestamp: $timestamp,
+            prompt: $prompt,
+            command: $command,
+            exitCode: $exit_code,
+            duration: $duration
+        }' 2>/dev/null)
+
+    if [ -z "$entry" ]; then
+        return 1
+    fi
+
+    # Append to history
+    local temp_file="${history_file}.tmp"
+    if jq ".commands += [$entry]" "$history_file" > "$temp_file" 2>/dev/null; then
+        mv "$temp_file" "$history_file"
+        chmod 600 "$history_file"  # Ensure permissions after mv
+
+        # Limit to 1000 most recent commands
+        if jq '.commands |= .[-1000:]' "$history_file" > "$temp_file" 2>/dev/null; then
+            mv "$temp_file" "$history_file"
+            chmod 600 "$history_file"  # Ensure permissions after mv
+        fi
+    fi
+}
+
+# View command history
+_fuck_history() {
+    local count="${1:-20}"
+    local history_file="$INSTALL_DIR/history.json"
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    # Validate count is a positive integer
+    if ! [[ "$count" =~ ^[0-9]+$ ]] || [ "$count" -le 0 ]; then
+        echo -e "${C_RED}❌ Invalid count: must be a positive integer.${C_RESET}" >&2
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        echo -e "${C_DIM}Commands will be logged automatically as you use 'fuck'.${C_RESET}"
+        return 0
+    fi
+
+    local total_count
+    total_count=$(jq '.commands | length' "$history_file" 2>/dev/null || echo "0")
+
+    if [ "$total_count" -eq 0 ]; then
+        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        return 0
+    fi
+
+    echo -e "${C_CYAN}📜 Last $count commands:${C_RESET}"
+    echo ""
+
+
+    # Output plain text from jq, add colors in bash to avoid jq escape issues
+    # Use --argjson to safely pass numeric parameter
+    jq -r --argjson count "$count" '.commands[-$count:] | reverse | to_entries[] |
+        "[\(.key + 1)] \(.value.timestamp[0:19]) | \(.value.prompt) → \(.value.command)"' \
+        "$history_file" 2>/dev/null | while IFS= read -r line; do
+        echo -e "${C_DIM}${line}${C_RESET}"
+    done
+
+    echo ""
+    echo -e "${C_DIM}Total: $total_count commands${C_RESET}"
+    echo -e "${C_DIM}Tip: Use 'fuck history search <keyword>' to search${C_RESET}"
+}
+
+# Search command history
+_fuck_history_search() {
+    local keyword="$1"
+    local history_file="$INSTALL_DIR/history.json"
+
+    if [ -z "$keyword" ]; then
+        echo -e "${C_RED}❌ Please provide a search keyword.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck history search <keyword>" >&2
+        return 1
+    fi
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        return 0
+    fi
+
+    echo -e "${C_CYAN}🔍 Searching for: \"$keyword\"${C_RESET}"
+    echo ""
+
+
+    # Output plain text from jq, add colors in bash
+    # Use --arg to safely pass keyword parameter
+    local results
+    results=$(jq -r --arg keyword "$keyword" '.commands[] |
+        select((.prompt | tostring | contains($keyword)) or (.command | tostring | contains($keyword))) |
+        "\(.timestamp[0:19]) | \(.prompt) → \(.command)"' \
+        "$history_file" 2>/dev/null)
+
+    if [ -z "$results" ]; then
+        echo -e "${C_YELLOW}No matching commands found.${C_RESET}"
+        return 0
+    fi
+
+    echo "$results" | while IFS= read -r line; do
+        echo -e "${C_DIM}${line}${C_RESET}"
+    done
+}
+
+# Replay a command from history
+_fuck_history_replay() {
+    local index="${1:-}"
+    local history_file="$INSTALL_DIR/history.json"
+
+    if [ -z "$index" ]; then
+        echo -e "${C_RED}❌ Please provide a command index.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck history replay <index>" >&2
+        echo -e "${C_DIM}Tip: Use 'fuck history' to see available commands${C_RESET}" >&2
+        return 1
+    fi
+
+    # Validate index is a positive integer
+    if ! [[ "$index" =~ ^[0-9]+$ ]] || [ "$index" -le 0 ]; then
+        echo -e "${C_RED}❌ Invalid index: must be a positive integer.${C_RESET}" >&2
+        return 1
+    fi
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_RED}❌ No command history found.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Convert 1-based index to 0-based (counting from end)
+    local array_index=$((index - 1))
+
+    local cmd
+    cmd=$(jq -r ".commands[-$index].command" "$history_file" 2>/dev/null)
+
+    if [ -z "$cmd" ] || [ "$cmd" = "null" ]; then
+        echo -e "${C_RED}❌ Command index $index not found.${C_RESET}" >&2
+        return 1
+    fi
+
+    echo -e "${C_CYAN}🔄 Replaying command:${C_RESET} $cmd"
+    echo ""
+
+    # Security check before execution
+    local security_result
+    security_result=$(_fuck_security_evaluate_command "$cmd")
+    local security_level="${security_result%%|*}"
+    local security_reason="${security_result#*|}"
+
+    if ! _fuck_security_handle_decision "$security_level" "$security_reason" "$cmd"; then
+        echo -e "${C_RED}❌ Command blocked by security policy.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Execute the command
+    eval "$cmd"
+    local exit_code=$?
+
+    if [ $exit_code -ne 0 ]; then
+        echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
+    fi
+
+    return $exit_code
+}
+
+# --- Favorite Commands Functions (Task 1.4) ---
+
+# Add a command to favorites
+_fuck_favorite_add() {
+    local name="${1:-}"
+    local prompt="${2:-}"
+
+    if [ -z "$name" ] || [ -z "$prompt" ]; then
+        echo -e "${C_RED}❌ Both name and prompt are required.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite add <name> <prompt>" >&2
+        echo -e "${C_YELLOW}Example:${C_RESET} fuck favorite add \"Update System\" \"update all packages\"" >&2
+        return 1
+    fi
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    local history_file="$INSTALL_DIR/history.json"
+    _fuck_init_history_file "$history_file"
+
+    # Generate command using AI
+    echo -e "${C_CYAN}🤖 Generating command for: \"$prompt\"${C_RESET}"
+
+    # Call the main execute function to get the command (but don't execute it)
+    # We'll temporarily capture the response
+    local sysinfo_string
+    sysinfo_string=$(_fuck_collect_sysinfo_string)
+
+    local response=""
+    local exit_code=0
+    if _fuck_should_use_local_api; then
+        response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "${FUCK_TIMEOUT:-30}")
+        exit_code=$?
+    else
+        local spinner_label="Generating... "
+        printf '%s' "$spinner_label"
+        response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "${FUCK_TIMEOUT:-30}" "$spinner_label")
+        exit_code=$?
+        echo ""
+    fi
+
+    if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
+        echo -e "${C_RED}❌ Failed to generate command.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Generate unique ID
+    local fav_id="fav_$(date +%s)_$$"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown")
+
+    # Create favorite entry
+    local entry
+    entry=$(jq -n \
+        --arg id "$fav_id" \
+        --arg name "$name" \
+        --arg prompt "$prompt" \
+        --arg command "$response" \
+        --arg created "$timestamp" \
+        '{
+            id: $id,
+            name: $name,
+            prompt: $prompt,
+            command: $command,
+            created: $created
+        }' 2>/dev/null)
+
+    if [ -z "$entry" ]; then
+        echo -e "${C_RED}❌ Failed to create favorite entry.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Append to favorites
+    local temp_file="${history_file}.tmp"
+    if jq ".favorites += [$entry]" "$history_file" > "$temp_file" 2>/dev/null; then
+        mv "$temp_file" "$history_file"
+        chmod 600 "$history_file"  # Ensure permissions after mv
+        echo -e "${C_GREEN}✅ Added to favorites: \"$name\"${C_RESET}"
+        echo -e "${C_DIM}Command: $response${C_RESET}"
+        return 0
+    else
+        echo -e "${C_RED}❌ Failed to save favorite.${C_RESET}" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+}
+
+# List all favorite commands
+_fuck_favorite_list() {
+    local history_file="$INSTALL_DIR/history.json"
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
+        echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        return 0
+    fi
+
+    local total_count
+    total_count=$(jq '.favorites | length' "$history_file" 2>/dev/null || echo "0")
+
+    if [ "$total_count" -eq 0 ]; then
+        echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
+        echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        return 0
+    fi
+
+    echo -e "${C_CYAN}⭐ Favorite Commands:${C_RESET}"
+    echo ""
+
+    jq -r '.favorites | to_entries[] |
+        "'"${C_BOLD}"'\(.key + 1)) '"${C_RESET}"'\(.value.name)\n   '"${C_DIM}"'Prompt: \(.value.prompt)'"${C_RESET}"'\n   '"${C_DIM}"'Command: \(.value.command)'"${C_RESET}"'\n"' \
+        "$history_file" 2>/dev/null | while IFS= read -r line; do
+        echo -e "$line"
+    done
+
+    echo -e "${C_DIM}Total: $total_count favorites${C_RESET}"
+    echo -e "${C_DIM}Tip: Use 'fuck favorite run <number>' to execute${C_RESET}"
+}
+
+# Execute a favorite command
+_fuck_favorite_run() {
+    local index="${1:-}"
+    local history_file="$INSTALL_DIR/history.json"
+
+    if [ -z "$index" ]; then
+        echo -e "${C_RED}❌ Please provide a favorite index.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite run <index>" >&2
+        echo -e "${C_DIM}Tip: Use 'fuck favorite list' to see available favorites${C_RESET}" >&2
+        return 1
+    fi
+
+    # Validate index is a positive integer
+    if ! [[ "$index" =~ ^[0-9]+$ ]] || [ "$index" -le 0 ]; then
+        echo -e "${C_RED}❌ Invalid index: must be a positive integer.${C_RESET}" >&2
+        return 1
+    fi
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_RED}❌ No favorites found.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Convert 1-based index to 0-based array index
+    local array_index=$((index - 1))
+
+    local cmd
+    cmd=$(jq -r ".favorites[$array_index].command" "$history_file" 2>/dev/null)
+
+    if [ -z "$cmd" ] || [ "$cmd" = "null" ]; then
+        echo -e "${C_RED}❌ Favorite #$index not found.${C_RESET}" >&2
+        return 1
+    fi
+
+    local fav_name
+    fav_name=$(jq -r ".favorites[$array_index].name" "$history_file" 2>/dev/null)
+
+    echo -e "${C_CYAN}⭐ Executing favorite: \"$fav_name\"${C_RESET}"
+    echo -e "${C_DIM}Command: $cmd${C_RESET}"
+    echo ""
+
+    # Security check before execution
+    local security_result
+    security_result=$(_fuck_security_evaluate_command "$cmd")
+    local security_level="${security_result%%|*}"
+    local security_reason="${security_result#*|}"
+
+    if ! _fuck_security_handle_decision "$security_level" "$security_reason" "$cmd"; then
+        echo -e "${C_RED}❌ Command blocked by security policy.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Execute the command
+    eval "$cmd"
+    local exit_code=$?
+
+    if [ $exit_code -ne 0 ]; then
+        echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
+    fi
+
+    return $exit_code
+}
+
+# Delete a favorite command
+_fuck_favorite_delete() {
+    local index="${1:-}"
+    local history_file="$INSTALL_DIR/history.json"
+
+    if [ -z "$index" ]; then
+        echo -e "${C_RED}❌ Please provide a favorite index to delete.${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite delete <index>" >&2
+        return 1
+    fi
+
+    if ! _fuck_check_jq; then
+        return 1
+    fi
+
+    if [ ! -f "$history_file" ]; then
+        echo -e "${C_RED}❌ No favorites found.${C_RESET}" >&2
+        return 1
+    fi
+
+    # Convert 1-based index to 0-based array index
+    local array_index=$((index - 1))
+
+    local fav_name
+    fav_name=$(jq -r ".favorites[$array_index].name" "$history_file" 2>/dev/null)
+
+    if [ -z "$fav_name" ] || [ "$fav_name" = "null" ]; then
+        echo -e "${C_RED}❌ Favorite #$index not found.${C_RESET}" >&2
+        return 1
+    fi
+
+    echo -e "${C_YELLOW}🗑️  Deleting favorite: \"$fav_name\"${C_RESET}"
+
+    # Remove the favorite
+    local temp_file="${history_file}.tmp"
+    if jq "del(.favorites[$array_index])" "$history_file" > "$temp_file" 2>/dev/null; then
+        mv "$temp_file" "$history_file"
+        echo -e "${C_GREEN}✅ Favorite deleted.${C_RESET}"
+        return 0
+    else
+        echo -e "${C_RED}❌ Failed to delete favorite.${C_RESET}" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+}
+
 # Uninstalls the script
 _uninstall_script() {
     echo -e "$FUCK ${C_YELLOW}So you're kicking me out? Fine.${C_RESET}"
@@ -1439,16 +1919,74 @@ _uninstall_script() {
 # The main function that contacts the API
 # Takes >0 arguments as the prompt
 _fuck_execute_prompt() {
+    # Safe parameter access (avoid "parameter not set" error with set -u)
+    local arg1="${1:-}"
+    local arg2="${2:-}"
+    local arg3="${3:-}"
+
     # If the user types *only* "fuck uninstall"
-    if [ "$1" = "uninstall" ] && [ "$#" -eq 1 ]; then
+    if [ "$arg1" = "uninstall" ] && [ "$#" -eq 1 ]; then
         _uninstall_script
         return 0
     fi
 
     # If the user types "fuck config"
-    if [ "$1" = "config" ] && [ "$#" -eq 1 ]; then
+    if [ "$arg1" = "config" ] && [ "$#" -eq 1 ]; then
         _fuck_show_config_help
         return 0
+    fi
+
+    # --- Task 1.4: Command History and Favorites Routing ---
+
+    # Handle history subcommands
+    if [ "$arg1" = "history" ]; then
+        shift
+        case "${1:-}" in
+            search)
+                _fuck_history_search "${2:-}"
+                return $?
+                ;;
+            replay)
+                _fuck_history_replay "${2:-}"
+                return $?
+                ;;
+            *)
+                # Default: show history (optional count parameter)
+                _fuck_history "${1:-}"
+                return $?
+                ;;
+        esac
+    fi
+
+    # Handle favorite subcommands (support both 'favorite' and 'fav')
+    if [ "$arg1" = "favorite" ] || [ "$arg1" = "fav" ]; then
+        shift
+        case "${1:-}" in
+            add)
+                _fuck_favorite_add "${2:-}" "${3:-}"
+                return $?
+                ;;
+            list|ls)
+                _fuck_favorite_list
+                return $?
+                ;;
+            run|exec)
+                _fuck_favorite_run "${2:-}"
+                return $?
+                ;;
+            delete|del|rm)
+                _fuck_favorite_delete "${2:-}"
+                return $?
+                ;;
+            *)
+                echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite <add|list|run|delete>" >&2
+                echo -e "  ${C_DIM}add <name> <prompt>${C_RESET}     Add a new favorite command"
+                echo -e "  ${C_DIM}list${C_RESET}                    List all favorites"
+                echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
+                echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
+                return 1
+                ;;
+        esac
     fi
 
     if ! command -v curl &> /dev/null; then
@@ -1466,6 +2004,10 @@ _fuck_execute_prompt() {
     local curl_timeout="${FUCK_TIMEOUT:-30}"
     local sysinfo_string
     sysinfo_string=$(_fuck_collect_sysinfo_string)
+
+    # Task 1.4: Record start time for history logging
+    local start_time
+    start_time=$(date +%s)
 
     local response=""
     local exit_code=0
@@ -1566,7 +2108,13 @@ _fuck_execute_prompt() {
         
         # Log command execution
         _fuck_audit_log "EXEC" "$response" "$exit_code"
-        
+
+        # Task 1.4: Log to command history
+        local end_time duration
+        end_time=$(date +%s)
+        duration=$((end_time - start_time))
+        _fuck_log_history "$prompt" "$response" "$exit_code" "$duration"
+
         if [ $exit_code -ne 0 ]; then
             echo -e "$FUCK ${C_RED}Command failed with exit code $exit_code.${C_RESET}" >&2
         fi
@@ -1722,6 +2270,14 @@ CFG
         echo -e "  ${C_CYAN}fuck find all files larger than 10MB in the current directory${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# Uninstalls ${C_RESET}${C_RED}fuck${C_RESET}${C_GREEN} itself${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# Show configuration help${C_RESET}"
+        echo -e "\n${C_BOLD}--- HISTORY & FAVORITES (Task 1.4) ---${C_RESET}"
+        echo -e "  ${C_CYAN}fuck history${C_RESET} ${C_GREEN}# View recent commands${C_RESET}"
+        echo -e "  ${C_CYAN}fuck history search <keyword>${C_RESET} ${C_GREEN}# Search history${C_RESET}"
+        echo -e "  ${C_CYAN}fuck favorite add <name> <prompt>${C_RESET} ${C_GREEN}# Save a favorite${C_RESET}"
+        echo -e "  ${C_CYAN}fuck favorite list${C_RESET} ${C_GREEN}# List all favorites${C_RESET}"
+        echo -e "\n${C_YELLOW}📦 Note: History features require 'jq' (JSON processor)${C_RESET}"
+        echo -e "  Install it with: ${C_CYAN}brew install jq${C_RESET} (macOS)"
+        echo -e "                   ${C_CYAN}apt install jq${C_RESET} (Ubuntu/Debian)"
         echo -e "\n${C_YELLOW}Remember to restart your shell to begin!${C_RESET}"
     else
         echo -e "$FUCK ${C_YELLOW}It's already installed, genius. Just updated the script for you.${C_RESET}"

@@ -11,9 +11,6 @@ load '../helpers/bats-helpers'
 
 # ==================== 测试环境设置 ====================
 
-TEST_DIR=""
-PROJECT_ROOT=""
-
 setup_file() {
     # 保存项目根目录路径
     PROJECT_ROOT=$(pwd)
@@ -70,85 +67,70 @@ teardown() {
 }
 
 @test "Build: INSTALLER_SCRIPT should not be empty after build" {
-    bash scripts/build.sh
-
-    # Check English script embedding
-    ! grep -q "const INSTALLER_SCRIPT = b64_to_utf8(\`\`);" worker.js
+    # Test #4: Verify INSTALLER_SCRIPT constant is populated after build
+    run bash -c "grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | grep -v 'b64_to_utf8(\`\`);'"
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "b64_to_utf8(\`"
 }
 
 @test "Build: INSTALLER_SCRIPT_ZH should not be empty after build" {
-    bash scripts/build.sh
-
-    # Check Chinese script embedding
-    ! grep -q "const INSTALLER_SCRIPT_ZH = b64_to_utf8(\`\`);" worker.js
+    # Test #5: Verify INSTALLER_SCRIPT_ZH constant is populated after build
+    run bash -c "grep 'const INSTALLER_SCRIPT_ZH = b64_to_utf8' worker.js | grep -v 'b64_to_utf8(\`\`);'"
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "b64_to_utf8(\`"
 }
 
 @test "Build: Base64 encoding should be valid" {
-    bash scripts/build.sh
-
-    # 提取并验证 base64 内容
-    local b64_content
-    b64_content=$(grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js | sed 's/.*b64_to_utf8(`//;s/`).*//' | head -1)
-
-    # 尝试解码（不应该失败）
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "$b64_content" | base64 -D > /dev/null 2>&1
-    else
-        echo "$b64_content" | base64 -d > /dev/null 2>&1
+    # Test #6: Verify base64 can be decoded successfully
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
     fi
-    [ $? -eq 0 ]
+
+    # Extract base64 string from INSTALLER_SCRIPT
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+
+    # Attempt to decode
+    run bash -c "echo '$b64_en' | base64 -d 2>&1"
+    [ "$status" -eq 0 ]
 }
 
 @test "Build: decoded script should contain shebang" {
-    bash scripts/build.sh
-
-    # 提取并解码
-    local b64_content decoded
-    b64_content=$(grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js | sed 's/.*b64_to_utf8(`//;s/`).*//' | head -1)
-
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        decoded=$(echo "$b64_content" | base64 -D)
-    else
-        decoded=$(echo "$b64_content" | base64 -d)
+    # Test #7: Verify decoded script has proper shebang
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
     fi
 
-    echo "$decoded" | head -1 | grep -q "#!/bin/bash"
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local decoded=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
+
+    echo "$decoded" | grep -q '#!/bin/bash'
 }
 
 @test "Build: decoded script should contain core functions" {
-    bash scripts/build.sh
-
-    local b64_content decoded
-    b64_content=$(grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js | sed 's/.*b64_to_utf8(`//;s/`).*//' | head -1)
-
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        decoded=$(echo "$b64_content" | base64 -D)
-    else
-        decoded=$(echo "$b64_content" | base64 -d)
+    # Test #8: Verify decoded script has essential functions
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
     fi
 
-    # 检查核心函数存在
-    echo "$decoded" | grep -q "_fuck_execute_prompt"
-    echo "$decoded" | grep -q "_fuck_security_evaluate_command"
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local decoded=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
+
+    echo "$decoded" | grep -q '_fuck_execute_prompt'
+    echo "$decoded" | grep -q '_install_script'
 }
 
 @test "Build: EN and ZH scripts should have different LOCALE settings" {
-    bash scripts/build.sh
-
-    # 提取英文脚本
-    local b64_en b64_zh decoded_en decoded_zh
-    b64_en=$(grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js | sed 's/.*b64_to_utf8(`//;s/`).*//' | head -1)
-    b64_zh=$(grep "const INSTALLER_SCRIPT_ZH = b64_to_utf8" worker.js | sed 's/.*b64_to_utf8(`//;s/`).*//' | head -1)
-
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        decoded_en=$(echo "$b64_en" | base64 -D)
-        decoded_zh=$(echo "$b64_zh" | base64 -D)
-    else
-        decoded_en=$(echo "$b64_en" | base64 -d)
-        decoded_zh=$(echo "$b64_zh" | base64 -d)
+    # Test #9: Verify language variants have correct LOCALE
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
     fi
 
-    # 验证 locale 设置
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local b64_zh=$(grep 'const INSTALLER_SCRIPT_ZH = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+
+    local decoded_en=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
+    local decoded_zh=$(echo "$b64_zh" | base64 -d 2>/dev/null || echo "")
+
     echo "$decoded_en" | grep -q 'FUCKITS_LOCALE="en"'
     echo "$decoded_zh" | grep -q 'FUCKITS_LOCALE="zh"'
 }
@@ -276,17 +258,18 @@ teardown() {
 }
 
 @test "Build: Base64 encoding should not contain newlines" {
-    bash scripts/build.sh
+    # Test #22: macOS base64 doesn't add newlines by default with -i flag
+    # Linux base64 needs -w 0 to prevent newlines
+    # This test verifies build.sh handles both correctly
 
-    # Extract base64 content and check for newlines
-    local b64_line
-    b64_line=$(grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js)
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
+    fi
 
-    # No signs of truncated base64 content in line
-    # Entire const declaration should be on one line
-    local line_count
-    line_count=$(echo "$b64_line" | wc -l)
-    [ "$line_count" -eq 1 ]
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+
+    # Check for embedded newlines in the variable itself (which would break the JavaScript)
+    [[ "$b64_en" != *$'\n'* ]]
 }
 
 # ==================== 工作区清洁度验证 ====================

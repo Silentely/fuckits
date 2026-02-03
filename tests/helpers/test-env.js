@@ -64,6 +64,9 @@ beforeAll(async () => {
     // 模拟 KV 命名空间
     kvNamespaces: ['QUOTA_KV'],
 
+    // 模拟 R2 buckets
+    r2Buckets: ['SCRIPTS_BUCKET'],
+
     // 环境变量
     bindings: {
       OPENAI_API_KEY: 'test-api-key',
@@ -80,6 +83,9 @@ beforeAll(async () => {
     // 使用 MockAgent 拦截 fetch 请求
     fetchMock: mockAgent,
   });
+
+  // 初始化 R2 mock 数据
+  await initR2MockData();
 });
 
 /**
@@ -93,6 +99,37 @@ afterAll(async () => {
     await mockAgent.close();
   }
 });
+
+/**
+ * 初始化 R2 mock 数据
+ * 读取 main.sh 和 zh_main.sh 并存入 R2 bucket
+ */
+async function initR2MockData() {
+  try {
+    const r2 = await mf.getR2Bucket('SCRIPTS_BUCKET');
+
+    // 读取英文脚本
+    const mainScript = readFileSync('./main.sh', 'utf-8');
+    await r2.put('en/main.sh', mainScript, {
+      httpMetadata: {
+        contentType: 'text/plain; charset=utf-8',
+      },
+    });
+
+    // 读取中文脚本
+    const zhScript = readFileSync('./zh_main.sh', 'utf-8');
+    await r2.put('zh/main.sh', zhScript, {
+      httpMetadata: {
+        contentType: 'text/plain; charset=utf-8',
+      },
+    });
+
+    console.log('✅ R2 mock data initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize R2 mock data:', error);
+    throw error;
+  }
+}
 
 /**
  * 获取 Miniflare 实例
@@ -200,4 +237,43 @@ export async function setKV(key, value, options = {}) {
 export async function getKV(key) {
   const kv = await mf.getKVNamespace('QUOTA_KV');
   return await kv.get(key);
+}
+
+/**
+ * 获取 R2 bucket 实例
+ * @returns {Promise<R2Bucket>} R2 bucket 实例
+ */
+export async function getR2Bucket() {
+  return await mf.getR2Bucket('SCRIPTS_BUCKET');
+}
+
+/**
+ * 清空 R2 bucket
+ */
+export async function clearR2() {
+  const r2 = await getR2Bucket();
+  const objects = await r2.list();
+  for (const obj of objects.objects) {
+    await r2.delete(obj.key);
+  }
+}
+
+/**
+ * 向 R2 添加对象
+ * @param {string} key - 对象键
+ * @param {string} content - 对象内容
+ * @param {object} options - 选项
+ */
+export async function putR2(key, content, options = {}) {
+  const r2 = await getR2Bucket();
+  await r2.put(key, content, options);
+}
+
+/**
+ * 从 R2 删除对象
+ * @param {string} key - 对象键
+ */
+export async function deleteR2(key) {
+  const r2 = await getR2Bucket();
+  await r2.delete(key);
 }

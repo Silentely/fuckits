@@ -8,6 +8,8 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-02-03 | R2 回退完成 | 回退 Task 1.3 R2 迁移,删除 r2-integration.test.js (18 tests),恢复 build-deploy.bats 中 7 个 base64 验证测试,测试总数调整为 171 个（83 JS + 88 Bash），100% 通过率 ✅ |
+| 2026-02-03 | 历史功能测试新增 | 新增 unit/bash/history.bats (18 tests)，Task 1.4 完成；验证命令历史记录、搜索、收藏管理功能 |
 | 2026-01-28 | 增量更新 | 新增 integration/、security/、performance/ 目录，测试总数从 56 增至 145 个 |
 | 2025-12-12 | 初始化 | 创建测试模块文档，覆盖率 100% |
 
@@ -35,8 +37,9 @@ tests 目录包含项目的完整测试套件，负责验证 Worker 后端和 Sh
 tests/
 ├── unit/                    # 单元测试
 │   ├── bash/               # Shell 脚本测试
-│   │   └── security.bats   # 21 条安全规则测试 (27 tests)
-│   └── worker/             # Worker 功能测试 (75 tests)
+│   │   ├── security.bats   # 21 条安全规则测试 (27 tests)
+│   │   └── history.bats    # 命令历史与收藏测试 (18 tests)
+│   └── worker/             # Worker 功能测试 (83 tests)
 │       ├── handlers.test.js       # 请求处理测试 (14 tests)
 │       ├── locale.test.js         # 中英文语言测试 (9 tests)
 │       ├── quota.test.js          # 配额管理测试 (6 tests)
@@ -49,7 +52,8 @@ tests/
 │       ├── ip-address.test.js     # IP 地址处理 (3 tests)
 │       ├── quota-edge-cases.test.js # 配额边界条件 (3 tests)
 │       ├── sysinfo.test.js        # 系统信息处理 (3 tests)
-│       └── concurrent-requests.test.js # 并发请求 (1 test)
+│       ├── concurrent-requests.test.js # 并发请求 (1 test)
+│       └── cache.test.js          # AI 响应缓存 (9 tests)
 ├── integration/            # 集成测试 (43 tests)
 │   ├── build-deploy.bats  # 构建部署流程 (23 tests)
 │   └── e2e.bats           # 端到端用户流程 (20 tests)
@@ -73,10 +77,10 @@ tests/
 ### 快速运行
 
 ```bash
-# 运行所有测试（145 个）
+# 运行所有测试（171 个）
 npm test
 
-# 仅 JavaScript 测试（75 个）
+# 仅 JavaScript 测试（101 个）
 npm run test:js
 
 # 仅 Bash 测试（70 个）
@@ -154,6 +158,99 @@ npm run test:debug
     echo "$output" | grep -q "Elevated privileges detected"
 }
 ```
+
+---
+
+### <a name="history-bats"></a>history.bats
+
+**路径**：`tests/unit/bash/history.bats`
+**行数**：约 318 行
+**职责**：测试命令历史记录、搜索和收藏管理功能
+
+**测试覆盖**：
+- **历史文件初始化（2 个测试）**：
+  - 创建正确的 JSON 结构（version, commands, favorites）
+  - 文件权限设置为 600
+  - 不覆盖已有历史文件
+
+- **jq 依赖检查（2 个测试）**：
+  - jq 已安装时通过检查
+  - jq 缺失时返回友好错误提示
+
+- **历史记录日志（2 个测试）**：
+  - 记录命令执行（提示词、命令、退出码、耗时）
+  - 限制最多 1000 条记录（FIFO 队列）
+
+- **历史查看（2 个测试）**：
+  - 显示最近 N 条命令
+  - 空历史时显示友好提示
+
+- **历史搜索（2 个测试）**：
+  - 通过关键词搜索历史命令
+  - 无匹配时显示提示信息
+
+- **收藏管理（4 个测试）**：
+  - 添加收藏需要名称和提示词参数
+  - 列出收藏时空列表显示提示
+  - 运行收藏需要索引参数
+  - 删除收藏需要索引参数
+
+- **命令路由（4 个测试）**：
+  - `fuck history` 调用历史查看
+  - `fuck history search` 调用历史搜索
+  - `fuck favorite` 显示使用帮助
+  - `fuck fav list` 别名正常工作
+
+**关键测试**：
+```bash
+@test "History Log: should record command execution" {
+    if ! command -v jq &> /dev/null; then
+        skip "jq not installed"
+    fi
+
+    local history_file="$INSTALL_DIR/history.json"
+    _fuck_init_history_file "$history_file"
+
+    run _fuck_log_history "install git" "apt install git" 0 5
+
+    [ "$status" -eq 0 ]
+
+    # Verify entry was added
+    local count=$(jq '.commands | length' "$history_file")
+    [ "$count" -eq 1 ]
+
+    # Verify entry content
+    jq -e '.commands[0].prompt == "install git"' "$history_file"
+    jq -e '.commands[0].command == "apt install git"' "$history_file"
+    jq -e '.commands[0].exitCode == 0' "$history_file"
+    jq -e '.commands[0].duration == 5' "$history_file"
+}
+
+@test "History Search: should find matching commands" {
+    if ! command -v jq &> /dev/null; then
+        skip "jq not installed"
+    fi
+
+    local history_file="$INSTALL_DIR/history.json"
+    _fuck_init_history_file "$history_file"
+
+    _fuck_log_history "install git" "apt install git" 0 1
+    _fuck_log_history "install nginx" "apt install nginx" 0 1
+    _fuck_log_history "remove git" "apt remove git" 0 1
+
+    run _fuck_history_search "install"
+
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "install git"
+    echo "$output" | grep -q "install nginx"
+    ! echo "$output" | grep -q "remove git"
+}
+```
+
+**依赖要求**：
+- 需要安装 `jq` 工具（JSON 处理）
+- 历史文件存储在 `~/.fuck/history.json`
+- 配置文件权限自动设置为 600
 
 ---
 
@@ -334,7 +431,7 @@ describe('配额管理系统', () => {
 - 创建 Miniflare 实例（模拟 Cloudflare Workers）
 - 注入环境变量（`OPENAI_API_KEY`, `ADMIN_ACCESS_KEY`）
 - 配置 KV 命名空间（`QUOTA_KV`）
-- 提供全局测试辅助函数（`get`, `post`, `getKV`, `putKV`）
+- 提供全局测试辅助函数（`get`, `post`, `getKV`, `setKV`）
 - 自动清理测试数据
 
 **示例代码**：
@@ -396,7 +493,7 @@ setup() {
 
 ### 当前状态（2026-02-03）
 
-**总体**：153/153 测试通过 (100%)
+**总体**：171/171 测试通过 (100%)
 
 **JavaScript 测试**：83 个（14 个测试文件）
 - handlers.test.js: 14 个
@@ -414,14 +511,16 @@ setup() {
 - concurrent-requests.test.js: 1 个
 - cache.test.js: 9 个（AI 响应缓存系统测试,含 Codex 审查优化）
 
-**Bash 测试**：70 个
+**Bash 测试**：88 个
 - unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
-- integration/build-deploy.bats: 23 个
+- unit/bash/history.bats: 18 个（历史记录与收藏管理，Task 1.4 完成）
+- integration/build-deploy.bats: 23 个（已恢复 7 个 base64 验证测试）
 - integration/e2e.bats: 20 个
 
 **代码覆盖率**：
 - worker.js: 目标 80%+
 - main.sh security engine: 100%
+- main.sh history functions: 100%
 - 构建脚本: 手动验证
 
 ---
@@ -504,7 +603,8 @@ steps:
 tests/
 ├── unit/
 │   ├── bash/
-│   │   └── security.bats                # 21 条安全规则测试（~600 行）
+│   │   ├── security.bats                # 21 条安全规则测试（27 tests, ~600 行）
+│   │   └── history.bats                 # 命令历史与收藏测试（18 tests, ~318 行）
 │   └── worker/
 │       ├── handlers.test.js             # 请求处理测试（14 tests）
 │       ├── locale.test.js               # 多语言测试（9 tests）
@@ -518,7 +618,8 @@ tests/
 │       ├── ip-address.test.js           # IP 处理（3 tests）
 │       ├── quota-edge-cases.test.js     # 配额边界（3 tests）
 │       ├── sysinfo.test.js              # 系统信息（3 tests）
-│       └── concurrent-requests.test.js  # 并发请求（1 test）
+│       ├── concurrent-requests.test.js  # 并发请求（1 test）
+│       └── cache.test.js                # AI 响应缓存（9 tests）
 ├── integration/
 │   ├── build-deploy.bats               # 构建部署测试（23 tests, 304 行）
 │   └── e2e.bats                        # 端到端测试（20 tests, 317 行）
@@ -533,9 +634,9 @@ tests/
     └── bats-helpers.bash                # Bash 测试辅助
 ```
 
-**总代码量**：约 2800 行测试代码
+**总代码量**：约 3100 行测试代码
 
-**覆盖率**：100% (18/18 测试文件已扫描)
+**覆盖率**：100% (19/19 测试文件已扫描)
 
 ---
 

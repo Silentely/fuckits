@@ -15,14 +15,6 @@ binding = "AI_CACHE"
 id = "YOUR_KV_NAMESPACE_ID"  # 替换为实际的 KV namespace ID
 preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID"  # 可选:本地开发预览使用
 
-# R2 Buckets
-# SCRIPTS_BUCKET: 用于存储安装脚本，优化 Worker 文件大小和冷启动时间
-# 部署前请运行: npx wrangler r2 bucket create fuckits-scripts
-# 然后运行: npm run upload-scripts 上传脚本到 R2
-[[r2_buckets]]
-binding = "SCRIPTS_BUCKET"
-bucket_name = "fuckits-scripts"
-
 [vars]
 OPENAI_API_MODEL = "gpt-5-nano"
 OPENAI_API_BASE = "https://api.openai.com/v1"
