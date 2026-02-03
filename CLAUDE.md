@@ -161,19 +161,28 @@ npm run dev
 ## 测试策略
 
 ### 当前状态
-项目已实现完整的自动化测试套件，**总计 145 个测试（100% 通过率）**，覆盖 Worker 和 Shell 脚本。
+项目已实现完整的自动化测试套件，**总计 153 个测试（100% 通过率）**，覆盖 Worker 和 Shell 脚本。
 
 ### 测试框架
 - **JavaScript/Worker**：Vitest + Miniflare（Cloudflare Workers 本地模拟）
 - **Bash/Shell**：bats-core 1.13.0（Bash Automated Testing System）
 
 ### 测试覆盖
-**JavaScript 测试（75 个）**：
-- handlers.test.js: HTTP 请求处理（12 个）
-- locale.test.js: 中英文双语支持（6 个）
-- quota.test.js: 配额管理系统（11 个）
-- edge-cases.test.js: 边界条件和错误处理（32 个）
+**JavaScript 测试（83 个）**：
+- handlers.test.js: HTTP 请求处理（14 个）
+- locale.test.js: 中英文双语支持（9 个）
+- quota.test.js: 配额管理系统（6 个）
 - api-errors.test.js: OpenAI API 错误响应矩阵（14 个）
+- health-check.test.js: 健康检查端点（3 个）
+- cors.test.js: CORS 支持（3 个）
+- user-agent.test.js: UA 检测（5 个）
+- url-paths.test.js: URL 路径处理（5 个）
+- post-requests.test.js: POST 请求处理（6 个）
+- ip-address.test.js: IP 地址处理（3 个）
+- quota-edge-cases.test.js: 配额边界条件（3 个）
+- sysinfo.test.js: 系统信息处理（3 个）
+- concurrent-requests.test.js: 并发请求（1 个）
+- cache.test.js: AI 响应缓存系统（9 个，含 Codex 审查优化）
 
 **Bash 测试（70 个）**：
 - **unit/bash/security.bats** (27 个)：

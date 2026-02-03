@@ -83,9 +83,13 @@ describe('OpenAI API 错误响应处理', () => {
         prompt: 'test command',
       });
 
-      // 注意：当前 Worker 实现直接透传 OpenAI 的状态码
-      expect(response.status).toBe(401);
-      // TODO: 应该返回 500 并包含友好的错误消息
+      // Worker 应该统一返回 500 并提供友好的错误消息
+      expect(response.status).toBe(500);
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
+      expect(body.message).toContain('authentication failed');
+      expect(body.originalStatus).toBe(401);
+      expect(body.requestId).toBeTruthy();
     });
 
     it('429 Rate Limit - Worker 直接透传错误状态码', async () => {
@@ -105,8 +109,13 @@ describe('OpenAI API 错误响应处理', () => {
         prompt: 'test command',
       });
 
-      expect(response.status).toBe(429);
-      // TODO: 应该返回 500 并包含友好的错误消息
+      // Worker 应该统一返回 500 并提供友好的错误消息
+      expect(response.status).toBe(500);
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
+      expect(body.message).toContain('rate limit');
+      expect(body.originalStatus).toBe(429);
+      expect(body.requestId).toBeTruthy();
     });
 
     it('500 Internal Server Error - Worker 返回文本错误', async () => {
@@ -148,8 +157,13 @@ describe('OpenAI API 错误响应处理', () => {
         prompt: 'test command',
       });
 
-      expect(response.status).toBe(503);
-      // TODO: 应该返回 500 并包含友好的错误消息
+      // Worker 应该统一返回 500 并提供友好的错误消息
+      expect(response.status).toBe(500);
+      const body = await response.json();
+      expect(body.error).toBe('AI_API_ERROR');
+      expect(body.message).toContain('overloaded');
+      expect(body.originalStatus).toBe(503);
+      expect(body.requestId).toBeTruthy();
     });
   });
 

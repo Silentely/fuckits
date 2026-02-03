@@ -6,6 +6,15 @@ compatibility_date = "2025-10-26" # 使用一个近期的日期
 pattern = "fuckits.25500552.xyz"
 custom_domain = true
 
+# KV Namespaces
+# AI_CACHE: 用于缓存 AI 响应，提升性能并降低 API 成本
+# 部署前请运行: npx wrangler kv:namespace create "AI_CACHE"
+# 然后将返回的 id 替换下面的 "YOUR_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "AI_CACHE"
+id = "YOUR_KV_NAMESPACE_ID"  # 替换为实际的 KV namespace ID
+preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID"  # 可选：本地开发预览使用
+
 [vars]
 OPENAI_API_MODEL = "gpt-5-nano"
 OPENAI_API_BASE = "https://api.openai.com/v1"

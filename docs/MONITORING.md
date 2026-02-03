@@ -41,7 +41,8 @@ fuckits uses a multi-layered monitoring approach:
   "services": {
     "apiKey": true,
     "adminKey": false,
-    "kvStorage": true
+    "kvStorage": true,
+    "aiCache": true
   },
   "config": {
     "model": "gpt-5-nano",
@@ -50,6 +51,13 @@ fuckits uses a multi-layered monitoring approach:
   "stats": {
     "totalCalls": 42,
     "uniqueIPs": 15
+  },
+  "cache": {
+    "enabled": true,
+    "hits": 156,
+    "misses": 42,
+    "total": 198,
+    "hitRate": "78.79%"
   }
 }
 ```
@@ -62,12 +70,19 @@ fuckits uses a multi-layered monitoring approach:
   - `apiKey`: OpenAI API key configured
   - `adminKey`: Admin bypass key configured
   - `kvStorage`: KV storage available for quota persistence
+  - `aiCache`: KV storage available for AI response caching (new in v2.1.0)
 - `config`: Runtime configuration
   - `model`: AI model in use
   - `sharedLimit`: Daily demo quota limit
 - `stats`: Daily usage statistics (excludes admin bypass requests)
   - `totalCalls`: Total API calls today (non-admin only)
   - `uniqueIPs`: Unique client IPs today (non-admin only)
+- `cache`: AI response cache performance (new in v2.1.0)
+  - `enabled`: Whether AI_CACHE KV namespace is configured
+  - `hits`: Requests served from cache (response time ~50-100ms)
+  - `misses`: Requests requiring AI API call (response time ~2000-3000ms)
+  - `total`: Total requests today (hits + misses)
+  - `hitRate`: Percentage of requests served from cache
 
 > **Note:** Requests using `adminKey` bypass the quota system and are **not** counted in `stats`. This is by design—admin users do not consume shared quota.
 
@@ -82,6 +97,15 @@ curl -s https://fuckits.25500552.xyz/health | jq -r '.services.apiKey'
 
 # Check KV storage status
 curl -s https://fuckits.25500552.xyz/health | jq -r '.services.kvStorage'
+
+# Check AI cache status (new in v2.1.0)
+curl -s https://fuckits.25500552.xyz/health | jq -r '.services.aiCache'
+
+# Monitor cache performance
+curl -s https://fuckits.25500552.xyz/health | jq '.cache'
+
+# Check cache hit rate
+curl -s https://fuckits.25500552.xyz/health | jq -r '.cache.hitRate'
 
 # Check daily usage stats
 curl -s https://fuckits.25500552.xyz/health | jq '.stats'

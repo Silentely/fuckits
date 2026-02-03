@@ -334,7 +334,7 @@ export default {
     if (request.method === 'GET') {
       return addCorsHeaders(await handleGetRequest(request));
     } else if (request.method === 'POST') {
-      return addCorsHeaders(await handlePostRequest(request, env));
+      return addCorsHeaders(await handlePostRequest(request, env, ctx));
     } else {
       return addCorsHeaders(new Response('Expected GET or POST', { status: 405 }));
     }
@@ -363,6 +363,123 @@ const MAX_REQUEST_BODY_SIZE = 64 * 1024;
  */
 function generateRequestId() {
   return crypto.randomUUID();
+}
+
+/**
+ * 使用 SHA-256 生成缓存 key
+ * @param {string} prompt 用户提示词
+ * @param {string} sysinfo 系统信息
+ * @param {string} model AI 模型名称
+ * @param {string} locale 语言环境 (en/zh)
+ * @returns {Promise<string>} 十六进制 hash 字符串
+ */
+async function generateCacheKey(prompt, sysinfo, model, locale) {
+  const input = `${model}:${locale}:${sysinfo}:${prompt}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return `ai:${hashHex}`;
+}
+
+/**
+ * 从缓存中获取 AI 响应
+ * @param {string} cacheKey 缓存键
+ * @param {object} env 环境变量
+ * @returns {Promise<string|null>} 缓存的命令,不存在则返回 null
+ */
+async function getCachedResponse(cacheKey, env) {
+  if (!env.AI_CACHE) {
+    return null;
+  }
+  try {
+    const cached = await env.AI_CACHE.get(cacheKey);
+    return cached;
+  } catch (error) {
+    console.error('Cache read error:', error);
+    return null;
+  }
+}
+
+/**
+ * 将 AI 响应写入缓存
+ * @param {string} cacheKey 缓存键
+ * @param {string} command 生成的命令
+ * @param {object} env 环境变量
+ * @returns {Promise<void>}
+ */
+async function setCachedResponse(cacheKey, command, env) {
+  if (!env.AI_CACHE) {
+    return;
+  }
+  try {
+    // 缓存 24 小时 (86400 秒)
+    await env.AI_CACHE.put(cacheKey, command, {
+      expirationTtl: 86400,
+    });
+  } catch (error) {
+    console.error('Cache write error:', error);
+  }
+}
+
+/**
+ * 获取缓存统计信息
+ * @param {object} env 环境变量
+ * @returns {Promise<object>} 缓存统计 {hits, misses, hitRate}
+ */
+async function getCacheStats(env) {
+  if (!env.AI_CACHE) {
+    return { enabled: false };
+  }
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const hitsKey = `stats:hits:${today}`;
+    const missesKey = `stats:misses:${today}`;
+
+    // 并行读取 KV 以减少延迟 (Codex 优化建议)
+    const [hitsValue, missesValue] = await Promise.all([
+      env.AI_CACHE.get(hitsKey),
+      env.AI_CACHE.get(missesKey)
+    ]);
+    const hits = parseInt(hitsValue || '0', 10);
+    const misses = parseInt(missesValue || '0', 10);
+    const total = hits + misses;
+    const hitRate = total > 0 ? (hits / total * 100).toFixed(2) : '0.00';
+
+    return {
+      enabled: true,
+      hits,
+      misses,
+      total,
+      hitRate: `${hitRate}%`,
+    };
+  } catch (error) {
+    console.error('Cache stats error:', error);
+    return { enabled: true, error: error.message };
+  }
+}
+
+/**
+ * 增加缓存统计计数
+ * @param {string} type 'hit' 或 'miss'
+ * @param {object} env 环境变量
+ * @returns {Promise<void>}
+ */
+async function incrementCacheStats(type, env) {
+  if (!env.AI_CACHE) {
+    return;
+  }
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `stats:${type}s:${today}`;
+    const current = parseInt(await env.AI_CACHE.get(key) || '0', 10);
+    await env.AI_CACHE.put(key, String(current + 1), {
+      expirationTtl: 172800, // 48 小时,确保统计数据留存
+    });
+  } catch (error) {
+    console.error('Cache stats increment error:', error);
+  }
 }
 
 /**
@@ -422,6 +539,7 @@ function addCorsHeaders(response) {
 async function handleHealthCheck(env) {
   const quotaStore = resolveQuotaStore(env);
   const stats = await getDailyStats(quotaStore);
+  const cacheStats = await getCacheStats(env);
 
   const payload = {
     status: 'ok',
@@ -431,6 +549,7 @@ async function handleHealthCheck(env) {
       apiKey: Boolean(env?.OPENAI_API_KEY),
       adminKey: Boolean(env?.ADMIN_ACCESS_KEY),
       kvStorage: quotaStore !== null,
+      aiCache: Boolean(env?.AI_CACHE),
     },
     config: {
       model: env?.OPENAI_API_MODEL || 'gpt-5-nano',
@@ -440,6 +559,7 @@ async function handleHealthCheck(env) {
       totalCalls: stats.totalCalls,
       uniqueIPs: stats.uniqueIPs,
     },
+    cache: cacheStats,
   };
 
   return new Response(JSON.stringify(payload), {
@@ -481,9 +601,10 @@ function handleGetRequest(request) {
  * Handles POST requests by forwarding the prompt to an AI model.
  * @param {Request} request The incoming request.
  * @param {object} env The environment variables.
+ * @param {ExecutionContext} ctx The execution context for waitUntil.
  * @returns {Promise<Response>} A promise that resolves to the AI's response.
  */
-async function handlePostRequest(request, env) {
+async function handlePostRequest(request, env, ctx) {
   // 生成请求追踪 ID
   const requestId = generateRequestId();
 
@@ -580,6 +701,40 @@ async function handlePostRequest(request, env) {
     const locale = resolveLocale(url, request.headers);
     const isChinese = locale === 'zh';
 
+    // 🔍 缓存检查:尝试从缓存中获取响应
+    const cacheKey = await generateCacheKey(prompt, sysinfo, model, locale);
+    const cachedCommand = await getCachedResponse(cacheKey, env);
+
+    if (cachedCommand) {
+      // 缓存命中!直接返回缓存的命令
+      // 使用 waitUntil 异步更新统计,不阻塞响应 (Codex 优化建议)
+      ctx.waitUntil(incrementCacheStats('hit', env));
+      console.log(JSON.stringify({
+        event: 'cache_hit',
+        requestId,
+        cacheKey: cacheKey.substring(0, 16) + '...',
+        timestamp: new Date().toISOString(),
+      }));
+
+      return new Response(cachedCommand, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'X-Request-ID': requestId,
+          'X-Cache-Status': 'HIT',
+        },
+      });
+    }
+
+    // 缓存未命中,记录统计并继续调用 AI API
+    // 使用 waitUntil 异步更新统计,不阻塞响应 (Codex 优化建议)
+    ctx.waitUntil(incrementCacheStats('miss', env));
+    console.log(JSON.stringify({
+      event: 'cache_miss',
+      requestId,
+      cacheKey: cacheKey.substring(0, 16) + '...',
+      timestamp: new Date().toISOString(),
+    }));
+
     const system_prompt = isChinese
       ? `你是一个专业的 shell 命令生成器。用户会用自然语言描述他们想要完成的任务。你的任务是生成直接可执行的 shell 命令来完成用户的目标。
 
@@ -637,11 +792,23 @@ The user's system info is: ${sysinfo}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
+      // 统一返回 500 状态码，提供友好的错误消息
+      let friendlyMessage = 'AI service is temporarily unavailable. Please try again later.';
+
+      // 根据 OpenAI 错误状态码提供更具体的友好提示
+      if (aiResponse.status === 401) {
+        friendlyMessage = 'AI API authentication failed. Please check your API key configuration.';
+      } else if (aiResponse.status === 429) {
+        friendlyMessage = 'AI service rate limit exceeded. Please try again in a few moments.';
+      } else if (aiResponse.status === 503) {
+        friendlyMessage = 'AI service is temporarily overloaded. Please try again later.';
+      }
+
       return createErrorResponse(
         ERROR_CODES.AI_API_ERROR,
-        `AI API request failed: ${errorText}`,
-        aiResponse.status,
-        {},
+        friendlyMessage,
+        500, // 统一返回 500 而非透传原始状态码
+        { originalStatus: aiResponse.status, details: errorText },
         requestId
       );
     }
@@ -659,7 +826,7 @@ The user's system info is: ${sysinfo}`;
       );
     }
 
-    // 清理 AI 返回的命令（移除 markdown 格式、shebang 等）
+    // 清理 AI 返回的命令(移除 markdown 格式、shebang 等)
     const cleanedCommand = sanitizeCommand(command);
 
     if (!cleanedCommand) {
@@ -672,12 +839,24 @@ The user's system info is: ${sysinfo}`;
       );
     }
 
-    return new Response(cleanedCommand, {
-      headers: {
-        'Content-Type': 'text/plain',
-        'X-Request-ID': requestId,
-      },
-    });
+    // 💾 将成功的响应存入缓存
+    // 使用 waitUntil 异步写入缓存,不阻塞响应返回 (Codex 优化建议)
+    if (env.AI_CACHE) {
+      ctx.waitUntil(setCachedResponse(cacheKey, cleanedCommand, env));
+    }
+
+    // 构建响应头
+    const responseHeaders = {
+      'Content-Type': 'text/plain',
+      'X-Request-ID': requestId,
+    };
+
+    // 只有在缓存可用时才添加缓存状态头
+    if (env.AI_CACHE) {
+      responseHeaders['X-Cache-Status'] = 'MISS';
+    }
+
+    return new Response(cleanedCommand, { headers: responseHeaders });
   } catch (error) {
     return createErrorResponse(
       ERROR_CODES.INTERNAL_ERROR,

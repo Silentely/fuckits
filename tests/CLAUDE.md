@@ -394,11 +394,11 @@ setup() {
 
 ## 测试覆盖率
 
-### 当前状态（2026-01-28）
+### 当前状态（2026-02-03）
 
-**总体**：145/145 测试通过 (100%)
+**总体**：153/153 测试通过 (100%)
 
-**JavaScript 测试**：75 个（13 个测试文件）
+**JavaScript 测试**：83 个（14 个测试文件）
 - handlers.test.js: 14 个
 - locale.test.js: 9 个
 - quota.test.js: 6 个
@@ -412,6 +412,7 @@ setup() {
 - quota-edge-cases.test.js: 3 个
 - sysinfo.test.js: 3 个
 - concurrent-requests.test.js: 1 个
+- cache.test.js: 9 个（AI 响应缓存系统测试,含 Codex 审查优化）
 
 **Bash 测试**：70 个
 - unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
