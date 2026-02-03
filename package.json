@@ -20,6 +20,7 @@
   "type": "module",
   "scripts": {
     "build": "bash scripts/build.sh",
+    "upload-scripts": "bash scripts/upload-scripts.sh",
     "deploy": "bash scripts/deploy.sh",
     "deploy:production": "bash scripts/deploy.sh --env production",
     "deploy:staging": "bash scripts/deploy.sh --env staging",
