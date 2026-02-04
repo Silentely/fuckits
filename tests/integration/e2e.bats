@@ -4,6 +4,8 @@
 # 测试完整用户流程：安装 → 配置 → 执行 → 卸载
 #
 
+bats_require_minimum_version 1.5.0
+
 # 加载测试辅助函数
 load '../helpers/bats-helpers'
 
@@ -124,7 +126,7 @@ teardown() {
     echo 'export FUCK_API_ENDPOINT="$(rm -rf /tmp/evil)"' > "$TEST_INSTALL_DIR/config.sh"
 
     # 尝试加载配置应该失败（验证函数应该拒绝）
-    run bash -c "source ./main.sh && _fuck_validate_config_file '$TEST_INSTALL_DIR/config.sh'"
+    run -127 bash -c "source ./main.sh && _fuck_validate_config_file '$TEST_INSTALL_DIR/config.sh'"
     [ "$status" -ne 0 ] || echo "$output" | grep -qi "unsafe\|injection\|rejected"
 }
 
