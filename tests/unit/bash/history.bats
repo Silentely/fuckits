@@ -40,7 +40,16 @@ teardown() {
     [ -f "$history_file" ]
 
     # Check file permissions (600)
-    local perms=$(stat -f "%OLp" "$history_file" 2>/dev/null || stat -c "%a" "$history_file" 2>/dev/null)
+    # macOS: stat -f "%OLp" returns "600"
+    # Linux: stat -c "%a" may return "600" or "0600"
+    local perms
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        perms=$(stat -f "%OLp" "$history_file")
+    else
+        perms=$(stat -c "%a" "$history_file")
+    fi
+    # Strip leading zeros for comparison
+    perms=$(echo "$perms" | sed 's/^0*//')
     [ "$perms" = "600" ]
 
     # Check JSON structure
@@ -80,13 +89,20 @@ EOF
 }
 
 @test "JQ Check: should fail with helpful message if jq is missing" {
-    # Temporarily hide jq from PATH (use only /bin which typically doesn't have jq)
-    local original_path="$PATH"
-    export PATH="/bin"
-
-    run _fuck_check_jq
-
-    export PATH="$original_path"
+    # Mock command -v to simulate jq not being available
+    # This works reliably across all environments without needing sudo
+    run bash -c '
+        # Override command builtin to simulate jq missing
+        command() {
+            if [[ "$1" == "-v" && "$2" == "jq" ]]; then
+                return 1
+            fi
+            builtin command "$@"
+        }
+        export -f command
+        source ./main.sh
+        _fuck_check_jq
+    '
 
     [ "$status" -eq 1 ]
     echo "$output" | grep -q "jq.*required"
