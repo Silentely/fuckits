@@ -531,102 +531,45 @@ _fuck_detect_pkg_manager() {
 
 # Collects simplified system information as a structured string
 # Outputs: System info string for AI processing
+# Reuses cached _fuck_detect_distro and _fuck_detect_pkg_manager to avoid redundant detection
 _fuck_collect_sysinfo_string() {
-    local os_type kernel_name pkg_manager summary
+    local os_type pkg_manager
 
-    # Detect operating system type
+    # Use cached detection functions instead of duplicating OS detection logic
+    local distro
+    distro=$(_fuck_detect_distro 2>/dev/null)
+
+    local kernel_name
     kernel_name=$(uname -s 2>/dev/null || printf 'unknown')
 
     case "$kernel_name" in
-        Darwin)
-            os_type="macOS"
-            pkg_manager="brew"
-            ;;
-        Linux)
-            if [ -r /etc/os-release ]; then
-                local id
-                id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
-                case "$id" in
-                    ubuntu|debian)
-                        os_type="Debian"
-                        pkg_manager="apt"
-                        ;;
-                    centos|rhel|rocky|almalinux|fedora)
-                        os_type="RHEL"
-                        pkg_manager="yum"
-                        ;;
-                    arch|manjaro)
-                        os_type="Arch"
-                        pkg_manager="pacman"
-                        ;;
-                    *)
-                        os_type="Linux"
-                        pkg_manager="unknown"
-                        ;;
-                esac
-            else
-                os_type="Linux"
-                pkg_manager="unknown"
-            fi
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            os_type="Windows"
-            pkg_manager="unknown"
-            ;;
-        *)
-            os_type="$kernel_name"
-            pkg_manager="unknown"
-            ;;
+        Darwin)     os_type="macOS" ;;
+        Linux)      os_type="${distro:-Linux}" ;;
+        MINGW*|MSYS*|CYGWIN*) os_type="Windows" ;;
+        *)          os_type="$kernel_name" ;;
     esac
 
-    # Format as simple structured string
-    printf -v summary 'OS=%s; PkgMgr=%s' "$os_type" "$pkg_manager"
-    printf '%s\n' "$summary"
+    pkg_manager=$(_fuck_detect_pkg_manager 2>/dev/null)
+
+    # Persist cache if new data was collected
+    _fuck_persist_static_cache 2>/dev/null || true
+
+    printf 'OS=%s; PkgMgr=%s\n' "$os_type" "$pkg_manager"
 }
 
 # Escapes a string for use in a JSON payload
 _fuck_json_escape() {
     local input="$1"
-    # Use printf to properly handle control characters
-    printf '%s' "$input" | sed -e '
-        # First escape backslashes (must be first)
-        s/\\/\\\\/g
-        # Escape double quotes
-        s/"/\\"/g
-        # Escape control characters (ASCII 0-31)
-        s/\x00/\\u0000/g
-        s/\x01/\\u0001/g
-        s/\x02/\\u0002/g
-        s/\x03/\\u0003/g
-        s/\x04/\\u0004/g
-        s/\x05/\\u0005/g
-        s/\x06/\\u0006/g
-        s/\x07/\\u0007/g
-        s/\x08/\\b/g
-        s/\x09/\\t/g
-        s/\x0A/\\n/g
-        s/\x0B/\\u000B/g
-        s/\x0C/\\f/g
-        s/\x0D/\\r/g
-        s/\x0E/\\u000E/g
-        s/\x0F/\\u000F/g
-        s/\x10/\\u0010/g
-        s/\x11/\\u0011/g
-        s/\x12/\\u0012/g
-        s/\x13/\\u0013/g
-        s/\x14/\\u0014/g
-        s/\x15/\\u0015/g
-        s/\x16/\\u0016/g
-        s/\x17/\\u0017/g
-        s/\x18/\\u0018/g
-        s/\x19/\\u0019/g
-        s/\x1A/\\u001A/g
-        s/\x1B/\\u001B/g
-        s/\x1C/\\u001C/g
-        s/\x1D/\\u001D/g
-        s/\x1E/\\u001E/g
-        s/\x1F/\\u001F/g
-    '
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s' "$input" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read())[1:-1], end='')"
+        return
+    fi
+    if command -v node >/dev/null 2>&1; then
+        printf '%s' "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(JSON.stringify(d).slice(1,-1)))"
+        return
+    fi
+    # Minimal fallback: escape backslashes and double quotes only
+    printf '%s' "$input" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g'
 }
 
 _fuck_should_use_local_api() {
@@ -914,8 +857,11 @@ _fuck_spinner() {
     if [ -n "$prefix" ]; then
         has_prefix=1
     fi
-    
-    tput civis 2>/dev/null || printf "\033[?25l"
+
+    # Only manipulate cursor if stderr is a terminal
+    if [ -t 2 ]; then
+        tput civis 2>/dev/null || printf "\033[?25l" >&2
+    fi
 
     while kill -0 "$pid" 2>/dev/null; do
         if [ "$has_prefix" -eq 1 ]; then
@@ -934,8 +880,10 @@ _fuck_spinner() {
     else
         printf "   \b\b\b"
     fi
-    
-    tput cnorm 2>/dev/null || printf "\033[?25h"
+
+    if [ -t 2 ]; then
+        tput cnorm 2>/dev/null || printf "\033[?25h" >&2
+    fi
 }
 
 # Detects potentially dangerous commands and prints a warning
@@ -1480,17 +1428,13 @@ _fuck_log_history() {
         return 1
     fi
 
-    # Append to history
+    # Append to history and trim to 1000 entries in a single pass (avoids race condition)
     local temp_file="${history_file}.tmp"
-    if jq ".commands += [$entry]" "$history_file" > "$temp_file" 2>/dev/null; then
+    if jq ".commands += [$entry] | .commands |= .[-1000:]" "$history_file" > "$temp_file" 2>/dev/null; then
         mv "$temp_file" "$history_file"
-        chmod 600 "$history_file"  # Ensure permissions after mv
-
-        # Limit to 1000 most recent commands
-        if jq '.commands |= .[-1000:]' "$history_file" > "$temp_file" 2>/dev/null; then
-            mv "$temp_file" "$history_file"
-            chmod 600 "$history_file"  # Ensure permissions after mv
-        fi
+        chmod 600 "$history_file"
+    else
+        rm -f "$temp_file"
     fi
 }
 
@@ -1634,8 +1578,8 @@ _fuck_history_replay() {
         return 1
     fi
 
-    # Execute the command
-    eval "$cmd"
+    # Execute the command in a subshell to limit scope
+    bash -c "$cmd"
     local exit_code=$?
 
     if [ $exit_code -ne 0 ]; then
@@ -1825,8 +1769,8 @@ _fuck_favorite_run() {
         return 1
     fi
 
-    # Execute the command
-    eval "$cmd"
+    # Execute the command in a subshell to limit scope
+    bash -c "$cmd"
     local exit_code=$?
 
     if [ $exit_code -ne 0 ]; then
@@ -1899,9 +1843,9 @@ _uninstall_script() {
                 sed -i.bak "\|$source_line\|d" "$profile_file"
                 sed -i.bak "\|# Added by fuckits installer\|d" "$profile_file"
             else
-                # BSD/macOS sed requires argument letter after -i
-                sed -i.bak "" -e "\|$source_line\|d" "$profile_file"
-                sed -i.bak "" -e "\|# Added by fuckits installer\|d" "$profile_file"
+                # BSD/macOS sed
+                sed -i '' "\|$source_line\|d" "$profile_file"
+                sed -i '' "\|# Added by fuckits installer\|d" "$profile_file"
             fi
         fi
     else
@@ -2103,7 +2047,7 @@ _fuck_execute_prompt() {
         #
         # 设计理念: 安全引擎是"减速带"而非"防弹墙"，最终安全依赖用户审查
         # The $response variable has already passed _fuck_security_handle_decision() above
-        eval "$response"
+        bash -c "$response"
         local exit_code=$?
         
         # Log command execution

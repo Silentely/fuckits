@@ -27,6 +27,12 @@ fi
 echo -e "${C_CYAN}🔧 Running build script...${C_RESET}"
 bash scripts/build.sh
 
+# Warn if wrangler.toml still has placeholder KV namespace IDs
+if grep -q 'YOUR_KV_NAMESPACE_ID' wrangler.toml 2>/dev/null; then
+    echo -e "${C_YELLOW}⚠️  wrangler.toml contains placeholder KV namespace IDs.${C_RESET}"
+    echo -e "${C_YELLOW}   Run: npx wrangler kv:namespace create \"AI_CACHE\" and update the id.${C_RESET}"
+fi
+
 echo -e "${C_CYAN}☁️ Deploying to Cloudflare Workers...${C_RESET}"
 npx wrangler deploy "$@"
 
