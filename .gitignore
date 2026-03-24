@@ -32,6 +32,7 @@ tmp/
 .claude
 .codex
 .omc
+.omx
 .husky
 
 # OS

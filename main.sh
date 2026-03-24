@@ -314,7 +314,7 @@ _fuck_persist_static_cache() {
     } > "$tmp_file"
 
     # Atomic move to final location
-    if mv "$tmp_file" "$FUCK_SYSINFO_CACHE_FILE" 2>/dev/null; then
+    if command mv -f -- "$tmp_file" "$FUCK_SYSINFO_CACHE_FILE" 2>/dev/null; then
         _FUCK_STATIC_CACHE_DIRTY=0
         return 0
     else
@@ -1431,7 +1431,7 @@ _fuck_log_history() {
     # Append to history and trim to 1000 entries in a single pass (avoids race condition)
     local temp_file="${history_file}.tmp"
     if jq ".commands += [$entry] | .commands |= .[-1000:]" "$history_file" > "$temp_file" 2>/dev/null; then
-        mv "$temp_file" "$history_file"
+        command mv -f -- "$temp_file" "$history_file"
         chmod 600 "$history_file"
     else
         rm -f "$temp_file"
@@ -1665,7 +1665,7 @@ _fuck_favorite_add() {
     # Append to favorites
     local temp_file="${history_file}.tmp"
     if jq ".favorites += [$entry]" "$history_file" > "$temp_file" 2>/dev/null; then
-        mv "$temp_file" "$history_file"
+        command mv -f -- "$temp_file" "$history_file"
         chmod 600 "$history_file"  # Ensure permissions after mv
         echo -e "${C_GREEN}✅ Added to favorites: \"$name\"${C_RESET}"
         echo -e "${C_DIM}Command: $response${C_RESET}"
@@ -1816,7 +1816,7 @@ _fuck_favorite_delete() {
     # Remove the favorite
     local temp_file="${history_file}.tmp"
     if jq "del(.favorites[$array_index])" "$history_file" > "$temp_file" 2>/dev/null; then
-        mv "$temp_file" "$history_file"
+        command mv -f -- "$temp_file" "$history_file"
         echo -e "${C_GREEN}✅ Favorite deleted.${C_RESET}"
         return 0
     else
