@@ -345,7 +345,6 @@ For detailed deployment instructions, see [DEPLOY.md](./DEPLOY.md).
 
 * Amber-lang rewrite: Cross-platform CLI + UI powered by Amber.
 * Multi-model routing: Seamlessly switch between OpenAI, Anthropic, DeepSeek, and other providers.
-* Command history & favorites: `fuck history`, one-click replay of common commands.
 * Scenario templates: Built-in prompt templates for ops, dev, data, etc.
 * UI skins: Cat-girl, professional, serious modes and more personalities.
 * Team mode: Share custom aliases, API keys, and tuned templates.
