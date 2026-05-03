@@ -265,10 +265,10 @@ npm run test:e2e
 - 创建 Miniflare 实例（模拟 Cloudflare Workers）
 - 注入环境变量（`OPENAI_API_KEY`, `ADMIN_ACCESS_KEY`）
 - 配置 KV 命名空间（`QUOTA_KV`）
-- 配置 R2 Bucket（`SCRIPTS_BUCKET`）
 - 使用 MockAgent 模拟 OpenAI API
 - 提供全局测试辅助函数（`get`, `post`, `postRaw`, `options`, `clearKV`, `setKV`, `getKV`）
-- 初始化 R2 mock 数据
+
+> **注意**：test-env.js 中仍保留了 R2 Bucket（`SCRIPTS_BUCKET`）的 mock 初始化代码，这是 R2 迁移回退后的遗留代码（参见 commit 7a252d9），当前主代码已不使用 R2 存储。
 
 ---
 

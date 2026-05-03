@@ -36,27 +36,30 @@
 fuckits/
 ├── tests/                          # 测试根目录
 │   ├── unit/                       # 单元测试
-│   │   ├── worker/                 # Worker 单元测试
+│   │   ├── worker/                 # Worker 单元测试（14 个文件）
 │   │   │   ├── quota.test.js      # 配额管理测试
 │   │   │   ├── locale.test.js     # 语言检测测试
-│   │   │   └── handlers.test.js   # 请求处理测试
+│   │   │   ├── handlers.test.js   # 请求处理测试
+│   │   │   └── ...                # 共 14 个测试文件
 │   │   └── bash/                   # Bash 脚本单元测试
-│   │       ├── security.bats       # 安全引擎测试
-│   │       ├── config.bats         # 配置系统测试
-│   │       └── install.bats        # 安装逻辑测试
+│   │       ├── security.bats       # 安全引擎测试（27 tests）
+│   │       └── history.bats        # 命令历史与收藏测试（18 tests）
 │   ├── integration/                # 集成测试
-│   │   ├── e2e.test.js            # 端到端测试
-│   │   └── build-deploy.bats      # 构建部署流程测试
+│   │   ├── build-deploy.bats      # 构建部署流程测试（23 tests）
+│   │   └── e2e.bats               # 端到端用户流程测试（20 tests）
+│   ├── security/                   # 安全测试
+│   │   └── fuzzing.bats           # 模糊测试（17 tests）
+│   ├── performance/                # 性能测试
+│   │   └── quota-benchmark.test.js # 配额性能基准（9 tests）
+│   ├── e2e/                        # 真实部署测试
+│   │   └── real-deployment.test.sh # 生产环境验证
 │   ├── fixtures/                   # 测试数据
-│   │   ├── mock-responses.json    # Mock API 响应
-│   │   └── test-commands.sh       # 测试命令集
+│   │   └── mock-responses.json    # Mock API 响应
 │   └── helpers/                    # 测试工具
-│       ├── test-env.js            # 测试环境设置
+│       ├── test-env.js            # Vitest 环境配置（含遗留 R2 mock）
 │       └── bats-helpers.bash      # Bats 辅助函数
 ├── vitest.config.js               # Vitest 配置
-├── .bats/                          # Bats 测试配置
-│   └── setup.bash                  # Bats 全局设置
-└── package.json                    # 新增测试脚本和依赖
+└── package.json                    # 测试脚本和依赖
 ```
 
 ---

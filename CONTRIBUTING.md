@@ -104,8 +104,8 @@ git remote add upstream https://github.com/Silentely/fuckits.git
 # 4. Install dependencies
 npm install
 
-# 5. Install bats for shell script testing
-npm run test:bash --version
+# 5. Verify bats installation (bats is a devDependency installed via npm)
+npx bats --version
 # If bats not found, install via package manager:
 # macOS: brew install bats-core
 # Linux: apt-get install bats or yum install bats
