@@ -157,13 +157,13 @@ source ~/.bashrc
 
 **Symptom:**
 ```
-FUCK! Shared demo quota exhausted (10 calls per day).
+FUCK! Shared demo quota exhausted (200 calls per day).
 0 calls left for today.
 
 Switch to your own key: run fuck config and set FUCK_OPENAI_API_KEY
 ```
 
-**Cause:** Shared Worker demo limit reached (10 requests/day per IP).
+**Cause:** Shared Worker demo limit reached (200 requests/day per IP).
 
 **Solution:**
 

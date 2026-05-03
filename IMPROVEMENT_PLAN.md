@@ -169,7 +169,9 @@
 
 ---
 
-### Task 1.3：脚本迁移到 CDN（DEBT-002）⭐ **优先级：P1**
+### ~~Task 1.3：脚本迁移到 CDN（DEBT-002）~~ ⚠️ **已回退 (2026-02-03)**
+
+**回退原因**：R2 迁移引入额外复杂度和依赖，经评估后决定保留 base64 嵌入式架构。
 
 **问题描述**：
 - worker.js 文件过大（174 KB）
@@ -467,7 +469,7 @@
      echo ""
 
      jq -r '.favorites | to_entries[] |
-       "\(.key + 1 | tostring)) \(.value.name) - \(..value.prompt)"' "$fav_file"
+       "\(.key + 1 | tostring)) \(.value.name) - \(.value.prompt)"' "$fav_file"
    }
 
    # 执行收藏

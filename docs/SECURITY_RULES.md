@@ -883,7 +883,7 @@ npm run test:bash
 
 - **测试架构**：[../tests/CLAUDE.md](../tests/CLAUDE.md)
 - **测试设计**：[TEST_ARCHITECTURE.md](TEST_ARCHITECTURE.md)
-- **主脚本实现**：[../main.sh](../main.sh) (line 787-1099)
+- **主脚本实现**：`_fuck_security_evaluate_command()` 函数
 - **配置说明**：[../CLAUDE.md](../CLAUDE.md#配置系统)
 
 ---
@@ -897,4 +897,4 @@ npm run test:bash
 
 ---
 
-_本小姐的安全引擎确保每一个命令都经过严格审查！(￣ω￣)ノ_
+安全引擎确保每一个命令都经过严格审查。

@@ -8,6 +8,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-05-03 22:11:39 | 架构增量扫描 | 修正行数统计：build.sh 142行、deploy.sh 40行、one-click-deploy.sh 231行、setup.sh 127行、common.sh 66行；build.sh 已改用 Python 替代 sed 进行文件编辑 |
 | 2026-02-03 | R2 回退 | 回退 Task 1.3 R2 迁移,恢复 base64 嵌入式脚本架构,删除 upload-scripts.sh |
 | 2026-01-28 | 增量更新 | 新增 common.sh 公共函数库文档 |
 | 2025-12-12 09:15:03 | 架构分析更新 | 验证面包屑导航，确认模块覆盖率 100% |
@@ -50,6 +51,7 @@ bash scripts/setup.sh
 - Node.js >= 18.0.0
 - npm
 - curl（用于一键部署）
+- python3（用于 build.sh 和 common.sh 的 TOML 编辑）
 - 脚本需要可执行权限（`chmod +x scripts/*.sh`）
 
 ---
@@ -58,33 +60,27 @@ bash scripts/setup.sh
 
 ### <a name="build"></a>build.sh
 
-**职责**：构建 Worker，将安装脚本嵌入到 worker.js
+**职责**：构建 Worker，将安装脚本嵌入到 worker.js（142 行）
 
 **工作流程**：
 1. 检查必需文件（main.sh, zh_main.sh, worker.js）
-2. 创建 worker.js 备份
-3. 使用 base64 编码安装脚本
-4. 通过 sed 替换 worker.js 中的占位符
-5. 验证构建结果
-6. 清理备份文件
+2. 检查 python3 依赖
+3. 创建 worker.js 备份
+4. 使用 base64 编码安装脚本（macOS/Linux 兼容）
+5. 通过 Python 脚本安全替换 worker.js 中的占位符
+6. 验证构建结果
+7. 清理备份文件
 
 **平台兼容性**：
-- macOS：使用 `base64 -i` 和 `sed -i.tmp`
-- Linux：使用 `base64 -w 0` 和 `sed -i`
+- macOS：使用 `base64 -i`
+- Linux：使用 `base64 -w 0`
 
-**关键代码**：
-```bash
-# macOS
-B64_EN=$(base64 -i main.sh)
-sed -i.tmp "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js
-
-# Linux
-B64_EN=$(base64 -w 0 main.sh)
-sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT = b64_to_utf8(\`${B64_EN}\`);#" worker.js
-```
+**实现细节**：
+使用 Python 进行安全的文件编辑（替代 sed），避免分隔符和长度限制问题。base64 内容通过环境变量传递给 Python，避免 shell 参数解析问题。
 
 **错误处理**：
 - 文件不存在：退出并提示
+- python3 缺失：退出并提示安装
 - 构建失败：恢复备份
 - 空内容检测：防止生成无效 Worker
 
@@ -92,7 +88,7 @@ sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT 
 
 ### <a name="deploy"></a>deploy.sh
 
-**职责**：构建并部署 Worker 到 Cloudflare
+**职责**：构建并部署 Worker 到 Cloudflare（40 行）
 
 **工作流程**：
 1. 检查 npx 和 wrangler 可用性
@@ -107,22 +103,24 @@ sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT 
 **使用场景**：
 - 快速部署更新
 - CI/CD 集成
+- 支持 `--env` 参数指定环境（production/staging）
 
 ---
 
 ### <a name="setup"></a>setup.sh
 
-**职责**：交互式配置向导，帮助用户完成初始设置
+**职责**：交互式配置向导，帮助用户完成初始设置（127 行）
 
 **工作流程**：
 1. 检查依赖（Node.js, npm）
 2. 安装 npm 依赖
 3. 引导 Cloudflare 登录
 4. 配置 OpenAI API Key
-5. 可选：配置自定义模型
-6. 可选：配置自定义 API Base
-7. 设置脚本可执行权限
-8. 显示后续步骤
+5. 可选：配置管理员绕过密钥（ADMIN_ACCESS_KEY）
+6. 可选：配置自定义模型
+7. 可选：配置自定义 API Base
+8. 设置脚本可执行权限
+9. 显示后续步骤
 
 **交互提示**：
 - 每个步骤都有清晰的说明
@@ -137,7 +135,7 @@ sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT 
 
 ### <a name="one-click-deploy"></a>one-click-deploy.sh
 
-**职责**：完整的自动化部署流程，一键完成所有配置和部署
+**职责**：完整的自动化部署流程，一键完成所有配置和部署（231 行）
 
 **工作流程**：
 1. **环境检查**：验证 node, npm, curl
@@ -147,11 +145,14 @@ sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT 
    - 未登录则引导登录
 4. **配置 OpenAI API**：
    - 提示输入 API Key
+   - 可选：配置管理员绕过密钥
    - 可选：配置自定义模型
    - 可选：配置自定义 API Base
-5. **构建 Worker**：调用 build.sh
-6. **部署**：执行 wrangler deploy
-7. **显示后续步骤**：域名配置、测试命令等
+5. **Works 自定义域名配置**
+6. **构建 Worker**：调用 build.sh
+7. **部署**：执行 wrangler deploy
+8. **健康检查验证**：验证部署成功
+9. **显示后续步骤**
 
 **特色功能**：
 - ASCII 艺术 Banner
@@ -159,11 +160,12 @@ sed -i "s#^const INSTALLER_SCRIPT = b64_to_utf8(\`.*\`);#const INSTALLER_SCRIPT 
 - 详细的步骤说明
 - 友好的错误处理
 - 完整的后续指引
+- 部署后自动健康检查
 
 **辅助函数**：
 ```bash
 check_command()    # 检查命令是否可用
-prompt_input()     # 提示用户输入
+prompt_input()     # 提示用户输入（使用 printf -v 防止命令注入）
 confirm()          # 确认操作
 ```
 
@@ -176,7 +178,7 @@ confirm()          # 确认操作
 
 ### <a name="common"></a>common.sh
 
-**职责**：公共函数库，提供跨脚本共享的辅助函数
+**职责**：公共函数库，提供跨脚本共享的辅助函数（66 行）
 
 **核心函数**：
 ```bash
@@ -209,7 +211,7 @@ update_wrangler_var "OPENAI_API_MODEL" "gpt-4o-mini"
 - **wrangler**: Cloudflare Workers CLI
 - **curl**: HTTP 客户端（一键部署用）
 - **base64**: 编码工具
-- **sed**: 文本替换工具
+- **python3**: 安全的文件编辑和 TOML 解析
 
 ### 配置文件
 - `package.json`: npm 脚本定义
@@ -221,6 +223,7 @@ update_wrangler_var "OPENAI_API_MODEL" "gpt-4o-mini"
 - `OPENAI_API_KEY`
 - `OPENAI_API_MODEL`（可选）
 - `OPENAI_API_BASE`（可选）
+- `ADMIN_ACCESS_KEY`（可选）
 
 ---
 
@@ -236,7 +239,7 @@ update_wrangler_var "OPENAI_API_MODEL" "gpt-4o-mini"
 main.sh + zh_main.sh
     ↓ (base64 encode)
 Base64 Strings
-    ↓ (sed replace)
+    ↓ (python3 replace)
 worker.js (updated)
     ↓ (wrangler deploy)
 Cloudflare Workers
@@ -247,28 +250,28 @@ Cloudflare Workers
 ## 测试与质量
 
 ### 当前状态
-- 无自动化测试
-- 依赖手动验证
+- 自动化测试：`tests/integration/build-deploy.bats`（23 个测试）覆盖构建和部署流程
+- 手动验证：用于一键部署的交互式流程
 
 ### 测试方法
-1. **构建测试**：
+1. **自动化测试**（推荐）：
+   ```bash
+   # 运行构建部署相关测试
+   npm run test:bash -- tests/integration/build-deploy.bats
+   ```
+
+2. **手动构建测试**：
    ```bash
    npm run build
    # 检查 worker.js 是否包含 base64 内容
    grep "const INSTALLER_SCRIPT = b64_to_utf8" worker.js
    ```
 
-2. **部署测试**：
+3. **手动部署测试**：
    ```bash
    npm run deploy
    # 访问部署的 URL 验证
    curl -I https://your-worker.workers.dev
-   ```
-
-3. **一键部署测试**：
-   ```bash
-   # 在干净环境中运行
-   npm run one-click-deploy
    ```
 
 ### 质量保证
@@ -276,13 +279,14 @@ Cloudflare Workers
 - 关键操作后检查退出码
 - 提供详细的错误信息
 - 备份机制（build.sh）
+- 构建幂等性（多次构建结果一致）
 
 ---
 
 ## 常见问题 (FAQ)
 
-**Q: 构建时提示 "sed: command not found"**
-A: 安装 sed 工具。macOS 自带，Linux 使用包管理器安装。
+**Q: 构建时提示 "python3 is required"**
+A: 安装 python3。macOS 自带，Linux 使用包管理器安装。
 
 **Q: 部署时提示 "Not logged in"**
 A: 运行 `npx wrangler login` 登录 Cloudflare。
@@ -302,14 +306,14 @@ A: 使用 Git 恢复 worker.js，或从 worker.js.backup 恢复。
 
 ```
 scripts/
-├── build.sh              # 构建脚本（~82 行）
-├── deploy.sh             # 部署脚本（~34 行）
-├── one-click-deploy.sh   # 一键部署（~179 行）
-├── setup.sh              # 配置向导（~104 行）
-└── common.sh             # 公共函数库（~90 行）
+├── build.sh              # 构建脚本（142 行）
+├── deploy.sh             # 部署脚本（40 行）
+├── one-click-deploy.sh   # 一键部署（231 行）
+├── setup.sh              # 配置向导（127 行）
+└── common.sh             # 公共函数库（66 行）
 ```
 
-**总代码量**：约 489 行 Bash
+**总代码量**：约 606 行 Bash
 
 **覆盖率**：100% (5/5 文件已扫描)
 
@@ -323,10 +327,12 @@ scripts/
 - 支持多环境部署（dev/staging/prod）
 - 添加版本号管理
 
-### 已完成 ✅
-- ✅ 提取公共函数到 `scripts/common.sh`
-- ✅ GitHub Actions 工作流
-- ✅ 自动化测试和部署
+### 已完成
+- 提取公共函数到 `scripts/common.sh`
+- GitHub Actions 工作流
+- 自动化测试和部署
+- Python 安全文件编辑（替代 sed）
+- 部署后健康检查验证
 
 ### 代码改进
 - 添加更详细的日志记录

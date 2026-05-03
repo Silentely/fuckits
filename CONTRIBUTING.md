@@ -1,6 +1,6 @@
 # Contributing to fuckits
 
-First off, thank you for considering contributing to fuckits! 🎉
+First off, thank you for considering contributing to fuckits!
 
 This document provides guidelines and instructions for contributing to the project.
 
@@ -570,4 +570,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to fuckits! 🚀
+Thank you for contributing to fuckits!

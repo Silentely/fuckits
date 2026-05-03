@@ -46,7 +46,7 @@ fuckits uses a multi-layered monitoring approach:
   },
   "config": {
     "model": "gpt-5-nano",
-    "sharedLimit": 10
+    "sharedLimit": 200
   },
   "stats": {
     "totalCalls": 42,
@@ -521,5 +521,5 @@ git log --oneline -5
 
 ---
 
-**Last Updated**: 2025-01-27
+**Last Updated**: 2026-05-03
 **Maintainer**: faithleysath

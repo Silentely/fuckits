@@ -5,7 +5,11 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - 2025-01-25
+## [Unreleased]
+
+- 修正多处文档中的过时数据和不一致信息
+
+## [2.1.0] - 2026-01-25
 
 ### Added
 
@@ -108,7 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audit logging provides forensic trail for security incidents
 - Improved error handling in security engine
 
-## [2.0.0] - 2024-12-01
+## [2.0.0] - 2025-12-01
 
 ### Added
 
@@ -146,7 +150,7 @@ This release focuses on **production readiness** and **operational excellence**:
 2. **🔍 Audit Logging**: Track all command executions for security and compliance
 3. **🛡️ Security**: Enhanced fuzzing tests and whitelist mechanism
 4. **🚀 DevOps**: Automated rollback, environment isolation, and comprehensive monitoring
-5. **🧪 Testing**: 182 tests covering functionality, security, performance, and deployment (101 JS + 81 Bash)
+5. **🧪 Testing**: 171 tests covering functionality, security, performance, and deployment (83 JS + 88 Bash)
 
 ### Upgrade Guide (v2.0.0 → v2.1.0)
 

@@ -141,7 +141,7 @@ or
   "message": "Shared demo quota exceeded (max 10 calls per day).",
   "hint": "Configure FUCK_OPENAI_API_KEY in ~/.fuck/config.sh to use your own key.",
   "remaining": 0,
-  "limit": 10,
+  "limit": 200,
   "timestamp": "2025-01-27T12:00:00.000Z",
   "requestId": "550e8400-e29b-41d4-a716-446655440000"
 }
@@ -217,7 +217,7 @@ Health check endpoint for monitoring and deployment verification.
   },
   "config": {
     "model": "gpt-5-nano",
-    "sharedLimit": 10
+    "sharedLimit": 200
   },
   "stats": {
     "totalCalls": 42,
@@ -237,33 +237,23 @@ Health check endpoint for monitoring and deployment verification.
 - `status`: Always "ok" if worker is running
 - `version`: Current worker version
 - `timestamp`: Current server time (ISO 8601)
-- `services`: Dependency status check
-  - `apiKey`: OpenAI API key configured
-  - `adminKey`: Admin bypass key configured
-  - `kvStorage`: KV namespace for quota management
-  - `aiCache`: KV namespace for AI response caching (new in v2.1.0)
-- `config`: Runtime configuration
-  - `model`: AI model being used
+- `services`: Dependency services status
+  - `apiKey`: Whether OPENAI_API_KEY is configured
+  - `adminKey`: Whether ADMIN_ACCESS_KEY is configured
+  - `kvStorage`: Whether KV storage is available for quota persistence
+  - `aiCache`: Whether AI_CACHE KV namespace is configured
+- `config`: Current worker configuration
+  - `model`: AI model in use
   - `sharedLimit`: Daily quota limit for shared demo mode
-- `stats`: Daily usage statistics (resets at midnight UTC)
-  - `totalCalls`: Total API calls today
-  - `uniqueIPs`: Number of unique IP addresses
-- `cache`: AI response cache statistics (new in v2.1.0)
+- `stats`: Daily usage statistics (excludes admin bypass requests, resets at midnight UTC)
+  - `totalCalls`: Total API calls for the current day (non-admin only)
+  - `uniqueIPs`: Number of unique client IPs for the current day (non-admin only)
+- `cache`: AI response cache statistics
   - `enabled`: Whether cache is available
   - `hits`: Number of cache hits today
   - `misses`: Number of cache misses today
   - `total`: Total requests today (hits + misses)
   - `hitRate`: Cache hit rate percentage
-- `services`: Dependency services status
-  - `apiKey`: Whether OPENAI_API_KEY is configured
-  - `adminKey`: Whether ADMIN_ACCESS_KEY is configured
-  - `kvStorage`: Whether KV storage is available for quota persistence
-- `config`: Current worker configuration
-  - `model`: AI model in use
-  - `sharedLimit`: Daily quota limit for shared demo mode
-- `stats`: Daily usage statistics (excludes admin bypass requests)
-  - `totalCalls`: Total API calls for the current day (non-admin only)
-  - `uniqueIPs`: Number of unique client IPs for the current day (non-admin only)
 
 > **Note:** Requests using `adminKey` bypass the quota system and are **not** counted in `stats`. This is by design—admin users do not consume shared quota.
 
@@ -338,7 +328,7 @@ curl -X POST https://fuckits.25500552.xyz \
 ### Shared Demo Mode
 
 Default behavior when `FUCK_OPENAI_API_KEY` is not configured:
-- Limit: 10 requests per day per IP
+- Limit: 200 requests per day per IP
 - Resets: Daily at UTC midnight
 - Storage: Cloudflare KV (persistent) or in-memory (fallback)
 
@@ -454,13 +444,18 @@ def generate_command(prompt, sysinfo="OS=Linux; PkgMgr=apt"):
         "https://fuckits.25500552.xyz",
         json={"sysinfo": sysinfo, "prompt": prompt}
     )
-    
+
+    # Extract request tracking ID from response header
+    request_id = response.headers.get("X-Request-ID", "N/A")
+    cache_status = response.headers.get("X-Cache-Status", "N/A")
+
     if response.status_code == 200:
+        print(f"[Request ID: {request_id}, Cache: {cache_status}]")
         return response.text
     elif response.status_code == 429:
-        print("Quota exceeded. Configure local API key.")
+        print(f"Quota exceeded. Configure local API key. [Request ID: {request_id}]")
     else:
-        print(f"Error: {response.text}")
+        print(f"Error: {response.text} [Request ID: {request_id}]")
     
     return None
 
@@ -486,7 +481,7 @@ print(command)  # Output: docker ps -a
 - Improved quota system with KV persistence
 - Added admin bypass mechanism
 
-### v2.0.0 (2024-12-01)
+### v2.0.0 (2025-12-01)
 - Initial public release
 - Support for English and Chinese locales
 - Shared demo quota system

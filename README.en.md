@@ -267,6 +267,9 @@ You should see `status: "ok"` and `services.apiKey: true`. The response also inc
 | `FUCK_TIMEOUT` | `30` | `curl` timeout in seconds |
 | `FUCK_DEBUG` | `false` | Verbose debug logs |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | Don’t automatically inject the `fuck` alias |
+| `FUCK_SECURITY_MODE` | `balanced` | Security engine mode: `strict` / `balanced` / `off` |
+| `FUCK_SECURITY_WHITELIST` | empty | Comma-separated trusted command patterns that bypass security checks |
+| `FUCK_SECURITY_CHALLENGE_TEXT` | `I accept the risk` | Confirmation phrase for high-risk commands |
 
 Run `fuck config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
 

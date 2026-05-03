@@ -284,6 +284,9 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_TIMEOUT` | `30` | `curl` 请求超时时间（秒） |
 | `FUCK_DEBUG` | `false` | 输出调试日志，便于排查问题 |
 | `FUCK_DISABLE_DEFAULT_ALIAS` | `false` | 若设为 `true`，将不会自动注入 `fuck` 别名 |
+| `FUCK_SECURITY_MODE` | `balanced` | 安全引擎模式：`strict`（严格）/ `balanced`（均衡）/ `off`（关闭） |
+| `FUCK_SECURITY_WHITELIST` | 空 | 逗号分隔的信任命令模式，匹配的命令绕过安全检测 |
+| `FUCK_SECURITY_CHALLENGE_TEXT` | `I accept the risk` | 高风险命令的确认短语 |
 
 通过 `fuck config` 可以快速查看文件路径并创建默认示例。
 安装脚本会自动将 `~/.fuck/config.sh` 的权限设置为 `chmod 600`，确保你的密钥只保留在本地。
