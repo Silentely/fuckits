@@ -867,3 +867,6 @@ The user's system info is: ${sysinfo}`;
     );
   }
 }
+
+// 命名导出，仅供测试使用
+export { sanitizeCommand, timingSafeEqual, createErrorResponse, generateRequestId };

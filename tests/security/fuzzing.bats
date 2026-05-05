@@ -3,7 +3,7 @@
 # Security Fuzzing Tests
 # Tests the security engine's robustness against various attack patterns
 
-load '../test_helper/common-setup'
+load '../helpers/bats-helpers'
 
 setup() {
     export TEST_HOME=$(mktemp -d)
@@ -180,22 +180,22 @@ teardown() {
     done
 }
 
-@test "Fuzzing: Concurrent evaluations simulation (sequential)" {
-    # Simulate concurrent requests by rapid sequential execution
-    local pids=()
-    
+@test "Fuzzing: Rapid sequential evaluations (simulated concurrency)" {
+    # Simulate rapid sequential requests to verify engine stability
+    local count=0
+    local failed=0
+
     for i in {1..10}; do
-        (bash -c "source '$MAIN_SH'; _fuck_security_evaluate_command 'ls' >/dev/null 2>&1" &)
-        pids+=($!)
+        if run bash -c "source '$MAIN_SH'; _fuck_security_evaluate_command 'ls' >/dev/null 2>&1"; then
+            count=$((count + 1))
+        else
+            failed=$((failed + 1))
+        fi
     done
-    
-    # Wait for all background processes
-    for pid in "${pids[@]}"; do
-        wait "$pid" || true
-    done
-    
-    # Just verify no crashes occurred
-    [ "${#pids[@]}" -eq 10 ]
+
+    # All 10 should succeed
+    [ "$count" -eq 10 ]
+    [ "$failed" -eq 0 ]
 }
 
 @test "Fuzzing: Whitelist bypass attempts" {

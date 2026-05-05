@@ -8,6 +8,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-05-05 | 功能修复 + 测试补全 | 修复 fuzzing.bats 依赖路径（test_helper/common-setup → helpers/bats-helpers）；修复 fuzzing 并发测试 bug；新增 security-utils.test.js（26 tests: sanitizeCommand/timingSafeEqual/createErrorResponse/generateRequestId）；新增 history-extended.bats（18 tests: history_replay/favorite_run/favorite_delete）；worker.js 导出安全关键函数供测试；测试总数 215 个（109 JS + 106 Bash） |
 | 2026-05-03 22:11:39 | 架构增量扫描 | 验证测试结构完整性；发现 security/fuzzing.bats 依赖缺失的 test_helper/common-setup；确认 171 个测试（83 JS + 88 Bash） |
 | 2026-02-03 | R2 回退完成 | 回退 Task 1.3 R2 迁移,删除 r2-integration.test.js (18 tests),恢复 build-deploy.bats 中 7 个 base64 验证测试,测试总数调整为 171 个（83 JS + 88 Bash），100% 通过率 |
 | 2026-02-03 | 历史功能测试新增 | 新增 unit/bash/history.bats (18 tests)，Task 1.4 完成；验证命令历史记录、搜索、收藏管理功能 |
@@ -39,8 +40,9 @@ tests/
 ├── unit/                    # 单元测试
 │   ├── bash/               # Shell 脚本测试
 │   │   ├── security.bats   # 21 条安全规则测试 (27 tests)
-│   │   └── history.bats    # 命令历史与收藏测试 (18 tests)
-│   └── worker/             # Worker 功能测试 (83 tests)
+│   │   ├── history.bats    # 命令历史与收藏测试 (18 tests)
+│   │   └── history-extended.bats # history_replay + favorite 扩展测试 (18 tests)
+│   └── worker/             # Worker 功能测试 (109 tests)
 │       ├── handlers.test.js       # 请求处理测试 (14 tests)
 │       ├── locale.test.js         # 中英文语言测试 (9 tests)
 │       ├── quota.test.js          # 配额管理测试 (6 tests)
@@ -54,7 +56,8 @@ tests/
 │       ├── quota-edge-cases.test.js # 配额边界条件 (3 tests)
 │       ├── sysinfo.test.js        # 系统信息处理 (3 tests)
 │       ├── concurrent-requests.test.js # 并发请求 (1 test)
-│       └── cache.test.js          # AI 响应缓存 (9 tests)
+│       ├── cache.test.js          # AI 响应缓存 (9 tests)
+│       └── security-utils.test.js # 安全工具函数 (26 tests)
 ├── integration/            # 集成测试 (43 tests)
 │   ├── build-deploy.bats  # 构建部署流程 (23 tests)
 │   └── e2e.bats           # 端到端用户流程 (20 tests)
@@ -294,9 +297,9 @@ npm run test:e2e
 
 ### 当前状态（2026-05-03）
 
-**总体**：171/171 测试通过 (100%)
+**总体**：215/215 测试通过 (100%)
 
-**JavaScript 测试**：83 个（14 个测试文件）
+**JavaScript 测试**：109 个（15 个测试文件）
 - handlers.test.js: 14 个
 - locale.test.js: 9 个
 - quota.test.js: 6 个
@@ -312,9 +315,10 @@ npm run test:e2e
 - concurrent-requests.test.js: 1 个
 - cache.test.js: 9 个
 
-**Bash 测试**：88 个
+**Bash 测试**：106 个
 - unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
 - unit/bash/history.bats: 18 个（历史记录与收藏管理）
+- unit/bash/history-extended.bats: 18 个（history_replay + favorite_run + favorite_delete）
 - integration/build-deploy.bats: 23 个（构建部署流程）
 - integration/e2e.bats: 20 个（端到端用户流程）
 

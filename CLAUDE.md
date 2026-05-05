@@ -5,6 +5,7 @@
 | 时间 | 操作 | 说明 |
 |------|------|------|
 | 2026-05-03 | 文档同步与质量修正 | 更新 TEST_ARCHITECTURE.md 目录结构与实际文件一致；修正 tests/CLAUDE.md 中 R2 遗留代码说明；修正 CONTRIBUTING.md 测试命令写法；确认共享配额默认值（代码回退=10，生产环境=200） |
+| 2026-05-05 | 功能修复 + 测试补全 | 修复 fuzzing.bats 依赖路径 + 并发测试 bug；新增 security-utils.test.js（26 tests）+ history-extended.bats（18 tests）；worker.js 导出安全关键函数；测试总数 215 个（109 JS + 106 Bash） |
 | 2026-05-03 22:11:39 | 架构增量扫描 | 全仓扫描更新：修正核心文件行数统计（worker.js 869行、main.sh 2253行、zh_main.sh 1683行）；验证测试总数 171 个（83 JS + 88 Bash）；覆盖率报告与缺口分析 |
 | 2026-04-28 19:11:10 | 架构增量扫描 | 增量更新：版本号 2.1.0，测试总数 171 个（83 JS + 88 Bash），100% 通过率；核心模块结构与文档完整性验证，覆盖率 96% |
 | 2026-02-03 | Task 1.4 完成及测试清理 | 完成命令历史功能（history.bats 18 tests），清理过时 R2 测试（build-deploy.bats 23->16），测试总数 171 个（83 JS + 88 Bash）；修复 BATS 变量作用域问题，100% 通过率 |
@@ -54,7 +55,7 @@ fuckits 采用前后端分离架构：
 - **安全引擎**：三级安全检测（block/challenge/warn），保护用户免受危险命令影响
 - **系统缓存**：静态系统信息持久化缓存，减少重复检测开销
 - **双模密钥**：优先本地密钥（`FUCK_OPENAI_API_KEY`），回退共享 Worker
-- **全自动测试**：171 个测试（83 个 JS + 88 个 Bash）确保代码质量
+- **全自动测试**：215 个测试（109 个 JS + 106 个 Bash）确保代码质量
 
 ---
 
@@ -155,9 +156,9 @@ npm run dev
 - `npm run one-click-deploy` - 完整自动化部署
 - `npm run setup` - 交互式配置向导
 - `npm run dev` - 本地开发服务器
-- `npm test` - 运行所有测试（171 个）
-- `npm run test:js` - 仅 JavaScript 测试（83 个）
-- `npm run test:bash` - 仅 Bash 测试（88 个）
+- `npm test` - 运行所有测试（215 个）
+- `npm run test:js` - 仅 JavaScript 测试（109 个）
+- `npm run test:bash` - 仅 Bash 测试（106 个）
 - `npm run test:js:coverage` - 生成 JavaScript 覆盖率报告
 
 ---
@@ -172,7 +173,7 @@ npm run dev
 - **Bash/Shell**：bats-core（Bash Automated Testing System）
 
 ### 测试覆盖
-**JavaScript 测试（83 个）**：
+**JavaScript 测试（109 个）**：
 - handlers.test.js: HTTP 请求处理（14 个）
 - locale.test.js: 中英文双语支持（9 个）
 - quota.test.js: 配额管理系统（6 个）
@@ -187,10 +188,12 @@ npm run dev
 - sysinfo.test.js: 系统信息处理（3 个）
 - concurrent-requests.test.js: 并发请求（1 个）
 - cache.test.js: AI 响应缓存系统（9 个）
+- security-utils.test.js: 安全工具函数 sanitizeCommand/timingSafeEqual/createErrorResponse/generateRequestId（26 个）
 
-**Bash 测试（88 个）**：
+**Bash 测试（106 个）**：
 - unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
 - unit/bash/history.bats: 18 个（命令历史与收藏管理）
+- unit/bash/history-extended.bats: 18 个（history_replay + favorite_run + favorite_delete）
 - integration/build-deploy.bats: 23 个（构建部署流程）
 - integration/e2e.bats: 20 个（端到端用户流程）
 
@@ -368,7 +371,7 @@ Cloudflare Workers 配置文件：
   - zh_main.sh: ~1683 行
   - scripts: ~606 行（build 142 + deploy 40 + one-click-deploy 231 + setup 127 + common 66）
   - tests: ~3100 行（unit + integration + security + performance）
-- **测试用例**：171 个（83 个 JS + 88 个 Bash）
+- **测试用例**：215 个（109 个 JS + 106 个 Bash）
 - **测试通过率**：100% (171/171)
 - **支持语言**：中文、英文
 - **支持平台**：macOS, Linux (apt/yum/dnf/pacman/zypper/brew)
