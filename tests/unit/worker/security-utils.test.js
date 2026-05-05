@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { sanitizeCommand, timingSafeEqual, createErrorResponse, generateRequestId } from '../../../worker.js';
+import { sanitizeCommand, timingSafeEqual, createErrorResponse, generateRequestId, checkCommandSafety } from '../../../worker.js';
 
 describe('sanitizeCommand', () => {
   it('空输入应该返回空字符串', () => {
@@ -151,5 +151,64 @@ describe('generateRequestId', () => {
     const id1 = generateRequestId();
     const id2 = generateRequestId();
     expect(id1).not.toBe(id2);
+  });
+});
+
+describe('checkCommandSafety', () => {
+  it('安全命令不应被拦截', () => {
+    expect(checkCommandSafety('ls -la')).toEqual({ blocked: false, reason: '' });
+    expect(checkCommandSafety('echo hello')).toEqual({ blocked: false, reason: '' });
+    expect(checkCommandSafety('git status')).toEqual({ blocked: false, reason: '' });
+  });
+
+  it('应该拦截 rm -rf /', () => {
+    const result = checkCommandSafety('rm -rf /');
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain('root');
+  });
+
+  it('应该拦截 rm -rf /*', () => {
+    const result = checkCommandSafety('rm -rf /*');
+    expect(result.blocked).toBe(true);
+  });
+
+  it('应该拦截 rm --no-preserve-root', () => {
+    const result = checkCommandSafety('rm -rf --no-preserve-root /');
+    expect(result.blocked).toBe(true);
+  });
+
+  it('应该拦截 rm -rf .*', () => {
+    const result = checkCommandSafety('rm -rf .*');
+    expect(result.blocked).toBe(true);
+  });
+
+  it('应该拦截 dd 磁盘写入', () => {
+    const result = checkCommandSafety('dd if=/dev/zero of=/dev/sda');
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain('dd');
+  });
+
+  it('应该拦截 mkfs 格式化', () => {
+    const result = checkCommandSafety('mkfs.ext4 /dev/sda1');
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain('Filesystem format');
+  });
+
+  it('应该拦截 fdisk 分区操作', () => {
+    expect(checkCommandSafety('fdisk /dev/sda').blocked).toBe(true);
+    expect(checkCommandSafety('parted /dev/sda').blocked).toBe(true);
+    expect(checkCommandSafety('shred /dev/sda').blocked).toBe(true);
+  });
+
+  it('应该拦截 fork bomb', () => {
+    const result = checkCommandSafety(':(){ :|:& };:');
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain('Fork bomb');
+  });
+
+  it('空输入不应被拦截', () => {
+    expect(checkCommandSafety('')).toEqual({ blocked: false, reason: '' });
+    expect(checkCommandSafety(null)).toEqual({ blocked: false, reason: '' });
+    expect(checkCommandSafety(undefined)).toEqual({ blocked: false, reason: '' });
   });
 });

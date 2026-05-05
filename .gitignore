@@ -53,3 +53,6 @@ coverage/
 *.tmp
 .temp/
 .ace-tool/
+
+# Runtime cache (generated when main.sh is sourced)
+/runtime-common.sh

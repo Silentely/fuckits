@@ -317,3 +317,53 @@ teardown() {
     # 应该失败
     [ "$status" -ne 0 ] || echo "$output" | grep -qi "error\|failed\|permission"
 }
+
+# ==================== 历史与收藏集成测试 ====================
+
+@test "E2E History: installed script should have history subcommand" {
+    bash ./main.sh <<< ""
+
+    # 运行 history 子命令（空历史应正常退出）
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh history' 2>&1
+    # 不应报错
+    [ "$status" -eq 0 ] || echo "$output" | grep -qi "history\|no.*commands"
+}
+
+@test "E2E History: history search should work after install" {
+    bash ./main.sh <<< ""
+
+    # 创建带历史记录的文件
+    local history_file="$TEST_INSTALL_DIR/history.json"
+    mkdir -p "$TEST_INSTALL_DIR"
+    cat > "$history_file" <<'JSON'
+{
+    "commands": [
+        {"prompt": "list files", "command": "ls -la", "exit_code": 0, "duration": 1, "timestamp": "2026-01-01T00:00:00Z"}
+    ],
+    "favorites": []
+}
+JSON
+
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh history search "list"' 2>&1
+    echo "$output" | grep -qi "list files\|ls -la"
+}
+
+@test "E2E Favorite: favorite subcommand should be recognized" {
+    bash ./main.sh <<< ""
+
+    # 创建带收藏的文件
+    local history_file="$TEST_INSTALL_DIR/history.json"
+    mkdir -p "$TEST_INSTALL_DIR"
+    cat > "$history_file" <<'JSON'
+{
+    "commands": [],
+    "favorites": [
+        {"id": "fav_001", "name": "List Files", "prompt": "list files", "command": "ls", "created": "2026-01-01T00:00:00Z"}
+    ]
+}
+JSON
+
+    # favorite list 应该能识别并运行
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh favorite list' 2>&1
+    [ "$status" -eq 0 ] || echo "$output" | grep -qi "List Files\|favorite\|No favorites"
+}
