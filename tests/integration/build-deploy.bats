@@ -26,6 +26,7 @@ setup_file() {
     cp "$PROJECT_ROOT/zh_main.sh" "$TEST_DIR/"
     cp "$PROJECT_ROOT/wrangler.toml" "$TEST_DIR/"
     cp "$PROJECT_ROOT/package.json" "$TEST_DIR/"
+    cp "$PROJECT_ROOT/VERSION" "$TEST_DIR/"
 
     # 复制 scripts 目录
     cp -r "$PROJECT_ROOT/scripts" "$TEST_DIR/"

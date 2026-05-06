@@ -106,12 +106,13 @@ if not b64_en or not b64_zh:
     print("Error: Base64 content not provided", file=sys.stderr)
     sys.exit(1)
 
-# Read version from package.json (single source of truth)
+# Read version from VERSION file (single source of truth)
 try:
-    pkg = json.loads(Path('package.json').read_text(encoding='utf-8'))
-    version = pkg.get('version', '0.0.0')
+    version = Path('VERSION').read_text(encoding='utf-8').strip()
+    if not version:
+        raise ValueError("VERSION file is empty")
 except Exception as e:
-    print(f"Error reading package.json version: {e}", file=sys.stderr)
+    print(f"Error reading VERSION file: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Replace __SCRIPT_VERSION__ placeholder in shell scripts before encoding
