@@ -119,7 +119,7 @@ def inject_version(b64_content, script_name):
     try:
         text = base64.b64decode(b64_content).decode('utf-8')
         if '__SCRIPT_VERSION__' in text:
-            text = text.replace('__SCRIPT_VERSION__', version, 1)
+            text = text.replace('__SCRIPT_VERSION__', version)
             print(f"  {script_name}: injected version {version}")
             return base64.b64encode(text.encode('utf-8')).decode()
         return b64_content
