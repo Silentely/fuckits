@@ -1048,9 +1048,33 @@ _installer_detect_profile() {
 }
 
 _install_script() {
-    echo -e "${C_BOLD}开始安装 fuckits...${C_RESET}"
     mkdir -p "$INSTALL_DIR"
-    
+
+    # 已安装时：先对比版本，相同则跳过更新
+    if [ -f "$MAIN_SH" ]; then
+        local local_ver
+        local_ver=$(grep -o "SCRIPT_VERSION='[^']*'" "$MAIN_SH" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//") || true
+
+        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+        local remote_ver
+        remote_ver=$(curl -sS --max-time 5 "${api_url%/}/health" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
+
+        if [ -n "$local_ver" ] && [ -n "$remote_ver" ] && [ "$local_ver" = "$remote_ver" ]; then
+            echo -e "${C_GREEN}✅ 版本 ${local_ver} 已是最新，无需更新。${C_RESET}"
+            return 0
+        fi
+
+        if [ -n "$local_ver" ] && [ -n "$remote_ver" ]; then
+            echo -e "${C_YELLOW}📦 本地版本: ${C_BOLD}${local_ver}${C_RESET}${C_YELLOW} → 远程版本: ${C_BOLD}${remote_ver}${C_RESET}"
+            echo -e "${C_CYAN}正在更新...${C_RESET}"
+        fi
+
+        # 更新：删除旧脚本（保留配置和历史记录）
+        rm -f "$MAIN_SH"
+    fi
+
+    echo -e "${C_BOLD}开始安装 fuckits...${C_RESET}"
+
     # 把核心逻辑写进 main.sh
     _fuck_write_core "$MAIN_SH"
 
@@ -1127,11 +1151,8 @@ CFG
         echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# 显示配置帮助${C_RESET}"
         echo -e "\n${C_YELLOW}记得重启终端以使用新命令！${C_RESET}"
     else
-        echo -e "$FUCK ${C_YELLOW}检测到已安装，已为您更新脚本。${C_RESET}"
+        echo -e "$FUCK ${C_GREEN}脚本已更新。${C_RESET}"
     fi
-
-    # 安装/更新后检查远程版本
-    _fuck_check_remote_version
 }
 
 

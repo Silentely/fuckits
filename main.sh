@@ -1460,9 +1460,33 @@ _installer_detect_profile() {
 }
 
 _install_script() {
-    echo -e "$FCKN ${C_BOLD}Alright, let's get this shit installed...${C_RESET}"
     mkdir -p "$INSTALL_DIR"
-    
+
+    # 已安装时：先对比版本，相同则跳过更新
+    if [ -f "$MAIN_SH" ]; then
+        local local_ver
+        local_ver=$(grep -o "SCRIPT_VERSION='[^']*'" "$MAIN_SH" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//") || true
+
+        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+        local remote_ver
+        remote_ver=$(curl -sS --max-time 5 "${api_url%/}/health" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
+
+        if [ -n "$local_ver" ] && [ -n "$remote_ver" ] && [ "$local_ver" = "$remote_ver" ]; then
+            echo -e "${C_GREEN}✅ Version ${local_ver} is up to date. No update needed.${C_RESET}"
+            return 0
+        fi
+
+        if [ -n "$local_ver" ] && [ -n "$remote_ver" ]; then
+            echo -e "${C_YELLOW}📦 Local: ${C_BOLD}${local_ver}${C_RESET}${C_YELLOW} → Remote: ${C_BOLD}${remote_ver}${C_RESET}"
+            echo -e "${C_CYAN}Updating...${C_RESET}"
+        fi
+
+        # 更新：删除旧脚本（保留配置和历史记录）
+        rm -f "$MAIN_SH"
+    fi
+
+    echo -e "$FCKN ${C_BOLD}Alright, let's get this shit installed...${C_RESET}"
+
     # Write the embedded core logic to the main.sh file
     _fuck_write_core "$MAIN_SH"
 
@@ -1548,11 +1572,8 @@ CFG
         echo -e "                   ${C_CYAN}apt install jq${C_RESET} (Ubuntu/Debian)"
         echo -e "\n${C_YELLOW}Remember to restart your shell to begin!${C_RESET}"
     else
-        echo -e "$FUCK ${C_YELLOW}It's already installed, genius. Just updated the script for you.${C_RESET}"
+        echo -e "$FUCK ${C_GREEN}Script updated successfully.${C_RESET}"
     fi
-
-    # 安装/更新后检查远程版本
-    _fuck_check_remote_version
 }
 
 
