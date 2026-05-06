@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# pre-commit hook: 自动递增 VERSION 文件中的 patch 版本号
+# VERSION 文件是唯一版本来源，package.json 自动同步
+#
+
+# 递增 VERSION 文件中的 patch 版本
+if [ -f "VERSION" ]; then
+    NEW_VERSION=$(node -e "
+        const fs = require('fs');
+        const v = fs.readFileSync('VERSION', 'utf-8').trim();
+        const parts = v.split('.');
+        parts[2] = parseInt(parts[2] || 0) + 1;
+        console.log(parts.join('.'));
+    " 2>/dev/null)
+
+    if [ -n "$NEW_VERSION" ]; then
+        echo "$NEW_VERSION" > VERSION
+
+        # 同步 package.json
+        node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+        " 2>/dev/null
+
+        git add VERSION package.json
+        echo "📦 Version bumped: $NEW_VERSION"
+    fi
+fi
+
+exit 0
