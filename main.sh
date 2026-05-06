@@ -51,6 +51,7 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
+readonly SCRIPT_VERSION='__SCRIPT_VERSION__'
 
 fi  # readonly 常量守卫结束
 
@@ -98,6 +99,7 @@ if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}"
         readonly MAIN_SH="$INSTALL_DIR/main.sh"
         readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
     fi
+    readonly SCRIPT_VERSION='__SCRIPT_VERSION__'
 fi
 
 # Note: Config loading is done AFTER validation functions are defined (see below)
@@ -1185,6 +1187,11 @@ _fuck_route_subcommands() {
         return 0
     fi
 
+    if [ "$arg1" = "version" ] || [ "$arg1" = "-v" ] || [ "$arg1" = "--version" ]; then
+        echo "fuckits ${SCRIPT_VERSION}"
+        return 0
+    fi
+
     if [ "$arg1" = "history" ]; then
         shift
         case "${1:-}" in
@@ -1400,6 +1407,26 @@ _fuck_write_core() {
     printf '%s\n' "$CORE_LOGIC" > "$target"
 }
 
+# 检查远程版本并与本地版本对比
+# 从 /health 端点获取远程版本，静默失败
+_fuck_check_remote_version() {
+    local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+    local health_url="${api_url%/}/health"
+    local remote_version
+    remote_version=$(curl -sS --max-time 5 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
+
+    if [ -z "$remote_version" ]; then
+        return 0
+    fi
+
+    if [ "$remote_version" != "$SCRIPT_VERSION" ]; then
+        echo -e "${C_YELLOW}📦 Remote version: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} | Local version: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}"
+        echo -e "${C_CYAN}Run 'curl -sS ${api_url} | bash' to update.${C_RESET}"
+    else
+        echo -e "${C_GREEN}✅ Version ${SCRIPT_VERSION} is up to date.${C_RESET}"
+    fi
+}
+
 # --- 初始化阶段独立版本（_install_script 依赖）---
 # _fuck_source_core() 尚未运行，runtime-common.sh 不可用
 _installer_detect_profile() {
@@ -1509,6 +1536,9 @@ CFG
     else
         echo -e "$FUCK ${C_YELLOW}It's already installed, genius. Just updated the script for you.${C_RESET}"
     fi
+
+    # 安装/更新后检查远程版本
+    _fuck_check_remote_version
 }
 
 

@@ -91,6 +91,7 @@ fi
 # Use Python for safe file editing (avoids sed separator and length limit issues)
 # Pass base64 content via environment variables to avoid shell argument parsing issues
 B64_EN="$B64_EN" B64_ZH="$B64_ZH" python3 - <<'PY'
+import base64
 import json
 import os
 import re
@@ -112,6 +113,22 @@ try:
 except Exception as e:
     print(f"Error reading package.json version: {e}", file=sys.stderr)
     sys.exit(1)
+
+# Replace __SCRIPT_VERSION__ placeholder in shell scripts before encoding
+def inject_version(b64_content, script_name):
+    try:
+        text = base64.b64decode(b64_content).decode('utf-8')
+        if '__SCRIPT_VERSION__' in text:
+            text = text.replace('__SCRIPT_VERSION__', version, 1)
+            print(f"  {script_name}: injected version {version}")
+            return base64.b64encode(text.encode('utf-8')).decode()
+        return b64_content
+    except Exception as e:
+        print(f"Warning: Failed to inject version in {script_name}: {e}", file=sys.stderr)
+        return b64_content
+
+b64_en = inject_version(b64_en, 'main.sh')
+b64_zh = inject_version(b64_zh, 'zh_main.sh')
 
 # Read worker.js
 try:
