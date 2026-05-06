@@ -164,6 +164,11 @@ text, count_v = re.subn(pattern_version, replacement_version, text, count=1)
 if count_v != 1:
     print(f"Warning: Expected to replace 1 version string, replaced {count_v}", file=sys.stderr)
 
+# Replace build time placeholder with current ISO timestamp
+from datetime import datetime, timezone
+build_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+text = text.replace("'__BUILD_TIME__'", f"'{build_time}'")
+
 # Write updated content
 try:
     path.write_text(text, encoding='utf-8')
