@@ -832,27 +832,27 @@ _fuck_run_ai_request() {
 
     local response="" exit_code=0
     if _fuck_should_use_local_api; then
-        printf "${C_YELLOW}使用本地 API Key... ${C_RESET}"
+        printf "${C_YELLOW}使用本地 API Key... ${C_RESET}" >&2
         response=$(_fuck_request_local_model "$prompt" "$sysinfo_string" "$curl_timeout")
         exit_code=$?
     else
         local spinner_label="思考中💭 "
-        printf '%s' "$spinner_label"
+        printf '%s' "$spinner_label" >&2
         response=$(_fuck_request_worker_model "$prompt" "$sysinfo_string" "$curl_timeout" "$spinner_label")
         exit_code=$?
     fi
 
-    printf "\r"
-    echo ""
+    printf "\r" >&2
+    echo "" >&2
 
     if [ $exit_code -ne 0 ] || [ -z "$response" ]; then
         return $exit_code
     fi
 
-    echo -e "${C_CYAN}为您生成了以下命令：${C_RESET}"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
-    printf '%s\n' "$response"
-    echo -e "${C_DIM}----------------------------------------${C_RESET}"
+    echo -e "${C_CYAN}为您生成了以下命令：${C_RESET}" >&2
+    echo -e "${C_DIM}----------------------------------------${C_RESET}" >&2
+    printf '%s\n' "$response" >&2
+    echo -e "${C_DIM}----------------------------------------${C_RESET}" >&2
 
     printf '%s' "$response"
 }
