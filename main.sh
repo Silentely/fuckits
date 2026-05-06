@@ -51,7 +51,7 @@ fi
 readonly INSTALL_DIR="$HOME/.fuck"
 readonly MAIN_SH="$INSTALL_DIR/main.sh"
 readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
-readonly SCRIPT_VERSION='__SCRIPT_VERSION__'
+SCRIPT_VERSION='__SCRIPT_VERSION__'
 
 fi  # readonly 常量守卫结束
 
@@ -99,7 +99,7 @@ if [ -z "${INSTALL_DIR+x}" ] || [ -z "${MAIN_SH+x}" ] || [ -z "${CONFIG_FILE+x}"
         readonly MAIN_SH="$INSTALL_DIR/main.sh"
         readonly CONFIG_FILE="$INSTALL_DIR/config.sh"
     fi
-    readonly SCRIPT_VERSION='__SCRIPT_VERSION__'
+    SCRIPT_VERSION='__SCRIPT_VERSION__'
 fi
 
 # Note: Config loading is done AFTER validation functions are defined (see below)
@@ -1462,13 +1462,13 @@ _installer_detect_profile() {
 _install_script() {
     mkdir -p "$INSTALL_DIR"
 
+    local local_ver=""
+    local remote_ver=""
+    local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+
     # 已安装时：先对比版本，相同则跳过更新
     if [ -f "$MAIN_SH" ]; then
-        local local_ver
         local_ver=$(grep -o "SCRIPT_VERSION='[^']*'" "$MAIN_SH" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//") || true
-
-        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
-        local remote_ver
         remote_ver=$(curl -sS --max-time 5 "${api_url%/}/health" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
 
         if [ -n "$local_ver" ] && [ -n "$remote_ver" ] && [ "$local_ver" = "$remote_ver" ]; then
@@ -1490,10 +1490,19 @@ _install_script() {
     # Write the embedded core logic to the main.sh file
     _fuck_write_core "$MAIN_SH"
 
-
     if [ $? -ne 0 ]; then
         echo -e "$FUCK ${C_RED}Can't write to the file. Check your damn permissions.${C_RESET}" >&2
         return 1
+    fi
+
+    # 验证写入的文件包含正确的版本号
+    local _installed_ver
+    _installed_ver=$(grep -o "SCRIPT_VERSION='[^']*'" "$MAIN_SH" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//") || true
+    if [ -n "$_installed_ver" ] && [ "$_installed_ver" != "$remote_ver" ] && [ -n "$remote_ver" ]; then
+        echo -e "${C_YELLOW}⚠️ Installed version ${_installed_ver} differs from remote ${remote_ver}, retrying...${C_RESET}" >&2
+        rm -f "$MAIN_SH"
+        _fuck_write_core "$MAIN_SH"
+        chmod +x "$MAIN_SH"
     fi
 
     # Make main.sh executable
