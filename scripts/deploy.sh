@@ -34,6 +34,11 @@ if grep -q 'YOUR_KV_NAMESPACE_ID' wrangler.toml 2>/dev/null; then
 fi
 
 echo -e "${C_CYAN}☁️ Deploying to Cloudflare Workers...${C_RESET}"
-npx wrangler deploy "$@"
+
+# Source common functions for deploy output filtering
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+
+npx wrangler deploy "$@" | _mask_deploy_output
 
 echo -e "${C_GREEN}✅ Deployment completed successfully!${C_RESET}"

@@ -63,3 +63,12 @@ PY
 
     echo -e "${C_GREEN}✅ Updated ${key} in wrangler.toml${C_RESET}"
 }
+
+# 过滤 wrangler deploy 输出中的敏感信息
+# 用法: npx wrangler deploy | _mask_deploy_output
+_mask_deploy_output() {
+    sed -E \
+        -e 's/^([[:space:]]+- [^:]+: )[0-9a-f]{32,}$/\1***/' \
+        -e 's/^([[:space:]]+- OPENAI_API_KEY: ")[^"]*("?)$/\1***\2/' \
+        -e 's/^([[:space:]]+- ADMIN_ACCESS_KEY: ")[^"]*("?)$/\1***\2/'
+}

@@ -193,7 +193,7 @@ echo -e "${C_CYAN}Step 7: Deploy to Cloudflare${C_RESET}"
 echo -e "${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n"
 
 echo -e "${C_YELLOW}☁️ Deploying to Cloudflare Workers...${C_RESET}"
-npx wrangler deploy
+npx wrangler deploy | _mask_deploy_output
 
 echo -e "\n${C_YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 echo -e "${C_CYAN}Step 8: Verify Health Endpoint${C_RESET}"
