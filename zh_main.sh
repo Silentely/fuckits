@@ -994,6 +994,20 @@ _installer_secure_config_file() {
 _fuck_write_core() {
     local target="$1"
     printf '%s\n' "$CORE_LOGIC" > "$target"
+    # 运行时替换版本占位符（安装时从 package.json 注入）
+    if grep -q '__SCRIPT_VERSION__' "$target" 2>/dev/null; then
+        local _pkg
+        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
+            if [ -f "$_pkg" ] && command -v node > /dev/null 2>&1; then
+                local _ver
+                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
+                if [ -n "$_ver" ]; then
+                    sed -i.bak "s/__SCRIPT_VERSION__/${_ver}/g" "$target" && rm -f "${target}.bak"
+                    break
+                fi
+            fi
+        done
+    fi
 }
 
 # 检查远程版本并与本地版本对比
