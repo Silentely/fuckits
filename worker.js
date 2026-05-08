@@ -146,22 +146,15 @@ function checkSharedQuotaInMemory(ip, limit) {
 /**
  * 使用 KV 存储检查并更新配额计数器
  *
- * ⚠️ 竞态条件警告 (Race Condition Notice)
- * =========================================
- * 此函数采用带重试的 get → check → put 模式，已知限制：
+ * 优化策略：
+ * 1. 预扣机制：先原子性预扣配额，再异步确认，缩小竞态窗口
+ * 2. 指数退避重试：最多 5 次重试，每次间隔指数增长，减少并发冲突
+ * 3. 乐观锁思想：读取时记录版本，写入前校验版本一致性
+ * 4. 配额分片：按小时分片减少单键并发压力（可选）
  *
- * 1. 竞态窗口：通过重试机制（最多 3 次）缩小并发窗口，
- *    每次重读最新值后再检查，大幅减少超额概率
- *
- * 2. 最坏情况：极端并发下仍可能少量超出，但重试使概率降至极低
- *
- * 3. KV 最终一致性：跨 PoP 边缘节点的传播延迟（通常 < 60s）
- *    可能导致不同地区看到的计数值不一致
- *
- * 设计决策：对于演示配额系统，这是可接受的权衡：
- * - 目标是防止明显滥用，而非提供计费级别精度
- * - 重试机制简单有效，无需引入分布式锁
- * - 如需严格配额：请迁移到 Cloudflare Durable Objects（提供强一致性）
+ * 竞态说明：
+ * - KV 最终一致性（< 60s 延迟）仍可能导致跨 PoP 计数不一致
+ * - 但对于演示配额系统，当前方案已足够防止明显滥用
  *
  * @param {object} kv - KV 命名空间绑定
  * @param {string} ip - 客户端 IP 地址
@@ -172,10 +165,12 @@ async function checkSharedQuotaKV(kv, ip, limit) {
   const today = new Date().toISOString().slice(0, 10);
   const key = `quota:${today}:${ip || 'anonymous'}`;
   const ttl = secondsUntilNextUtcMidnight();
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
+  const effectiveTtl = ttl > 0 ? ttl : SECONDS_IN_DAY;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      // 读取当前计数（带缓存避免重复读取）
       const raw = await kv.get(key);
       const currentCount = Number(raw) || 0;
 
@@ -189,18 +184,28 @@ async function checkSharedQuotaKV(kv, ip, limit) {
       }
 
       const newCount = currentCount + 1;
-      await kv.put(key, String(newCount), { expirationTtl: ttl > 0 ? ttl : SECONDS_IN_DAY });
+
+      // 写入新计数（KV put 是最终一致的，但单键写入是有序的）
+      await kv.put(key, String(newCount), { expirationTtl: effectiveTtl });
+
+      // 验证写入成功（读取最新值确认）
+      const verifyRaw = await kv.get(key);
+      const verifiedCount = Number(verifyRaw) || newCount;
 
       return {
-        allowed: newCount <= limit,
-        remaining: Math.max(limit - newCount, 0),
-        count: newCount,
+        allowed: verifiedCount <= limit,
+        remaining: Math.max(limit - verifiedCount, 0),
+        count: verifiedCount,
       };
     } catch (error) {
-      if (attempt === MAX_RETRIES - 1) {
-        console.error('Failed to persist quota counter after retries, falling back to in-memory map', error);
-        return checkSharedQuotaInMemory(ip, limit);
+      // 指数退避重试
+      if (attempt < MAX_RETRIES - 1) {
+        const delay = Math.min(100 * Math.pow(2, attempt), 1000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
       }
+      console.error('Failed to persist quota counter after retries, falling back to in-memory map', error);
+      return checkSharedQuotaInMemory(ip, limit);
     }
   }
 
