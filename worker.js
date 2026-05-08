@@ -27,9 +27,16 @@ const INSTALLER_FILENAME_EN = 'fuckits.sh';
 const INSTALLER_FILENAME_ZH = 'fuckits-zh.sh';
 const SHARED_DEFAULT_LIMIT = 10;
 const SECONDS_IN_DAY = 24 * 60 * 60;
+const CACHE_TTL_SECONDS = 24 * 60 * 60;
+const CACHE_STATS_TTL_SECONDS = 2 * 24 * 60 * 60;
+const OPENAI_FETCH_TIMEOUT_MS = 15_000;
+const HEALTH_STATS_CACHE_TTL_MS = 15_000;
+const KV_LIST_PAGE_LIMIT = 1000;
+const CACHE_KEY_ENCODER = new TextEncoder();
 
 let lastQuotaDate = null;
 const sharedUsage = new Map();
+let dailyStatsCache = null;
 
 function resolveSharedLimit(env) {
   const raw = Number(env?.SHARED_DAILY_LIMIT ?? env?.SHARED_DEFAULT_LIMIT);
@@ -37,6 +44,19 @@ function resolveSharedLimit(env) {
     return Math.floor(raw);
   }
   return SHARED_DEFAULT_LIMIT;
+}
+
+function resolveOpenAIFetchTimeoutMs(env) {
+  const raw = Number(env?.OPENAI_API_TIMEOUT_MS ?? OPENAI_FETCH_TIMEOUT_MS);
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return OPENAI_FETCH_TIMEOUT_MS;
+  }
+  return Math.min(Math.floor(raw), 60_000);
+}
+
+function normalizeCacheInput(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().replace(/\s+/g, ' ');
 }
 
 /**
@@ -214,26 +234,47 @@ async function getDailyStats(quotaStore) {
     return { totalCalls, uniqueIPs: sharedUsage.size };
   }
 
-  // KV 存储统计
+  // KV 存储统计（带缓存 + 分页）
   try {
     const prefix = `quota:${today}:`;
-    const keys = await quotaStore.list({ prefix });
-    let totalCalls = 0;
-    const uniqueIPs = keys.keys.length;
-
-    // 并行获取所有计数值
-    const counts = await Promise.all(
-      keys.keys.map(async (k) => {
-        const raw = await quotaStore.get(k.name);
-        return Number(raw) || 0;
-      })
-    );
-
-    for (const count of counts) {
-      totalCalls += count;
+    const cacheKey = `quota:${today}`;
+    const now = Date.now();
+    if (dailyStatsCache && dailyStatsCache.key === cacheKey && dailyStatsCache.expiresAt > now) {
+      return dailyStatsCache.value;
     }
 
-    return { totalCalls, uniqueIPs };
+    let totalCalls = 0;
+    let uniqueIPs = 0;
+    let cursor;
+
+    do {
+      const page = await quotaStore.list({
+        prefix,
+        cursor,
+        limit: KV_LIST_PAGE_LIMIT,
+      });
+
+      uniqueIPs += page.keys.length;
+      const counts = await Promise.all(
+        page.keys.map(async (k) => {
+          const raw = await quotaStore.get(k.name);
+          return Number(raw) || 0;
+        })
+      );
+      for (const count of counts) {
+        totalCalls += count;
+      }
+
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+
+    const value = { totalCalls, uniqueIPs };
+    dailyStatsCache = {
+      key: cacheKey,
+      value,
+      expiresAt: now + HEALTH_STATS_CACHE_TTL_MS,
+    };
+    return value;
   } catch (error) {
     console.error('Failed to get daily stats from KV', error);
     return { totalCalls: -1, uniqueIPs: -1 };
@@ -424,9 +465,10 @@ function generateRequestId() {
  * @returns {Promise<string>} 十六进制 hash 字符串
  */
 async function generateCacheKey(prompt, sysinfo, model, locale) {
-  const input = `${model}:${locale}:${sysinfo}:${prompt}`;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
+  const normalizedPrompt = normalizeCacheInput(prompt);
+  const normalizedSysinfo = normalizeCacheInput(sysinfo);
+  const input = `${model}:${locale}:${normalizedSysinfo}:${normalizedPrompt}`;
+  const data = CACHE_KEY_ENCODER.encode(input);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -466,7 +508,7 @@ async function setCachedResponse(cacheKey, command, env) {
   try {
     // 缓存 24 小时 (86400 秒)
     await env.AI_CACHE.put(cacheKey, command, {
-      expirationTtl: 86400,
+      expirationTtl: CACHE_TTL_SECONDS,
     });
   } catch (error) {
     console.error('Cache write error:', error);
@@ -533,7 +575,7 @@ async function flushCacheStats(env) {
   await Promise.all(entries.map(async ([key, delta]) => {
     try {
       const current = parseInt(await env.AI_CACHE.get(key) || '0', 10);
-      await env.AI_CACHE.put(key, String(current + delta), { expirationTtl: 172800 });
+      await env.AI_CACHE.put(key, String(current + delta), { expirationTtl: CACHE_STATS_TTL_SECONDS });
     } catch (e) {
       console.error('Cache stats flush error:', e);
     }
@@ -601,8 +643,10 @@ function addCorsHeaders(response) {
  */
 async function handleHealthCheck(env) {
   const quotaStore = resolveQuotaStore(env);
-  const stats = await getDailyStats(quotaStore);
-  const cacheStats = await getCacheStats(env);
+  const [stats, cacheStats] = await Promise.all([
+    getDailyStats(quotaStore),
+    getCacheStats(env),
+  ]);
 
   const payload = {
     status: 'ok',
@@ -848,14 +892,42 @@ The user's system info is: ${sysinfo}`;
       temperature: 0.2,
     };
 
-    const aiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify(aiRequestPayload),
-    });
+    const timeoutMs = resolveOpenAIFetchTimeoutMs(env);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort('openai-timeout'), timeoutMs);
+
+    let aiResponse;
+    try {
+      aiResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify(aiRequestPayload),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const isAbort = error?.name === 'AbortError' || controller.signal.aborted;
+      if (isAbort) {
+        return createErrorResponse(
+          ERROR_CODES.AI_API_ERROR,
+          `AI service timeout after ${timeoutMs}ms.`,
+          504,
+          { timeoutMs },
+          requestId
+        );
+      }
+      return createErrorResponse(
+        ERROR_CODES.AI_API_ERROR,
+        'AI service is temporarily unavailable. Please try again later.',
+        500,
+        {},
+        requestId
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();

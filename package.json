@@ -1,6 +1,6 @@
 {
   "name": "fuckits",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "AI-powered CLI tool that converts natural language to shell commands",
   "keywords": [
     "cli",
@@ -33,7 +33,7 @@
     "test:bash": "bats tests/unit/bash tests/integration",
     "test:security": "bats tests/unit/bash/security.bats tests/security",
     "test:fuzzing": "bats tests/security/fuzzing.bats",
-    "test:performance": "vitest run tests/performance",
+    "test:performance": "vitest run --config vitest.performance.config.js",
     "test:e2e": "bash tests/e2e/real-deployment.test.sh",
     "test:build": "bats tests/integration/build-deploy.bats",
     "test:all": "npm run test && npm run test:js:coverage && npm run test:performance",
