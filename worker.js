@@ -415,6 +415,166 @@ function resolveLocale(url, headers) {
 }
 
 
+/**
+ * robots.txt 端点 — Content Signals + Sitemap 引用
+ * @returns {Response}
+ */
+function handleRobotsTxt() {
+  const body = [
+    'User-agent: *',
+    'Allow: /',
+    '',
+    '# Content Signals (IETF draft-romm-aipref-contentsignals)',
+    'Content-Signal: ai-train=no, search=yes, ai-input=no',
+    '',
+    '# Sitemap',
+    'Sitemap: https://fuckits.25500552.xyz/sitemap.xml',
+    '',
+  ].join('\n');
+
+  return new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+}
+
+/**
+ * sitemap.xml 端点 — 标准 XML 站点地图
+ * @returns {Response}
+ */
+function handleSitemap() {
+  const urls = [
+    'https://fuckits.25500552.xyz/',
+    'https://fuckits.25500552.xyz/zh',
+    'https://fuckits.25500552.xyz/health',
+  ];
+
+  const urlEntries = urls
+    .map((loc) => `  <url><loc>${loc}</loc></url>`)
+    .join('\n');
+
+  const body = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    urlEntries,
+    '</urlset>',
+    '',
+  ].join('\n');
+
+  return new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+  });
+}
+
+const SITE_BASE = 'https://fuckits.25500552.xyz';
+
+/**
+ * .well-known 端点路由 — 根据子路径返回对应 JSON 元数据
+ * @param {string} pathname 请求路径
+ * @returns {Response|null} 匹配到则返回 Response，否则返回 null
+ */
+function handleWellKnown(pathname) {
+  const handlers = {
+    '/.well-known/api-catalog': handleApiCatalog,
+    '/.well-known/openid-configuration': handleOAuthDiscovery,
+    '/.well-known/oauth-protected-resource': handleOAuthProtectedResource,
+    '/.well-known/mcp/server-card.json': handleMcpServerCard,
+    '/.well-known/agent-skills/index.json': handleAgentSkillsIndex,
+  };
+
+  const handler = handlers[pathname];
+  if (!handler) return null;
+  return handler();
+}
+
+/** API Catalog (RFC 9727) */
+function handleApiCatalog() {
+  const body = {
+    linkset: [
+      {
+        anchor: `${SITE_BASE}/`,
+        'service-desc': [{ href: `${SITE_BASE}/docs/api`, rel: 'service-desc' }],
+        'service-doc': [{ href: `${SITE_BASE}/docs/api`, rel: 'service-doc' }],
+        status: [{ href: `${SITE_BASE}/health`, rel: 'status' }],
+      },
+    ],
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/linkset+json; charset=utf-8' },
+  });
+}
+
+/** OAuth Discovery Metadata (OpenID Connect Discovery) */
+function handleOAuthDiscovery() {
+  const body = {
+    issuer: SITE_BASE,
+    authorization_endpoint: `${SITE_BASE}/oauth/authorize`,
+    token_endpoint: `${SITE_BASE}/oauth/token`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code'],
+    service_documentation: `${SITE_BASE}/docs/api`,
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+}
+
+/** OAuth Protected Resource Metadata (RFC 9728) */
+function handleOAuthProtectedResource() {
+  const body = {
+    resource: SITE_BASE,
+    authorization_servers: [SITE_BASE],
+    scopes_supported: ['api:read', 'api:write'],
+    bearer_methods_supported: ['header'],
+    resource_documentation: `${SITE_BASE}/docs/api`,
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+}
+
+/** MCP Server Card (SEP-1649) */
+function handleMcpServerCard() {
+  const body = {
+    serverInfo: { name: 'fuckits', version: '2.1.7' },
+    endpoint: `${SITE_BASE}/mcp`,
+    capabilities: { tools: true, resources: false, prompts: false },
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+}
+
+/** Agent Skills Discovery Index (RFC v0.2.0) */
+function handleAgentSkillsIndex() {
+  const body = {
+    $schema: 'https://schemas.agentskills.io/discovery/0.2.0/schema.json',
+    skills: [
+      {
+        name: 'fuckits-cli',
+        type: 'skill-md',
+        description: 'Natural language to shell command generation via AI',
+        url: `${SITE_BASE}/.well-known/agent-skills/fuckits-cli/SKILL.md`,
+        digest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+      },
+    ],
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -425,6 +585,19 @@ export default {
 
     if (request.method === 'GET' && url.pathname === '/health') {
       return addCorsHeaders(await handleHealthCheck(env));
+    }
+
+    if (request.method === 'GET' && url.pathname === '/robots.txt') {
+      return addCorsHeaders(handleRobotsTxt());
+    }
+
+    if (request.method === 'GET' && url.pathname === '/sitemap.xml') {
+      return addCorsHeaders(handleSitemap());
+    }
+
+    if (request.method === 'GET' && url.pathname.startsWith('/.well-known/')) {
+      const wellKnownResponse = handleWellKnown(url.pathname);
+      if (wellKnownResponse) return addCorsHeaders(wellKnownResponse);
     }
 
     if (request.method === 'GET') {
@@ -682,23 +855,163 @@ async function handleHealthCheck(env) {
 }
 
 /**
+ * 生成 Markdown 格式的项目介绍（供 agent 请求 Accept: text/markdown 时返回）
+ * @param {string} locale 语言
+ * @returns {string} Markdown 内容
+ */
+function generateMarkdownContent(locale) {
+  if (locale === 'zh') {
+    return [
+      '# fuckits — AI 智能命令行工具',
+      '',
+      '通过自然语言描述自动生成并执行 Shell 命令。',
+      '',
+      '## 安装',
+      '',
+      '```bash',
+      'curl -sS https://fuckits.25500552.xyz/zh | bash',
+      '```',
+      '',
+      '## 使用示例',
+      '',
+      '```bash',
+      'fuck install git',
+      'fuck find all files larger than 10MB',
+      '```',
+      '',
+      '## API',
+      '',
+      `- 健康检查: ${SITE_BASE}/health`,
+      `- GitHub: ${README_URL_ZH}`,
+      '',
+    ].join('\n');
+  }
+
+  return [
+    '# fuckits — AI-Powered CLI Tool',
+    '',
+    'Generate and execute shell commands from natural language descriptions.',
+    '',
+    '## Install',
+    '',
+    '```bash',
+    'curl -sS https://fuckits.25500552.xyz | bash',
+    '```',
+    '',
+    '## Usage',
+    '',
+    '```bash',
+    'fuck install git',
+    'fuck find all files larger than 10MB',
+    '```',
+    '',
+    '## API',
+    '',
+    `- Health: ${SITE_BASE}/health`,
+    `- GitHub: ${README_URL_EN}`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * 生成 WebMCP HTML 页面（含 navigator.modelContext.provideContext）
+ * @param {string} locale 语言
+ * @param {string} docsUrl GitHub 文档链接
+ * @returns {string} HTML 内容
+ */
+function generateWebMcpHtml(locale, docsUrl) {
+  const title = locale === 'zh' ? 'fuckits — AI 智能命令行工具' : 'fuckits — AI-Powered CLI Tool';
+  const desc = locale === 'zh'
+    ? '通过自然语言描述自动生成并执行 Shell 命令'
+    : 'Generate and execute shell commands from natural language descriptions';
+  const redirectHint = locale === 'zh' ? '正在跳转到文档...' : 'Redirecting to docs...';
+
+  return [
+    '<!DOCTYPE html>',
+    '<html lang="' + locale + '">',
+    '<head>',
+    '  <meta charset="UTF-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    '  <title>' + title + '</title>',
+    '  <meta name="description" content="' + desc + '">',
+    '</head>',
+    '<body>',
+    '  <h1>' + title + '</h1>',
+    '  <p>' + desc + '</p>',
+    '  <p><a href="' + docsUrl + '">' + redirectHint + '</a></p>',
+    '  <script>',
+    '    if (navigator.modelContext) {',
+    '      navigator.modelContext.provideContext({',
+    '        tools: [',
+    '          {',
+    '            name: "generate-command",',
+    '            description: "Generate shell commands from natural language descriptions",',
+    '            inputSchema: {',
+    '              type: "object",',
+    '              properties: {',
+    '                prompt: { type: "string", description: "Natural language command description" },',
+    '                sysinfo: { type: "string", description: "System information string" }',
+    '              },',
+    '              required: ["prompt", "sysinfo"]',
+    '            },',
+    '            execute: async (input) => {',
+    '              const resp = await fetch("' + SITE_BASE + '", {',
+    '                method: "POST",',
+    '                headers: { "Content-Type": "application/json" },',
+    '                body: JSON.stringify({ prompt: input.prompt, sysinfo: input.sysinfo || "" })',
+    '              });',
+    '              return await resp.text();',
+    '            }',
+    '          }',
+    '        ]',
+    '      });',
+    '    }',
+    '    setTimeout(() => { window.location.href = "' + docsUrl + '"; }, 2000);',
+    '  </script>',
+    '</body>',
+    '</html>',
+  ].join('\n');
+}
+
+/**
  * Handles GET requests to serve the installer script or redirect browsers to GitHub.
+ * 支持 Markdown 协商 (Accept: text/markdown)、Link 响应头 (RFC 8288) 和 WebMCP。
  * @param {Request} request The incoming request.
- * @returns {Response} A response with the shell script or a redirect.
+ * @returns {Response} A response with the shell script, markdown, WebMCP HTML, or a redirect.
  */
 function handleGetRequest(request) {
   const userAgent = request.headers.get('User-Agent') || '';
+  const accept = request.headers.get('Accept') || '';
 
   const url = new URL(request.url);
   const locale = resolveLocale(url, request.headers);
   const isBrowser = isBrowserRequest(userAgent);
 
-  // If the request comes from a browser, redirect to the appropriate README.
+  // Markdown 协商：Agent 请求 Accept: text/markdown 时返回 markdown 内容
+  if (accept.includes('text/markdown')) {
+    return new Response(generateMarkdownContent(locale), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/markdown; charset=utf-8',
+      },
+    });
+  }
+
+  // 浏览器请求：返回 WebMCP HTML 页面（含工具发现 + 自动跳转）
   if (isBrowser) {
     const docsUrl = locale === 'zh' ? README_URL_ZH : README_URL_EN;
-    return Response.redirect(docsUrl, 302);
+    const html = generateWebMcpHtml(locale, docsUrl);
+
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Link': `</.well-known/api-catalog>; rel="api-catalog"`,
+      },
+    });
   }
-  // Otherwise, serve the installer script based on the resolved locale.
+
+  // 非浏览器请求：返回安装脚本
   const script = locale === 'zh' ? INSTALLER_SCRIPT_ZH : INSTALLER_SCRIPT;
   const filename = locale === 'zh' ? INSTALLER_FILENAME_ZH : INSTALLER_FILENAME_EN;
 
@@ -1037,4 +1350,10 @@ The user's system info is: ${sysinfo}`;
 }
 
 // 命名导出，仅供测试使用
-export { sanitizeCommand, timingSafeEqual, createErrorResponse, generateRequestId, checkCommandSafety };
+export {
+  sanitizeCommand, timingSafeEqual, createErrorResponse, generateRequestId, checkCommandSafety,
+  handleRobotsTxt, handleSitemap, handleWellKnown,
+  handleApiCatalog, handleOAuthDiscovery, handleOAuthProtectedResource,
+  handleMcpServerCard, handleAgentSkillsIndex,
+  generateMarkdownContent, generateWebMcpHtml,
+};

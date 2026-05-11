@@ -48,7 +48,7 @@ describe('User-Agent 边界情况', () => {
     expect(body).toContain('#!/bin/bash');
   });
 
-  it('各种浏览器 UA 应该重定向', async () => {
+  it('各种浏览器 UA 应该返回 WebMCP HTML 页面', async () => {
     const browserUAs = [
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
@@ -60,7 +60,8 @@ describe('User-Agent 边界情况', () => {
       const response = await get('/', {
         'User-Agent': ua,
       });
-      expect(response.status).toBe(302);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toContain('text/html');
     }
   });
 });

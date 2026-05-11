@@ -33,13 +33,17 @@ describe('请求处理系统', () => {
       expect(body).toContain('#!/bin/bash');
     });
 
-    it('浏览器 User-Agent 应该重定向到 GitHub', async () => {
+    it('浏览器 User-Agent 应该返回 WebMCP HTML 页面', async () => {
       const response = await get('/', {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
       });
 
-      expect(response.status).toBe(302);
-      expect(response.headers.get('Location')).toBe('https://github.com/Silentely/fuckits/blob/main/README.en.md');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toContain('text/html');
+
+      const body = await response.text();
+      expect(body).toContain('navigator.modelContext.provideContext');
+      expect(body).toContain('https://github.com/Silentely/fuckits/blob/main/README.en.md');
     });
 
     it('GET /health 应该返回健康检查', async () => {
