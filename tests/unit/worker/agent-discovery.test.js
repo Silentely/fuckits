@@ -9,11 +9,6 @@ import {
   handleRobotsTxt,
   handleSitemap,
   handleWellKnown,
-  handleApiCatalog,
-  handleOAuthDiscovery,
-  handleOAuthProtectedResource,
-  handleMcpServerCard,
-  handleAgentSkillsIndex,
   generateMarkdownContent,
   generateWebMcpHtml,
 } from '../../../worker.js';

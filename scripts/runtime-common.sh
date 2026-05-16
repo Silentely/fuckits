@@ -40,6 +40,7 @@ _fuck_security_level_value() {
         warn) printf '1\n' ;;
         *) printf '0\n' ;;
     esac
+    return 0
 }
 
 _fuck_security_match_rule() {
@@ -58,7 +59,7 @@ _fuck_security_match_rule() {
     for rule in "${rules[@]}"; do
         pattern=${rule%%|||*}
         reason=${rule#*|||}
-        [ -z "$pattern" ] && continue
+        [ -z "$pattern" ]] && continue
 
         if printf '%s' "$command" | grep -Eiq -- "$pattern"; then
             printf '%s\n' "$reason"
@@ -73,7 +74,7 @@ _fuck_security_is_whitelisted() {
     local command="$1"
     local whitelist="${FUCK_SECURITY_WHITELIST:-}"
 
-    if [ -z "$whitelist" ]; then
+    if [[ -z "$whitelist" ]]; then
         return 1
     fi
 
@@ -82,7 +83,7 @@ _fuck_security_is_whitelisted() {
 
     while IFS= read -r entry; do
         entry=$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-        [ -z "$entry" ] && continue
+        [ -z "$entry" ]] && continue
 
         # 前缀匹配：命令必须以白名单条目开头（或完全相等）
         # 例如白名单 "ls" 匹配 "ls -la" 但不匹配 "vls"
@@ -104,22 +105,24 @@ _fuck_security_mode() {
         balanced|default|"") printf 'balanced\n' ;;
         *) printf 'balanced\n' ;;
     esac
+    return 0
 }
 
 _fuck_mark_static_cache_dirty() {
     _FUCK_STATIC_CACHE_DIRTY=1
+    return 0
 }
 
 _fuck_load_static_cache() {
     # Return early if cache is already loaded
-    if [ "${_FUCK_STATIC_CACHE_LOADED:-0}" -eq 1 ]; then
+    if [[ "${_FUCK_STATIC_CACHE_LOADED:-0}" -eq 1 ]]; then
         return 0
     fi
 
     _FUCK_STATIC_CACHE_LOADED=1
 
     # Source cache file if it exists
-    if [ -f "$FUCK_SYSINFO_CACHE_FILE" ]; then
+    if [[ -f "$FUCK_SYSINFO_CACHE_FILE" ]]; then
         # shellcheck disable=SC1090
         source "$FUCK_SYSINFO_CACHE_FILE" || true
     fi
@@ -127,7 +130,7 @@ _fuck_load_static_cache() {
 
 _fuck_persist_static_cache() {
     # Only persist if cache is dirty
-    if [ "${_FUCK_STATIC_CACHE_DIRTY:-0}" -ne 1 ]; then
+    if [[ "${_FUCK_STATIC_CACHE_DIRTY:-0}" -ne 1 ]]; then
         return 0
     fi
 
@@ -163,7 +166,7 @@ _fuck_persist_static_cache() {
 
 _fuck_audit_log() {
     # Check if audit logging is enabled
-    if [ "${FUCK_AUDIT_LOG:-false}" != "true" ]; then
+    if [[ "${FUCK_AUDIT_LOG:-false}" != "true" ]]; then
         return 0
     fi
     
@@ -181,7 +184,7 @@ _fuck_audit_log() {
     local sanitized_cmd
     local raw_len=${#command}
     sanitized_cmd=$(printf '%s' "$command" | tr '\r\n' '  ' | sed 's/|/\\|/g' | head -c 200)
-    if [ "$raw_len" -gt 200 ]; then
+    if [[ "$raw_len" -gt 200 ]]; then
         sanitized_cmd="${sanitized_cmd}..."
     fi
     
@@ -196,7 +199,7 @@ _fuck_detect_distro() {
     _fuck_load_static_cache
 
     # Return cached value if available
-    if [ -n "${_FUCK_CACHED_DISTRO:-}" ]; then
+    if [[ -n "${_FUCK_CACHED_DISTRO:-}" ]]; then
         printf '%s\n' "$_FUCK_CACHED_DISTRO"
         return 0
     fi
@@ -206,7 +209,7 @@ _fuck_detect_distro() {
     distro="unknown"
 
     # macOS detection
-    if [ "$kernel_name" = "Darwin" ]; then
+    if [[ "$kernel_name" = "Darwin" ]]; then
         local product version
         product=$(sw_vers -productName 2>/dev/null || printf 'macOS')
         product=$(printf '%s' "$product" | tr -d '\r\n')
@@ -214,7 +217,7 @@ _fuck_detect_distro() {
         version=$(printf '%s' "$version" | tr -d '\r\n')
         distro="$product $version"
     # Linux detection using /etc/os-release
-    elif [ -r /etc/os-release ]; then
+    elif [[ -r /etc/os-release ]]; then
         id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
         version=$(grep -E '^VERSION_ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"')
         pretty=$(grep -E '^PRETTY_NAME=' /etc/os-release | head -n1 | cut -d= -f2- | tr -d '"')
@@ -234,9 +237,9 @@ _fuck_detect_distro() {
         esac
 
         # Format distribution string with family and version
-        if [ -n "$family" ]; then
+        if [[ -n "$family" ]]; then
             distro="$family ${version:-}"
-            if [ -n "$pretty" ]; then
+            if [[ -n "$pretty" ]]; then
                 distro="$distro (${pretty})"
             fi
         else
@@ -256,7 +259,7 @@ _fuck_detect_pkg_manager() {
     _fuck_load_static_cache
 
     # Return cached value if available
-    if [ -n "${_FUCK_CACHED_PKG_MANAGER:-}" ]; then
+    if [[ -n "${_FUCK_CACHED_PKG_MANAGER:-}" ]]; then
         printf '%s\n' "$_FUCK_CACHED_PKG_MANAGER"
         return 0
     fi
@@ -288,7 +291,7 @@ _fuck_get_architecture() {
     _fuck_load_static_cache
 
     # Return cached value if available
-    if [ -n "${_FUCK_CACHED_ARCH:-}" ]; then
+    if [[ -n "${_FUCK_CACHED_ARCH:-}" ]]; then
         printf '%s\n' "$_FUCK_CACHED_ARCH"
         return 0
     fi
@@ -307,7 +310,7 @@ _fuck_get_kernel_version() {
     _fuck_load_static_cache
 
     # Return cached value if available
-    if [ -n "${_FUCK_CACHED_KERNEL:-}" ]; then
+    if [[ -n "${_FUCK_CACHED_KERNEL:-}" ]]; then
         printf '%s\n' "$_FUCK_CACHED_KERNEL"
         return 0
     fi
@@ -337,7 +340,7 @@ _fuck_collect_tool_versions() {
                     ;;
                 npm)
                     version=$("$tool" --version 2>/dev/null | head -n1)
-                    [ -n "$version" ] && version="npm $version"
+                    [ -n "$version" ]] && version="npm $version"
                     ;;
                 kubectl)
                     version=$("$tool" version --client --short 2>/dev/null | head -n1)
@@ -347,7 +350,7 @@ _fuck_collect_tool_versions() {
 
         # Clean up version string
         version=$(printf '%s' "${version:-unknown}" | tr '\r\n' '  ' | tr -s ' ' | sed -e 's/^ *//' -e 's/ *$//')
-        [ -z "$version" ] && version="unknown"
+        [ -z "$version" ]] && version="unknown"
 
         result="$result$tool:$version; "
     done
@@ -362,13 +365,13 @@ _fuck_append_config_hint() {
     local comment="$2"
     local sample="$3"
     local quoted="${4:-1}"
-    [ -f "$CONFIG_FILE" ] || return
+    [ -f "$CONFIG_FILE" ]] || return
     if grep -Eq "^\\s*#?\\s*export\\s+$key" "$CONFIG_FILE"; then
         return
     fi
 
     local assignment
-    if [ "$quoted" = "1" ]; then
+    if [[ "$quoted" = "1" ]]; then
         assignment="# export $key=\"$sample\""
     else
         assignment="# export $key=$sample"
@@ -388,7 +391,7 @@ _fuck_define_aliases() {
         alias "$default_alias"='_fuck_execute_prompt'
     fi
 
-    if [ -n "${FUCK_ALIAS:-}" ] && [ "$FUCK_ALIAS" != "$default_alias" ]; then
+    if [[ -n "${FUCK_ALIAS:-}" ]] && [[ "$FUCK_ALIAS" != "$default_alias" ]]; then
         alias "$FUCK_ALIAS"='_fuck_execute_prompt'
     fi
 }
@@ -399,12 +402,12 @@ _fuck_detect_dangerous_command() {
 
 _fuck_local_system_prompt() {
     local sysinfo="$1"
-    if [ "$FUCKITS_LOCALE" = "zh" ]; then
+    if [[ "$FUCKITS_LOCALE" = "zh" ]]; then
         printf '你是一个专业的 shell 命令生成器。用户会用自然语言描述他们想要完成的任务。你的任务是生成直接可执行的 shell 命令来完成用户的目标。
 
 重要规则：
 1. 用户输入是自然语言描述意图，不是命令参数。例如"列出目录"意思是执行 ls 命令，而不是 ls "列出目录"
-2. 生成直接可执行的命令，不要生成带参数判断的脚本模板（如 if [ $# -eq 0 ]）
+2. 生成直接可执行的命令，不要生成带参数判断的脚本模板（如 if [[ $# -eq 0 ]）
 3. 对于简单任务直接返回单条命令，复杂任务可以是多行脚本
 4. 不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）
 
@@ -419,7 +422,7 @@ _fuck_local_system_prompt() {
 
 Important rules:
 1. User input is natural language intent, NOT command arguments. For example, "list directory" means run ls, not ls "list directory"
-2. Generate directly executable commands, not script templates with parameter handling (like if [ $# -eq 0 ])
+2. Generate directly executable commands, not script templates with parameter handling (like if [[ $# -eq 0 ])
 3. For simple tasks return single commands, complex tasks can be multi-line scripts
 4. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash)
 
@@ -433,7 +436,7 @@ The user'"'"'s system info is: %s' "$sysinfo"
 }
 
 _fuck_secure_config_file() {
-    if [ -f "$CONFIG_FILE" ]; then
+    if [[ -f "$CONFIG_FILE" ]]; then
         chmod 600 "$CONFIG_FILE" 2>/dev/null || true
     fi
 }
@@ -460,7 +463,7 @@ _fuck_security_prompt_phrase() {
 
     printf "%b> %b" "$C_BOLD" "$C_RESET" >&2
 
-    if [ -r /dev/tty ]; then
+    if [[ -r /dev/tty ]]; then
         if ! IFS= read -r input < /dev/tty; then
             printf "\n" >&2
             return 1
@@ -484,7 +487,7 @@ _fuck_security_promote() {
     current_val=$(_fuck_security_level_value "$current")
     candidate_val=$(_fuck_security_level_value "$candidate")
 
-    if [ "$candidate_val" -gt "$current_val" ]; then
+    if [[ "$candidate_val" -gt "$current_val" ]]; then
         printf '%s\n' "$candidate"
     else
         printf '%s\n' "$current"
@@ -492,7 +495,7 @@ _fuck_security_promote() {
 }
 
 _fuck_should_use_local_api() {
-    if [ -n "${FUCK_OPENAI_API_KEY:-}" ]; then
+    if [[ -n "${FUCK_OPENAI_API_KEY:-}" ]]; then
         return 0
     fi
     return 1
@@ -507,12 +510,12 @@ _fuck_validate_config_file() {
     local file="$1"
 
     # 文件必须存在且可读
-    if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+    if [[ ! -f "$file" ]] || [[ ! -r "$file" ]]; then
         return 1
     fi
 
     # 检查文件权限 - 必须由当前用户拥有
-    if [ "$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file" 2>/dev/null)" != "$(id -u)" ]; then
+    if [[ "$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file" 2>/dev/null)" != "$(id -u)" ]]; then
         echo -e "${C_RED}Config file not owned by current user, refusing to source.${C_RESET}" >&2
         return 1
     fi
@@ -533,11 +536,11 @@ _fuck_validate_config_file() {
     local re_amp='&'
     local re_esc='\\\$'
 
-    while IFS= read -r line || [ -n "$line" ]; do
+    while IFS= read -r line || [[ -n "$line" ]]; do
         line_num=$((line_num + 1))
 
         # 跳过空行
-        if [ -z "$line" ] || [[ "$line" =~ ^[[:space:]]*$ ]]; then
+        if [[ -z "$line" ]] || [[ "$line" =~ ^[[:space:]]*$ ]]; then
             continue
         fi
 
@@ -585,7 +588,7 @@ _fuck_validate_config_file() {
 _fuck_safe_source_config() {
     local file="$1"
 
-    if [ ! -f "$file" ]; then
+    if [[ ! -f "$file" ]]; then
         return 0  # 没有文件也没关系
     fi
 
@@ -601,17 +604,17 @@ _fuck_safe_source_config() {
 
 # 找用户 shell 配置文件的辅助函数
 _installer_detect_profile() {
-    if [ -n "${SHELL:-}" ] && echo "$SHELL" | grep -q "zsh"; then
+    if [[ -n "${SHELL:-}" ]] && echo "$SHELL" | grep -q "zsh"; then
         echo "$HOME/.zshrc"
-    elif [ -n "${SHELL:-}" ] && echo "$SHELL" | grep -q "bash"; then
+    elif [[ -n "${SHELL:-}" ]] && echo "$SHELL" | grep -q "bash"; then
         echo "$HOME/.bashrc"
-    elif [ -f "$HOME/.profile" ]; then
+    elif [[ -f "$HOME/.profile" ]]; then
         # 兼容 sh, ksh 等
         echo "$HOME/.profile"
-    elif [ -f "$HOME/.zshrc" ]; then
+    elif [[ -f "$HOME/.zshrc" ]]; then
         # SHELL 变量没设置时的备用方案
         echo "$HOME/.zshrc"
-    elif [ -f "$HOME/.bashrc" ]; then
+    elif [[ -f "$HOME/.bashrc" ]]; then
         # SHELL 变量没设置时的备用方案
         echo "$HOME/.bashrc"
     else
@@ -626,7 +629,7 @@ _fuck_collect_user_info() {
     current_user="${USER:-}"
 
     # 如果 USER 未设置则使用备用方法
-    if [ -z "$current_user" ]; then
+    if [[ -z "$current_user" ]]; then
         current_user=$(whoami 2>/dev/null || printf 'unknown')
     fi
 
@@ -640,7 +643,7 @@ _fuck_collect_user_info() {
 
     # 确定权限级别
     level="user"
-    if [ "$uid" = "0" ]; then
+    if [[ "$uid" = "0" ]]; then
         level="root"
     elif printf '%s' "$groups" | grep -Eq '(^|[[:space:]])(sudo|wheel|admin)([[:space:]]|$)'; then
         level="sudoer"
@@ -702,17 +705,17 @@ _fuck_spinner() {
     local frame_count=${#frames[@]}
     local frame_idx=0
     local has_prefix=0
-    if [ -n "$prefix" ]; then
+    if [[ -n "$prefix" ]]; then
         has_prefix=1
     fi
 
     # 仅在 stderr 是终端时操作光标
-    if [ -t 2 ]; then
+    if [[ -t 2 ]]; then
         tput civis 2>/dev/null || printf "\033[?25l" >&2
     fi
 
     while kill -0 "$pid" 2>/dev/null; do
-        if [ "$has_prefix" -eq 1 ]; then
+        if [[ "$has_prefix" -eq 1 ]]; then
             printf "\r%s%s" "$prefix" "${frames[$frame_idx]}"
         else
             printf " %s " "${frames[$frame_idx]}"
@@ -722,14 +725,14 @@ _fuck_spinner() {
         sleep "$delay"
     done
 
-    if [ "$has_prefix" -eq 1 ]; then
+    if [[ "$has_prefix" -eq 1 ]]; then
         printf "\r%s" "$prefix"
         tput el 2>/dev/null || printf "\033[K"
     else
         printf "   \b\b\b"
     fi
 
-    if [ -t 2 ]; then
+    if [[ -t 2 ]]; then
         tput cnorm 2>/dev/null || printf "\033[?25h" >&2
     fi
 }
@@ -739,7 +742,7 @@ _fuck_spinner() {
 _fuck_init_history_file() {
     local history_file="${1:-$INSTALL_DIR/history.json}"
 
-    if [ ! -f "$history_file" ]; then
+    if [[ ! -f "$history_file" ]]; then
         cat > "$history_file" <<'HISTORY_EOF'
 {
   "version": "1.0.0",
@@ -792,7 +795,7 @@ _fuck_log_history() {
             duration: $duration
         }' 2>/dev/null)
 
-    if [ -z "$entry" ]; then
+    if [[ -z "$entry" ]]; then
         return 1
     fi
 

@@ -71,4 +71,5 @@ _mask_deploy_output() {
         -e 's/^([[:space:]]+- [^:]+: )[0-9a-f]{32,}$/\1***/' \
         -e 's/^([[:space:]]+- OPENAI_API_KEY: ")[^"]*("?)$/\1***\2/' \
         -e 's/^([[:space:]]+- ADMIN_ACCESS_KEY: ")[^"]*("?)$/\1***\2/'
+    return 0
 }
