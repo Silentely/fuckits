@@ -23,7 +23,7 @@ tests 目录包含项目的完整测试套件，负责验证 Worker 后端和 Sh
 
 **核心目标**：
 - 确保代码质量：80%+ 覆盖率
-- 验证安全引擎：21 条安全规则全覆盖
+- 验证安全引擎：32 条安全规则全覆盖
 - 跨平台兼容：macOS/Linux 构建脚本
 - 持续集成：GitHub Actions 自动运行
 
@@ -39,10 +39,10 @@ tests 目录包含项目的完整测试套件，负责验证 Worker 后端和 Sh
 tests/
 ├── unit/                    # 单元测试
 │   ├── bash/               # Shell 脚本测试
-│   │   ├── security.bats   # 21 条安全规则测试 (27 tests)
+│   │   ├── security.bats   # 32 条安全规则测试 (39 tests)
 │   │   ├── history.bats    # 命令历史与收藏测试 (18 tests)
 │   │   └── history-extended.bats # history_replay + favorite 扩展测试 (18 tests)
-│   └── worker/             # Worker 功能测试 (109 tests)
+│   └── worker/             # Worker 功能测试
 │       ├── handlers.test.js       # 请求处理测试 (14 tests)
 │       ├── locale.test.js         # 中英文语言测试 (9 tests)
 │       ├── quota.test.js          # 配额管理测试 (6 tests)
@@ -81,13 +81,13 @@ tests/
 ### 快速运行
 
 ```bash
-# 运行所有测试（171 个）
+# 运行所有测试
 npm test
 
-# 仅 JavaScript 测试（83 个）
+# 仅 JavaScript 测试
 npm run test:js
 
-# 仅 Bash 测试（88 个）
+# 仅 Bash 测试
 npm run test:bash
 
 # 生成覆盖率报告
@@ -114,7 +114,7 @@ npm run test:e2e
 
 **路径**：`tests/unit/bash/security.bats`
 **行数**：约 223 行
-**职责**：测试 main.sh 中的 21 条安全规则
+**职责**：测试 main.sh 中的 32 条安全规则
 
 **测试覆盖**：
 - **Block 级别（8 条）**：绝对禁止的危险命令
@@ -316,7 +316,7 @@ npm run test:e2e
 - cache.test.js: 9 个
 
 **Bash 测试**：106 个
-- unit/bash/security.bats: 27 个（21 规则 + 3 模式 + 3 白名单）
+- unit/bash/security.bats: 39 个（32 规则 + 3 模式 + 3 白名单 + 1 结构分析）
 - unit/bash/history.bats: 18 个（历史记录与收藏管理）
 - unit/bash/history-extended.bats: 18 个（history_replay + favorite_run + favorite_delete）
 - integration/build-deploy.bats: 23 个（构建部署流程）
@@ -433,7 +433,7 @@ steps:
 tests/
 ├── unit/
 │   ├── bash/
-│   │   ├── security.bats                # 21 条安全规则测试（27 tests, 223 行）
+│   │   ├── security.bats                # 32 条安全规则测试（39 tests）
 │   │   └── history.bats                 # 命令历史与收藏测试（18 tests, 334 行）
 │   └── worker/
 │       ├── handlers.test.js             # 请求处理测试（14 tests）

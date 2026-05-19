@@ -290,7 +290,7 @@ fuckits/
 │   ├── deploy.sh         # Deploy to Cloudflare
 │   ├── one-click-deploy.sh
 │   ├── setup.sh
-│   └── common.sh         # Shared utility functions
+│   └── common.sh         # Shared build/deploy utility functions
 ├── tests/
 │   ├── unit/
 │   │   ├── worker/       # Worker unit tests (Vitest)

@@ -2,11 +2,11 @@
 
 ## 概览
 
-fuckits 内置三级安全引擎，通过 21 条精心设计的安全规则保护用户免受危险命令的侵害。安全引擎采用 **正则表达式匹配 + 结构分析** 的混合策略，在命令执行前进行风险评估。
+fuckits 内置三级安全引擎，通过 32 条精心设计的安全规则保护用户免受危险命令的侵害。安全引擎采用 **正则表达式匹配 + 结构分析** 的混合策略，在命令执行前进行风险评估。
 
 **三级防护体系**：
 - 🚫 **Block（绝对禁止）**：8 条规则，检测到后立即阻止执行
-- ⚠️ **Challenge（二次确认）**：9 条规则，要求用户输入确认短语
+- ⚠️ **Challenge（二次确认）**：20 条规则，要求用户输入确认短语
 - 💡 **Warn（风险提示）**：4 条规则，显示警告但允许继续
 
 **设计原则**：
@@ -551,6 +551,242 @@ rm /home/user/etc          # ❌ 不匹配（非系统路径）
 
 ---
 
+### 10. 内联 Perl 执行（perl -e）
+
+**规则 ID**: CHALLENGE-010
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bperl\s+-e\b
+```
+
+**匹配示例**:
+```bash
+perl -e 'print "hello"'      # ✅ 匹配
+perl script.pl                # ❌ 不匹配（非 -e）
+```
+
+**风险说明**:
+- 执行任意 Perl 代码，可调用系统命令（`system()`, `exec()`）
+- 绕过文件审查机制
+
+---
+
+### 11. 内联 Ruby 执行（ruby -e）
+
+**规则 ID**: CHALLENGE-011
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bruby\s+-e\b
+```
+
+**匹配示例:
+```bash
+ruby -e 'puts `whoami`'       # ✅ 匹配
+ruby script.rb                # ❌ 不匹配（非 -e）
+```
+
+**风险说明**:
+- 执行任意 Ruby 代码，可通过反引号执行系统命令
+- 常见于快速脚本但存在注入风险
+
+---
+
+### 12. 内联 Node.js 执行（node -e）
+
+**规则 ID**: CHALLENGE-012
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bnode\s+-e\b
+```
+
+**匹配示例**:
+```bash
+node -e 'require("child_process").exec("ls")'  # ✅ 匹配
+node script.js              # ❌ 不匹配（非 -e）
+```
+
+**风险说明**:
+- 执行任意 JavaScript 代码
+- 可通过 `child_process` 模块执行系统命令
+
+---
+
+### 13. 内联 PHP 执行（php -r）
+
+**规则 ID**: CHALLENGE-013
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bphp\s+-r\b
+```
+
+**匹配示例**:
+```bash
+php -r 'system("whoami");'   # ✅ 匹配
+php script.php              # ❌ 不匹配（非 -r）
+```
+
+**风险说明**:
+- 执行任意 PHP 代码
+- `system()`, `exec()`, `shell_exec()` 等函数可执行系统命令
+
+---
+
+### 14. Base64 编码命令执行
+
+**规则 ID**: CHALLENGE-014
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+base64[^|]*\|\s*(bash|sh|eval)
+```
+
+**匹配示例**:
+```bash
+echo "cm0gLXJmIC8=" | base64 -d | bash   # ✅ 匹配
+base64 encoded.txt | base64 -d            # ❌ 不匹配（管道目标非 shell）
+```
+
+**风险说明**:
+- Base64 编码可绕过文本审查
+- 解码后执行的命令不可预测
+- 常见于恶意软件传播方式
+
+---
+
+### 15. xargs 命令执行
+
+**规则 ID**: CHALLENGE-015
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bxargs\b.*(-I|-i|{}).*\b(sh|bash|rm|chmod)\b
+```
+
+**匹配示例**:
+```bash
+find . -name "*.tmp" | xargs rm -f         # ✅ 匹配
+cat urls | xargs -I {} curl {}             # ✅ 匹配
+echo "test" | xargs echo                   # ❌ 不匹配（非危险命令）
+```
+
+**风险说明**:
+- xargs 将输入作为命令参数执行
+- 配合 find 等命令可批量执行危险操作
+
+---
+
+### 16. find -exec 命令执行
+
+**规则 ID**: CHALLENGE-016
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bfind\b[^|;]*-exec\b
+```
+
+**匹配示例**:
+```bash
+find . -name "*.log" -exec rm {} \;    # ✅ 匹配
+find / -perm -4000 -exec ls {} \;       # ✅ 匹配
+find . -type f -name "*.txt"            # ❌ 不匹配（无 -exec）
+```
+
+**风险说明**:
+- `-exec` 对每个匹配结果执行命令
+- 可能导致批量删除或权限修改
+
+---
+
+### 17. awk system() 间接执行
+
+**规则 ID**: CHALLENGE-017
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\b(awk|gawk|nawk|mawk)\b[^|;]*system\s*\(
+```
+
+**匹配示例**:
+```bash
+awk '{system("rm " $1)}' file    # ✅ 匹配
+awk '{print $1}' file            # ❌ 不匹配（无 system()）
+```
+
+**风险说明**:
+- `system()` 函数在 awk 中执行 shell 命令
+- 难以静态分析执行内容
+
+---
+
+### 18. printf 十六进制编码注入
+
+**规则 ID**: CHALLENGE-018
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\bprintf\b.*\\x[0-9a-fA-F]
+```
+
+**匹配示例**:
+```bash
+printf "\x2f\x62\x69\x6e\x2f\x73\x68" | bash   # ✅ 匹配
+printf "hello world"                              # ❌ 不匹配（无十六进制）
+```
+
+**风险说明**:
+- 十六进制编码可绕过文本审查
+- 解码后可能执行恶意命令
+
+---
+
+### 19. 参数展开可能改变命令
+
+**规则 ID**: CHALLENGE-019
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+\$\{[^}]*#\}
+```
+
+**匹配示例:
+```bash
+${var#pattern}    # ✅ 匹配（前缀删除）
+${var##pattern}   # ✅ 匹配（贪婪前缀删除）
+$var              # ❌ 不匹配（简单变量引用）
+```
+
+**风险说明**:
+- 参数展开可能改变命令语义
+- 可用于绕过安全检查
+
+---
+
+### 20. echo 管道到 Shell 执行
+
+**规则 ID**: CHALLENGE-020
+**严重性**: 🟠 High
+**正则表达式**:
+```regex
+echo\s+[^|]*\|\s*(bash|sh|eval)
+```
+
+**匹配示例**:
+```bash
+echo "rm -rf /tmp" | bash      # ✅ 匹配
+echo "test" | sh               # ✅ 匹配
+echo "hello" > file            # ❌ 不匹配（重定向非管道）
+```
+
+**风险说明**:
+- 通过 echo 管道传递命令到 shell 执行
+- 常见于脚本化攻击方式
+
+---
+
 ## Warn 规则详解（4 条）
 
 ### 1. sudo 递归删除（sudo rm -rf）
@@ -831,9 +1067,9 @@ rm -rf build && npm install
 
 ## 测试覆盖
 
-所有 21 条规则均有对应的单元测试：
+所有 32 条规则均有对应的单元测试：
 - 位置：`tests/unit/bash/security.bats`
-- 测试数量：27 个（21 规则 + 3 模式 + 3 白名单）
+- 测试数量：39 个（32 规则 + 3 模式 + 3 白名单 + 1 结构分析）
 - 覆盖率：100%
 
 **测试命令**:
@@ -876,6 +1112,15 @@ npm run test:bash
 5. **环境变量注入** (Warn)
    - `export LD_PRELOAD`
    - `export PATH=/tmp:$PATH`
+
+### 已实现的规则（从建议升级）
+
+以下规则已从建议升级为正式实现：
+- ✅ 内联解释器执行：`perl -e`, `ruby -e`, `node -e`, `php -r`
+- ✅ Base64 编码命令执行
+- ✅ xargs 命令执行
+- ✅ find -exec 命令执行
+- ✅ awk system() 间接执行
 
 ---
 

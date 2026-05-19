@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - 修正多处文档中的过时数据和不一致信息
 
+## [2.1.13] - 2026-05-19
+
+### Fixed
+
+- 修复 `BASH_SOURCE` 路径解析导致 `runtime-common.sh` 污染项目目录的问题
+
+## [2.1.3] - 2026-05-10
+
+### Added
+
+- **SEO 优化**：添加 Canonical/OG/Twitter/JSON-LD 元标签 + 社交预览图 + 缓存头
+- **GEO 内容优化**：着陆页升级为完整项目主页
+- **Agent 可发现性端点**：实现 sitemap/robots.txt/.well-known/WebMCP 端点
+- README 添加社交预览图展示
+
+### Fixed
+
+- 修复 SonarCloud 代码质量问题
+
+## [2.1.2] - 2026-05-06
+
+### Added
+
+- **版本管理系统**：新增 VERSION 文件作为单一版本来源；`fuck version` 子命令；安装前版本对比（本地 vs 远程）；更新时先删旧脚本再重装（保留配置）
+- **健康检查增强**：health 端点增加 `buildTime` 字段
+- **安全加固**：部署输出敏感信息过滤
+
+### Fixed
+
+- 修复 stdout 输出污染 bug
+- 修复版本号变量作用域和 readonly 重赋值问题
+- 修复构建时版本号只替换第一个占位符的 bug
+
+### Changed
+
+- pre-commit hook 自动递增版本号
+- 注入脚本版本占位符并支持版本查看与远程更新提示
+- 安装时运行时注入版本号到已安装脚本
+
+## [2.1.1] - 2026-05-05
+
+### Added
+
+- **安全工具函数测试**：新增 `security-utils.test.js`（26 个测试），覆盖 `sanitizeCommand`/`timingSafeEqual`/`createErrorResponse`/`generateRequestId`
+- **历史扩展测试**：新增 `history-extended.bats`（18 个测试），覆盖 `history_replay` + `favorite_run` + `favorite_delete`
+- `worker.js` 导出安全关键函数以支持测试
+
+### Fixed
+
+- 修复 fuzzing.bats 依赖路径和并发测试 bug
+
+### Changed
+
+- 提取共享函数到 `runtime-common.sh` 减少主脚本重复
+
 ## [2.1.0] - 2026-01-25
 
 ### Added

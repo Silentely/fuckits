@@ -42,7 +42,7 @@ fuckits/
 │   │   │   ├── handlers.test.js   # 请求处理测试
 │   │   │   └── ...                # 共 14 个测试文件
 │   │   └── bash/                   # Bash 脚本单元测试
-│   │       ├── security.bats       # 安全引擎测试（27 tests）
+│   │       ├── security.bats       # 安全引擎测试（39 tests）
 │   │       └── history.bats        # 命令历史与收藏测试（18 tests）
 │   ├── integration/                # 集成测试
 │   │   ├── build-deploy.bats      # 构建部署流程测试（23 tests）
@@ -109,7 +109,7 @@ npm install --save-dev bats bats-support bats-assert
 **配置要点**：
 - 使用 `bats-support` 提供通用辅助函数
 - 使用 `bats-assert` 提供丰富的断言
-- 为安全引擎的 21 条规则各编写独立测试
+- 为安全引擎的 32 条规则各编写独立测试
 
 ---
 
@@ -177,7 +177,7 @@ const mf = new Miniflare({
 }
 ```
 
-**8 条阻止规则测试**：
+**8 条阻止规则测试（Block）**：
 1. ✅ `rm -rf /` 递归删除根目录
 2. ✅ `rm -rf /*` 使用通配符删除根目录
 3. ✅ `rm -rf --no-preserve-root /` 强制删除根目录
@@ -190,7 +190,7 @@ const mf = new Miniflare({
 #### 优先级 P0: 挑战规则（9 条）
 **测试目标**：确保高风险命令需要确认
 
-**9 条挑战规则测试**：
+**20 条挑战规则测试（Challenge）**：
 1. ✅ `curl ... | bash` 远程脚本执行
 2. ✅ `wget ... | sh` 远程脚本执行
 3. ✅ `source https://...` 远程文件引入
@@ -204,7 +204,7 @@ const mf = new Miniflare({
 #### 优先级 P1: 警告规则（4 条）
 **测试目标**：确保潜在危险命令显示警告
 
-**4 条警告规则测试**：
+**4 条警告规则测试（Warn）**：
 1. ✅ `rm -rf ...` 递归删除
 2. ✅ `chmod 777` 世界可写权限
 3. ✅ `sudo rm -rf` sudo + 递归删除
@@ -277,7 +277,7 @@ const mf = new Miniflare({
 
 ### Phase 3: Bash 安全引擎测试（Day 3）
 1. ✅ 编写 8 条阻止规则测试
-2. ✅ 编写 9 条挑战规则测试
+2. ✅ 编写 20 条挑战规则测试
 3. ✅ 编写 4 条警告规则测试
 4. ✅ 编写模式切换测试
 5. ✅ 运行测试并达到 100% 规则覆盖
@@ -355,7 +355,7 @@ const mf = new Miniflare({
 
 ### 本地验证（强制）
 - [ ] `npm run test` 全部通过
-- [ ] `npm run test:security` 21 条规则全部覆盖
+- [ ] `npm run test:security` 32 条规则全部覆盖
 - [ ] `npm run test:js:coverage` 达到 80%+
 - [ ] 所有 P0 漏洞有回归测试
 
