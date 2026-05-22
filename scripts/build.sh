@@ -75,22 +75,9 @@ fi
 echo -e "${C_YELLOW}📦 Creating backup of worker.js...${C_RESET}"
 cp worker.js worker.js.backup
 
-# Detect OS and use appropriate base64 command
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    echo -e "${C_YELLOW}📝 Encoding scripts (macOS)...${C_RESET}"
-    B64_EN=$(base64 -i main.sh)
-    B64_ZH=$(base64 -i zh_main.sh)
-else
-    # Linux
-    echo -e "${C_YELLOW}📝 Encoding scripts (Linux)...${C_RESET}"
-    B64_EN=$(base64 -w 0 main.sh)
-    B64_ZH=$(base64 -w 0 zh_main.sh)
-fi
-
-# Use Python for safe file editing (avoids sed separator and length limit issues)
-# Pass base64 content via environment variables to avoid shell argument parsing issues
-B64_EN="$B64_EN" B64_ZH="$B64_ZH" python3 - <<'PY'
+# Use Python for cross-platform consistent base64 encoding and file editing
+# (avoids macOS/Linux base64 command differences and sed separator issues)
+python3 - <<'PY'
 import base64
 import json
 import os
@@ -98,9 +85,13 @@ import re
 import sys
 from pathlib import Path
 
-# Read base64 content from environment variables
-b64_en = os.environ.get('B64_EN', '')
-b64_zh = os.environ.get('B64_ZH', '')
+# Read and encode scripts using Python base64 (cross-platform consistent)
+try:
+    b64_en = base64.b64encode(Path('main.sh').read_bytes()).decode()
+    b64_zh = base64.b64encode(Path('zh_main.sh').read_bytes()).decode()
+except Exception as e:
+    print(f"Error encoding scripts: {e}", file=sys.stderr)
+    sys.exit(1)
 
 if not b64_en or not b64_zh:
     print("Error: Base64 content not provided", file=sys.stderr)
