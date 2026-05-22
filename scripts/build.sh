@@ -157,13 +157,13 @@ if count_zh != 1:
     print(f"Error: Expected to replace 1 INSTALLER_SCRIPT_ZH line, replaced {count_zh}", file=sys.stderr)
     sys.exit(1)
 
-# Replace hardcoded version in health check with package.json version
-pattern_version = r"version: '[^']*'"
-replacement_version = f"version: '{version}'"
+# Replace VERSION constant with version from VERSION file (single source of truth)
+pattern_version = r"const VERSION = '[^']*'"
+replacement_version = f"const VERSION = '{version}'"
 text, count_v = re.subn(pattern_version, replacement_version, text, count=1)
 
 if count_v != 1:
-    print(f"Warning: Expected to replace 1 version string, replaced {count_v}", file=sys.stderr)
+    print(f"Warning: Expected to replace 1 VERSION constant, replaced {count_v}", file=sys.stderr)
 
 # Replace build time placeholder with current ISO timestamp
 from datetime import datetime, timezone
