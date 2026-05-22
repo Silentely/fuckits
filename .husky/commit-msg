@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # commit-msg hook: 用提交信息替换 CHANGELOG.md 中的占位符条目
+# 注意：commit-msg 阶段 git add 无法更新暂存区，需用 git update-index
 #
 
 COMMIT_MSG=$(head -1 "$1")
@@ -12,7 +13,7 @@ echo "$COMMIT_MSG" | grep -qE '^(Merge|Revert)' && exit 0
 DESC=$(echo "$COMMIT_MSG" | sed -E 's/^[a-z]+(\(.+\))?:[[:space:]]*//')
 [ -z "$DESC" ] && DESC="$COMMIT_MSG"
 
-# 替换 CHANGELOG.md 中的占位符并重新暂存
+# 替换 CHANGELOG.md 中的占位符并更新 git 索引
 if [ -f "docs/CHANGELOG.md" ]; then
     node -e "
         const fs = require('fs');
@@ -23,7 +24,12 @@ if [ -f "docs/CHANGELOG.md" ]; then
             fs.writeFileSync('docs/CHANGELOG.md', text);
         }
     " "$DESC"
-    git add -f docs/CHANGELOG.md
+    # 用 update-index 直接更新暂存区中的文件内容
+    git update-index --assume-unchanged docs/CHANGELOG.md 2>/dev/null
+    git add docs/CHANGELOG.md 2>/dev/null
+    # 备用方案：如果 add 不生效，用 hash-object 直接写入索引
+    HASH=$(git hash-object docs/CHANGELOG.md)
+    git update-index --cacheinfo 100644,"$HASH",docs/CHANGELOG.md 2>/dev/null
 fi
 
 exit 0
