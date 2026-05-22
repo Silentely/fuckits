@@ -180,9 +180,11 @@ if changelog_path.exists():
     entries = entries[:10]
 
     # 生成 HTML 列表项（中英文内容相同，后续可扩展为双语）
+    # 转义单引号防止破坏 JavaScript 字符串
     li_items = []
     for ver, items in entries:
         desc = '；'.join(items) if len(items) <= 2 else items[0] + ' 等'
+        desc = desc.replace("'", "\\'")
         li_items.append(f'    <li><strong>{ver}</strong> — {desc}</li>')
     changelog_html = '\n'.join(li_items)
 

@@ -5,8 +5,11 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.1.21
+## v2.1.22
 - 待填写更新日志
+
+## v2.1.21
+- 🐛 fix: 重新构建 main.sh/zh_main.sh 嵌入修复后的 runtime-common.sh
 
 ## v2.1.20
 - 🐛 fix: 修复 runtime-common.sh 5 处 [ ... ]] 括号语法错误
