@@ -36,14 +36,19 @@ jobs:
 
       - name: Install bats-core
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
-
-      - name: Run tests
-        run: npm test
+          # 安装 bats-core 最新版（Ubuntu apt 包版本过旧）
+          sudo apt-get update && sudo apt-get install -y git
+          git clone --depth 1 https://github.com/bats-core/bats-core.git /tmp/bats-core
+          sudo /tmp/bats-core/install.sh /usr/local
+          # 安装 bats-support 和 bats-assert 辅助库
+          sudo git clone --depth 1 https://github.com/bats-core/bats-support.git /usr/lib/bats-support
+          sudo git clone --depth 1 https://github.com/bats-core/bats-assert.git /usr/lib/bats-assert
 
       - name: Build worker bundle
         run: npm run build
+
+      - name: Run tests
+        run: npm test
 
       - name: Download wrangler configuration from gist
         env:

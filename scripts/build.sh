@@ -165,6 +165,42 @@ text, count_v = re.subn(pattern_version, replacement_version, text, count=1)
 if count_v != 1:
     print(f"Warning: Expected to replace 1 VERSION constant, replaced {count_v}", file=sys.stderr)
 
+# Inject changelog entries from docs/CHANGELOG.md (latest 10)
+changelog_path = Path('docs/CHANGELOG.md')
+if changelog_path.exists():
+    import re as _re
+    changelog_text = changelog_path.read_text(encoding='utf-8')
+    entries = []
+    current_ver = None
+    current_items = []
+    for line in changelog_text.splitlines():
+        m = _re.match(r'^## (v[\d.]+)', line)
+        if m:
+            if current_ver and current_items:
+                entries.append((current_ver, current_items[:]))
+            current_ver = m.group(1)
+            current_items = []
+        elif line.startswith('- ') and current_ver:
+            current_items.append(line[2:].strip())
+    if current_ver and current_items:
+        entries.append((current_ver, current_items[:]))
+
+    # 取最新 10 条
+    entries = entries[:10]
+
+    # 生成 HTML 列表项（中英文内容相同，后续可扩展为双语）
+    li_items = []
+    for ver, items in entries:
+        desc = '；'.join(items) if len(items) <= 2 else items[0] + ' 等'
+        li_items.append(f'    <li><strong>{ver}</strong> — {desc}</li>')
+    changelog_html = '\n'.join(li_items)
+
+    text = text.replace('<!--CHANGELOG_ZH-->', changelog_html)
+    text = text.replace('<!--CHANGELOG_EN-->', changelog_html)
+    print(f"  Changelog: injected {len(entries)} entries")
+else:
+    print("  Changelog: docs/CHANGELOG.md not found, skipped", file=sys.stderr)
+
 # Replace build time placeholder with current ISO timestamp
 from datetime import datetime, timezone
 build_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')

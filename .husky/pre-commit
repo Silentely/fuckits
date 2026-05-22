@@ -2,6 +2,7 @@
 #
 # pre-commit hook: 自动递增 VERSION 文件中的 patch 版本号
 # VERSION 文件是唯一版本来源，package.json 自动同步
+# 同时在 CHANGELOG.md 中添加占位符条目（由 commit-msg hook 替换为真实提交信息）
 #
 
 # 递增 VERSION 文件中的 patch 版本
@@ -25,7 +26,25 @@ if [ -f "VERSION" ]; then
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
         " 2>/dev/null
 
-        git add VERSION package.json
+        # 在 docs/CHANGELOG.md 中添加占位符条目（位于文件顶部第一个 ## 之前）
+        if [ -f "docs/CHANGELOG.md" ]; then
+            node -e "
+                const fs = require('fs');
+                let text = fs.readFileSync('docs/CHANGELOG.md', 'utf-8');
+                const ver = '$NEW_VERSION';
+                const entry = '## v' + ver + '\n- 待填写更新日志\n\n';
+                // 在 '# Changelog' 标题后、第一个 '## ' 之前插入
+                const idx = text.indexOf('\n## ');
+                if (idx !== -1) {
+                    text = text.slice(0, idx + 1) + entry + text.slice(idx + 1);
+                } else {
+                    text += '\n' + entry;
+                }
+                fs.writeFileSync('docs/CHANGELOG.md', text);
+            " 2>/dev/null
+        fi
+
+        git add VERSION package.json docs/CHANGELOG.md
         echo "📦 Version bumped: $NEW_VERSION"
     fi
 fi

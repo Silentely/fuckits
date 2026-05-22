@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# commit-msg hook: 用提交信息替换 CHANGELOG.md 中的占位符条目
+#
+
+COMMIT_MSG=$(head -1 "$1")
+
+# 跳过 merge/revert commit
+echo "$COMMIT_MSG" | grep -qE '^(Merge|Revert)' && exit 0
+
+# 从提交信息中提取描述（去掉 conventional commit type 前缀）
+DESC=$(echo "$COMMIT_MSG" | sed -E 's/^[a-z]+(\(.+\))?:[[:space:]]*//')
+[ -z "$DESC" ] && DESC="$COMMIT_MSG"
+
+# 替换 CHANGELOG.md 中的占位符
+if [ -f "docs/CHANGELOG.md" ]; then
+    node -e "
+        const fs = require('fs');
+        const desc = process.argv[1];
+        let text = fs.readFileSync('docs/CHANGELOG.md', 'utf-8');
+        text = text.replace('- 待填写更新日志', '- ' + desc);
+        fs.writeFileSync('docs/CHANGELOG.md', text);
+    " "$DESC" 2>/dev/null
+    git add docs/CHANGELOG.md
+fi
+
+exit 0
