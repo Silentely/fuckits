@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# commit-msg hook: 用提交信息替换 CHANGELOG.md 中的占位符条目
-# 注意：commit-msg 阶段 git add 无法更新暂存区，需用 git update-index
+# commit-msg hook: 将提交信息写入临时文件，供 post-commit hook 替换 CHANGELOG 占位符
+# （commit-msg 阶段无法可靠更新暂存区，改用 post-commit + amend）
 #
 
 COMMIT_MSG=$(head -1 "$1")
@@ -13,23 +13,7 @@ echo "$COMMIT_MSG" | grep -qE '^(Merge|Revert)' && exit 0
 DESC=$(echo "$COMMIT_MSG" | sed -E 's/^[a-z]+(\(.+\))?:[[:space:]]*//')
 [ -z "$DESC" ] && DESC="$COMMIT_MSG"
 
-# 替换 CHANGELOG.md 中的占位符并更新 git 索引
-if [ -f "docs/CHANGELOG.md" ]; then
-    node -e "
-        const fs = require('fs');
-        const desc = process.argv[1];
-        let text = fs.readFileSync('docs/CHANGELOG.md', 'utf-8');
-        if (text.includes('- 待填写更新日志')) {
-            text = text.replace('- 待填写更新日志', '- ' + desc);
-            fs.writeFileSync('docs/CHANGELOG.md', text);
-        }
-    " "$DESC"
-    # 用 update-index 直接更新暂存区中的文件内容
-    git update-index --assume-unchanged docs/CHANGELOG.md 2>/dev/null
-    git add docs/CHANGELOG.md 2>/dev/null
-    # 备用方案：如果 add 不生效，用 hash-object 直接写入索引
-    HASH=$(git hash-object docs/CHANGELOG.md)
-    git update-index --cacheinfo 100644,"$HASH",docs/CHANGELOG.md 2>/dev/null
-fi
+# 写入临时文件供 post-commit hook 使用
+echo "$DESC" > /tmp/.fuckits-commit-desc
 
 exit 0

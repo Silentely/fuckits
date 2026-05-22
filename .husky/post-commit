@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# post-commit hook: 用提交信息替换 CHANGELOG.md 中的占位符并 amend 提交
+#
+
+# 读取 commit-msg hook 写入的描述
+DESC_FILE="/tmp/.fuckits-commit-desc"
+[ ! -f "$DESC_FILE" ] && exit 0
+DESC=$(cat "$DESC_FILE")
+rm -f "$DESC_FILE"
+
+[ -z "$DESC" ] && exit 0
+[ ! -f "docs/CHANGELOG.md" ] && exit 0
+
+# 检查是否有占位符需要替换
+grep -q '待填写更新日志' docs/CHANGELOG.md || exit 0
+
+# 替换占位符
+node -e "
+    const fs = require('fs');
+    const desc = process.argv[1];
+    let text = fs.readFileSync('docs/CHANGELOG.md', 'utf-8');
+    text = text.replace('- 待填写更新日志', '- ' + desc);
+    fs.writeFileSync('docs/CHANGELOG.md', text);
+" "$DESC"
+
+# amend 提交（保留原始提交信息）
+git add docs/CHANGELOG.md
+git commit --amend --no-edit --no-verify 2>/dev/null
+
+exit 0
