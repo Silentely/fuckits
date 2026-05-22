@@ -5,14 +5,17 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.1.30
+## v2.1.31
 - 待填写更新日志
+
+## v2.1.30
+- 版本更新
 
 ## v2.1.29
 - 📦 chore: 版本号更新至 2.1.28
 
 ## v2.1.28
-- 待填写更新日志
+- 版本更新
 
 ## v2.1.27
 - 📝 docs: 修复 CHANGELOG.md v2.1.25 条目换行显示问题
