@@ -5,8 +5,11 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.1.19
+## v2.1.20
 - 待填写更新日志
+
+## v2.1.19
+- 🐛 fix: build.sh 统一用 Python base64 编码消除平台差异
 
 ## v2.1.18
 - 🐛 fix: CI 恢复先测试后构建顺序

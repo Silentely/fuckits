@@ -59,7 +59,7 @@ _fuck_security_match_rule() {
     for rule in "${rules[@]}"; do
         pattern=${rule%%|||*}
         reason=${rule#*|||}
-        [ -z "$pattern" ]] && continue
+        [[ -z "$pattern" ]] && continue
 
         if printf '%s' "$command" | grep -Eiq -- "$pattern"; then
             printf '%s\n' "$reason"
@@ -83,7 +83,7 @@ _fuck_security_is_whitelisted() {
 
     while IFS= read -r entry; do
         entry=$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-        [ -z "$entry" ]] && continue
+        [[ -z "$entry" ]] && continue
 
         # 前缀匹配：命令必须以白名单条目开头（或完全相等）
         # 例如白名单 "ls" 匹配 "ls -la" 但不匹配 "vls"
@@ -340,7 +340,7 @@ _fuck_collect_tool_versions() {
                     ;;
                 npm)
                     version=$("$tool" --version 2>/dev/null | head -n1)
-                    [ -n "$version" ]] && version="npm $version"
+                    [[ -n "$version" ]] && version="npm $version"
                     ;;
                 kubectl)
                     version=$("$tool" version --client --short 2>/dev/null | head -n1)
@@ -350,7 +350,7 @@ _fuck_collect_tool_versions() {
 
         # Clean up version string
         version=$(printf '%s' "${version:-unknown}" | tr '\r\n' '  ' | tr -s ' ' | sed -e 's/^ *//' -e 's/ *$//')
-        [ -z "$version" ]] && version="unknown"
+        [[ -z "$version" ]] && version="unknown"
 
         result="$result$tool:$version; "
     done
@@ -365,7 +365,7 @@ _fuck_append_config_hint() {
     local comment="$2"
     local sample="$3"
     local quoted="${4:-1}"
-    [ -f "$CONFIG_FILE" ]] || return
+    [[ -f "$CONFIG_FILE" ]] || return
     if grep -Eq "^\\s*#?\\s*export\\s+$key" "$CONFIG_FILE"; then
         return
     fi
