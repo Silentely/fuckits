@@ -180,13 +180,14 @@ if changelog_path.exists():
     entries = entries[:10]
 
     # 生成 HTML 列表项（中英文内容相同，后续可扩展为双语）
-    # 转义单引号防止破坏 JavaScript 字符串
+    # 注意：内容将注入 JavaScript 单引号字符串，不能包含字面换行符或单引号
     li_items = []
     for ver, items in entries:
         desc = '；'.join(items) if len(items) <= 2 else items[0] + ' 等'
         desc = desc.replace("'", "\\'")
-        li_items.append(f'    <li><strong>{ver}</strong> — {desc}</li>')
-    changelog_html = '\n'.join(li_items)
+        li_items.append(f'<li><strong>{ver}</strong> — {desc}</li>')
+    # 用 \\n 拼接，确保注入后是 JavaScript 转义换行而非字面换行
+    changelog_html = '\\n'.join(li_items)
 
     text = text.replace('<!--CHANGELOG_ZH-->', changelog_html)
     text = text.replace('<!--CHANGELOG_EN-->', changelog_html)
