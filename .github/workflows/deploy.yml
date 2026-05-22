@@ -44,11 +44,11 @@ jobs:
           sudo git clone --depth 1 https://github.com/bats-core/bats-support.git /usr/lib/bats-support
           sudo git clone --depth 1 https://github.com/bats-core/bats-assert.git /usr/lib/bats-assert
 
-      - name: Build worker bundle
-        run: npm run build
-
       - name: Run tests
         run: npm test
+
+      - name: Build worker bundle
+        run: npm run build
 
       - name: Download wrangler configuration from gist
         env:
