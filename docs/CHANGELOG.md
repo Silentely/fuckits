@@ -5,8 +5,14 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.35
+- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
+
+## v2.1.34
+- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
+
 ## v2.1.33
-- 待填写更新日志
+- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
 
 ## v2.1.32
 - 📦 chore: 恢复 post-commit hook 到 git 跟踪

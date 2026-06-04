@@ -2,9 +2,9 @@
 
 **项目**：fuckits
 **生成日期**：2026-01-31
-**最后更新**：2026-02-03
+**最后更新**：2026-06-04
 **负责人**：项目维护团队
-**下次审查**：2026-02-28
+**下次审查**：2026-07-01
 
 ---
 
@@ -13,11 +13,11 @@
 | 严重级别 | 数量 | 预计修复时间 |
 |---------|------|-------------|
 | **Critical** | 0 | 0 小时 |
-| **High** | 3 | 20-30 小时 |
-| **Medium** | 4 | 35-54 小时 |
-| **Low** | 4 | 20-30 小时 |
-| **已完成** | 1 | - |
-| **总计** | 11 (待处理) | 75-114 小时 |
+| **High** | 2 | 15-20 小时 |
+| **Medium** | 3 | 27-42 小时 |
+| **Low** | 5 | 15-22 小时 |
+| **已完成** | 4 | - |
+| **总计** | 10 (待处理) | 57-82 小时 |
 
 ---
 
@@ -100,42 +100,17 @@ const script = await env.SCRIPTS_BUCKET.get(`${locale}/main.sh`);
 
 ---
 
-### **DEBT-003: API 错误响应不友好**
+### ~~**DEBT-003: API 错误响应不友好**~~ ✅ 已完成 (2026-06-04)
 
-**位置**：`tests/unit/worker/api-errors.test.js`
+**位置**：`worker.js`
 
-**问题描述**：
-```javascript
-// 行 88, 109, 152, 389
-// TODO: 应该返回 500 并包含友好的错误消息
-```
+**✅ 已实施解决方案**：
+- 统一结构化 JSON 错误响应格式（code, message, requestId, timestamp）
+- 所有 console.error 日志已统一为结构化 JSON 格式
+- 错误码映射已实现（ERROR_CODES）
 
-**影响**：
-- ❌ 用户无法理解错误原因
-- ❌ 调试困难
-
-**建议解决方案**：
-```javascript
-// 当前实现
-return new Response("API Error", { status: 500 });
-
-// 改进方案
-return new Response(JSON.stringify({
-  error: {
-    code: "OPENAI_API_ERROR",
-    message: "AI 服务暂时不可用，请稍后重试",
-    details: error.message,
-    requestId: ctx.requestId
-  }
-}), {
-  status: 500,
-  headers: { 'Content-Type': 'application/json' }
-});
-```
-
-**预计工作量**：2-3 小时
-**风险等级**：低
-**依赖**：无
+**完成时间**：2026-06-04
+**实际工作量**：2 小时
 
 ---
 
@@ -414,37 +389,17 @@ describe('AI 推理性能', () => {
 
 ---
 
-### **DEBT-011: 错误日志分散**
+### ~~**DEBT-011: 错误日志分散**~~ ✅ 已完成 (2026-06-04)
 
-**位置**：整个项目
+**位置**：`worker.js`
 
-**问题描述**：
-- 使用 console.log/error
-- 没有统一的日志格式
-- 难以追踪和分析
+**✅ 已实施解决方案**：
+- 所有 console.log 调用已使用 JSON.stringify 结构化格式
+- 所有 console.error 调用已统一为 `{event, level, message, error, timestamp}` 格式
+- 事件类型包括：quota_check, quota_persist_failed, stats_kv_read_failed, cache_read_error, cache_write_error, cache_stats_error, cache_stats_flush_error, ai_api_error, internal_error, command_blocked_server_side, cache_miss, cache_hit
 
-**建议解决方案**：
-```javascript
-// 统一日志格式
-const logger = {
-  info: (msg, ctx) => console.log(JSON.stringify({
-    level: 'info',
-    timestamp: new Date().toISOString(),
-    message: msg,
-    ...ctx
-  })),
-  error: (msg, ctx) => console.error(JSON.stringify({
-    level: 'error',
-    timestamp: new Date().toISOString(),
-    message: msg,
-    ...ctx
-  }))
-};
-```
-
-**预计工作量**：3-4 小时
-**风险等级**：低
-**依赖**：无
+**完成时间**：2026-06-04
+**实际工作量**：1 小时
 
 ---
 
@@ -484,11 +439,14 @@ _fuck_migrate_config() {
 |---------|--------|--------|----------|
 | DEBT-001 | 高 | 15-20h | **1** |
 | DEBT-002 | 中 | 3-4h | **2** |
-| DEBT-003 | 高 | 2-3h | **3** |
-| DEBT-005 | 中 | 6-8h | **4** |
-| DEBT-004 | 低 | 8-12h | **5** |
-| DEBT-007 | 低 | 2-3h | **6** |
-| DEBT-008 | 低 | 4-6h | **7** |
+| DEBT-005 | 中 | 6-8h | **3** |
+| DEBT-004 | 中 | 8-12h | **4** |
+| DEBT-007 | 低 | 2-3h | **5** |
+| DEBT-008 | 低 | 4-6h | **6** |
+| DEBT-013 | 低 | 4-6h | **7** |
+| DEBT-009 | 低 | 3-4h | **8** |
+| DEBT-010 | 低 | 4-6h | **9** |
+| DEBT-012 | 低 | 2-3h | **10** |
 
 ---
 
@@ -509,16 +467,55 @@ _fuck_migrate_config() {
 
 ---
 
-## 📊 债务趋势追踪
+## 🆕 新增债务项
 
-| 日期 | Critical | High | Medium | Low | 总计 |
-|------|----------|------|--------|-----|------|
-| 2026-01-31 | 0 | 3 | 5 | 4 | 12 |
-| 2026-02-28 | - | - | - | - | - |
-| 2026-03-31 | - | - | - | - | - |
+### **DEBT-013: CLI 缺少 Agent 友好性** ⚠️ 部分完成
+
+**位置**：`main.sh`, `zh_main.sh`
+
+**问题描述**：
+- 2026 年 AI Agent 成为 CLI 工具的主要用户之一
+- fuckits 作为 AI 驱动的工具，CLI 接口未针对 Agent 使用场景优化
+
+**✅ 已实施**：
+- SKILL.md 已创建（AI Agent 使用指南）
+- `--json` 输出支持已添加（version, history, history search, favorite list, 主命令）
+- stdout/stderr 分离已实现
+- 结构化 JSON 错误响应
+
+**⚠️ 待完善**：
+- 有意义的退出码分类（当前仅 0/1/2）
+- `fuck --help --json` 输出完整命令目录
+- Breadcrumb 引导（JSON 输出中包含 next_commands 建议）
+
+**预计工作量**：4-6 小时（剩余部分）
+**风险等级**：低
 
 ---
 
-**最后更新**：2026-01-31
-**下次审查**：2026-02-28
+### ~~**DEBT-014: compatibility_date 过期**~~ ✅ 已完成 (2026-06-04)
+
+**位置**：`wrangler.toml`
+
+**✅ 已实施**：
+- compatibility_date 更新至 2026-06-01
+- nodejs_compat 标志已启用
+
+**完成时间**：2026-06-04
+**实际工作量**：0.5 小时
+
+---
+
+## 📊 债务趋势追踪
+
+| 日期 | Critical | High | Medium | Low | 已完成 | 总计(待处理) |
+|------|----------|------|--------|-----|--------|-------------|
+| 2026-01-31 | 0 | 3 | 5 | 4 | 1 | 12 |
+| 2026-02-03 | 0 | 2 | 4 | 4 | 2 | 10 |
+| 2026-06-04 | 0 | 2 | 3 | 5 | 4 | 10 |
+
+---
+
+**最后更新**：2026-06-04
+**下次审查**：2026-07-01
 **负责人**：项目维护团队
