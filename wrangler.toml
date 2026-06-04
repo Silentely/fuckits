@@ -1,6 +1,7 @@
 name = "fuckits" # 您可以自定义 Worker 的名称
 main = "worker.js" # 指定入口文件
-compatibility_date = "2025-10-26" # 使用一个近期的日期
+compatibility_date = "2026-06-01" # 使用一个近期的日期
+compatibility_flags = ["nodejs_compat"] # 启用 Node.js 兼容（crypto/tls/net/dns 模块）
 
 [[routes]]
 pattern = "fuckits.25500552.xyz"

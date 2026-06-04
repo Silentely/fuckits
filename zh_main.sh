@@ -823,7 +823,11 @@ _fuck_route_subcommands() {
     fi
 
     if [[ "$arg1" = "version" ]] || [[ "$arg1" = "-v" ]] || [[ "$arg1" = "--version" ]]; then
-        echo "fuckits ${SCRIPT_VERSION}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
+        else
+            echo "fuckits ${SCRIPT_VERSION}"
+        fi
         return 0
     fi
 
@@ -934,16 +938,36 @@ _fuck_confirm_and_execute() {
 
 # 主入口：联系 AI 并执行命令
 _fuck_execute_prompt() {
+    # 解析 --json 标志（从参数中提取并移除）
+    _FUCK_JSON_MODE=0
+    local _args=()
+    for _arg in "$@"; do
+        if [[ "$_arg" = "--json" ]]; then
+            _FUCK_JSON_MODE=1
+        else
+            _args+=("$_arg")
+        fi
+    done
+    set -- "${_args[@]}"
+
     # 路由子命令
     _fuck_route_subcommands "$@" && return 0
 
     if ! command -v curl &> /dev/null; then
-        echo -e "$FUCK ${C_RED}'fuck' 命令需要 'curl'，请先安装 curl。${C_RESET}" >&2
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","code":"MISSING_DEPENDENCY","message":"需要 curl 但未安装，请先安装 curl"}\n'
+        else
+            echo -e "$FUCK ${C_RED}'fuck' 命令需要 'curl'，请先安装 curl。${C_RESET}" >&2
+        fi
         return 1
     fi
 
     if [[ "$#" -eq 0 ]]; then
-        echo -e "$FUCK ${C_RED}请提供要执行的命令。${C_RESET}" >&2
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","code":"MISSING_PROMPT","message":"未提供命令描述。用法: fuck <prompt> [--json]"}\n'
+        else
+            echo -e "$FUCK ${C_RED}请提供要执行的命令。${C_RESET}" >&2
+        fi
         return 1
     fi
 
@@ -956,6 +980,14 @@ _fuck_execute_prompt() {
     # 发送 AI 请求
     local response
     response=$(_fuck_run_ai_request "$prompt" "$sysinfo_string" "$curl_timeout") || return $?
+
+    # JSON 模式：输出命令但不执行
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        local escaped_cmd
+        escaped_cmd=$(_fuck_json_escape "$response")
+        printf '{"status":"ok","schema_version":1,"command":"%s","prompt":"%s"}\n' "$escaped_cmd" "$(_fuck_json_escape "$prompt")"
+        return 0
+    fi
 
     # 安全检查 → 确认 → 执行
     _fuck_confirm_and_execute "$prompt" "$response" "$auto_mode"

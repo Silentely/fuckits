@@ -766,8 +766,12 @@ _fuck_history() {
     fi
 
     if [[ ! -f "$history_file" ]]; then
-        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
-        echo -e "${C_DIM}Commands will be logged automatically as you use 'fuck'.${C_RESET}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"version":"1.0.0","total":0,"commands":[]}\n'
+        else
+            echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+            echo -e "${C_DIM}Commands will be logged automatically as you use 'fuck'.${C_RESET}"
+        fi
         return 0
     fi
 
@@ -775,13 +779,24 @@ _fuck_history() {
     total_count=$(jq '.commands | length' "$history_file" 2>/dev/null || echo "0")
 
     if [[ "$total_count" -eq 0 ]]; then
-        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"version":"1.0.0","total":0,"commands":[]}\n'
+        else
+            echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        fi
+        return 0
+    fi
+
+    # JSON 模式：输出结构化 JSON
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        jq -n --argjson count "$count" --slurpfile data "$history_file" \
+            '{status: "ok", schema_version: 1, version: $data[0].version, total: ($data[0].commands | length), count: $count, commands: ([$data[0].commands[] | reverse][] | .[0:$count])}' \
+            2>/dev/null || printf '{"status":"error","schema_version":1,"code":"HISTORY_PARSE_FAILED","message":"Failed to parse history file"}\n'
         return 0
     fi
 
     echo -e "${C_CYAN}📜 Last $count commands:${C_RESET}"
     echo ""
-
 
     # Output plain text from jq, add colors in bash to avoid jq escape issues
     # Use --argjson to safely pass numeric parameter
@@ -802,8 +817,12 @@ _fuck_history_search() {
     local history_file="$INSTALL_DIR/history.json"
 
     if [[ -z "$keyword" ]]; then
-        echo -e "${C_RED}❌ Please provide a search keyword.${C_RESET}" >&2
-        echo -e "${C_YELLOW}Usage:${C_RESET} fuck history search <keyword>" >&2
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"MISSING_KEYWORD","message":"Please provide a search keyword. Usage: fuck history search <keyword>"}\n'
+        else
+            echo -e "${C_RED}❌ Please provide a search keyword.${C_RESET}" >&2
+            echo -e "${C_YELLOW}Usage:${C_RESET} fuck history search <keyword>" >&2
+        fi
         return 1
     fi
 
@@ -812,13 +831,34 @@ _fuck_history_search() {
     fi
 
     if [[ ! -f "$history_file" ]]; then
-        echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"keyword":"%s","total":0,"commands":[]}\n' "$(_fuck_json_escape "$keyword")"
+        else
+            echo -e "${C_YELLOW}📜 No command history yet.${C_RESET}"
+        fi
+        return 0
+    fi
+
+    # JSON 模式：输出结构化 JSON
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        local json_results
+        json_results=$(jq --arg keyword "$keyword" '{
+            status: "ok",
+            schema_version: 1,
+            keyword: $keyword,
+            total: ([.commands[] | select((.prompt | tostring | contains($keyword)) or (.command | tostring | contains($keyword)))] | length),
+            commands: [.commands[] | select((.prompt | tostring | contains($keyword)) or (.command | tostring | contains($keyword)))]
+        }' "$history_file" 2>/dev/null)
+        if [[ -n "$json_results" ]]; then
+            printf '%s\n' "$json_results"
+        else
+            printf '{"status":"ok","schema_version":1,"keyword":"%s","total":0,"commands":[]}\n' "$(_fuck_json_escape "$keyword")"
+        fi
         return 0
     fi
 
     echo -e "${C_CYAN}🔍 Searching for: \"$keyword\"${C_RESET}"
     echo ""
-
 
     # Output plain text from jq, add colors in bash
     # Use --arg to safely pass keyword parameter
@@ -998,8 +1038,12 @@ _fuck_favorite_list() {
     fi
 
     if [[ ! -f "$history_file" ]]; then
-        echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
-        echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"total":0,"favorites":[]}\n'
+        else
+            echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
+            echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        fi
         return 0
     fi
 
@@ -1007,8 +1051,19 @@ _fuck_favorite_list() {
     total_count=$(jq '.favorites | length' "$history_file" 2>/dev/null || echo "0")
 
     if [[ "$total_count" -eq 0 ]]; then
-        echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
-        echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"total":0,"favorites":[]}\n'
+        else
+            echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
+            echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+        fi
+        return 0
+    fi
+
+    # JSON 模式：输出结构化 JSON
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        jq '{status: "ok", schema_version: 1, total: (.favorites | length), favorites: [.favorites | to_entries[] | {index: (.key + 1), name: .value.name, prompt: .value.prompt, command: .value.command, created: .value.created}]}' \
+            "$history_file" 2>/dev/null || printf '{"status":"error","schema_version":1,"code":"FAVORITES_PARSE_FAILED","message":"Failed to parse favorites"}\n'
         return 0
     fi
 
@@ -1188,7 +1243,11 @@ _fuck_route_subcommands() {
     fi
 
     if [[ "$arg1" = "version" ]] || [[ "$arg1" = "-v" ]] || [[ "$arg1" = "--version" ]]; then
-        echo "fuckits ${SCRIPT_VERSION}"
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
+        else
+            echo "fuckits ${SCRIPT_VERSION}"
+        fi
         return 0
     fi
 
@@ -1209,11 +1268,15 @@ _fuck_route_subcommands() {
             run|exec)      _fuck_favorite_run "${2:-}" ; return $? ;;
             delete|del|rm) _fuck_favorite_delete "${2:-}" ; return $? ;;
             *)
-                echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite <add|list|run|delete>" >&2
-                echo -e "  ${C_DIM}add <name> <prompt>${C_RESET}     Add a new favorite command"
-                echo -e "  ${C_DIM}list${C_RESET}                    List all favorites"
-                echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
-                echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
+                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                    printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"Usage: fuck favorite <add|list|run|delete>"}\n'
+                else
+                    echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite <add|list|run|delete>" >&2
+                    echo -e "  ${C_DIM}add <name> <prompt>${C_RESET}     Add a new favorite command"
+                    echo -e "  ${C_DIM}list${C_RESET}                    List all favorites"
+                    echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
+                    echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
+                fi
                 return 1
                 ;;
         esac
@@ -1339,16 +1402,36 @@ _fuck_confirm_and_execute() {
 
 # 主入口：联系 API 并执行命令
 _fuck_execute_prompt() {
+    # 解析 --json 标志（从参数中提取并移除）
+    _FUCK_JSON_MODE=0
+    local _args=()
+    for _arg in "$@"; do
+        if [[ "$_arg" = "--json" ]]; then
+            _FUCK_JSON_MODE=1
+        else
+            _args+=("$_arg")
+        fi
+    done
+    set -- "${_args[@]}"
+
     # 路由子命令
     _fuck_route_subcommands "$@" && return 0
 
     if ! command -v curl &> /dev/null; then
-        echo -e "$FUCK ${C_RED}'fuck' command needs 'curl'. Please install it.${C_RESET}" >&2
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"MISSING_DEPENDENCY","message":"curl is required but not installed"}\n'
+        else
+            echo -e "$FUCK ${C_RED}'fuck' command needs 'curl'. Please install it.${C_RESET}" >&2
+        fi
         return 1
     fi
 
     if [[ "$#" -eq 0 ]]; then
-        echo -e "$FUCK ${C_RED}You forgot to ask me what to do.${C_RESET}" >&2
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"MISSING_PROMPT","message":"No prompt provided. Usage: fuck <prompt> [--json]"}\n'
+        else
+            echo -e "$FUCK ${C_RED}You forgot to ask me what to do.${C_RESET}" >&2
+        fi
         return 1
     fi
 
@@ -1364,6 +1447,14 @@ _fuck_execute_prompt() {
     # 发送 AI 请求
     local response
     response=$(_fuck_run_ai_request "$prompt" "$sysinfo_string" "$curl_timeout") || return $?
+
+    # JSON 模式：输出命令但不执行
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        local escaped_cmd
+        escaped_cmd=$(_fuck_json_escape "$response")
+        printf '{"status":"ok","schema_version":1,"command":"%s","prompt":"%s"}\n' "$escaped_cmd" "$(_fuck_json_escape "$prompt")"
+        return 0
+    fi
 
     # 安全检查 → 确认 → 执行 → 历史记录
     _fuck_confirm_and_execute "$prompt" "$response" "$auto_mode" "$start_time"
