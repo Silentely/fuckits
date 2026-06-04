@@ -939,7 +939,7 @@ _fuck_confirm_and_execute() {
 # 主入口：联系 AI 并执行命令
 _fuck_execute_prompt() {
     # 解析 --json 标志（从参数中提取并移除）
-    _FUCK_JSON_MODE=0
+    local _FUCK_JSON_MODE=0
     local _args=()
     for _arg in "$@"; do
         if [[ "$_arg" = "--json" ]]; then
@@ -955,7 +955,7 @@ _fuck_execute_prompt() {
 
     if ! command -v curl &> /dev/null; then
         if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-            printf '{"status":"error","code":"MISSING_DEPENDENCY","message":"需要 curl 但未安装，请先安装 curl"}\n'
+            printf '{"status":"error","schema_version":1,"code":"MISSING_DEPENDENCY","message":"需要 curl 但未安装，请先安装 curl"}\n'
         else
             echo -e "$FUCK ${C_RED}'fuck' 命令需要 'curl'，请先安装 curl。${C_RESET}" >&2
         fi
@@ -964,7 +964,7 @@ _fuck_execute_prompt() {
 
     if [[ "$#" -eq 0 ]]; then
         if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-            printf '{"status":"error","code":"MISSING_PROMPT","message":"未提供命令描述。用法: fuck <prompt> [--json]"}\n'
+            printf '{"status":"error","schema_version":1,"code":"MISSING_PROMPT","message":"未提供命令描述。用法: fuck <prompt> [--json]"}\n'
         else
             echo -e "$FUCK ${C_RED}请提供要执行的命令。${C_RESET}" >&2
         fi

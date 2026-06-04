@@ -790,7 +790,7 @@ _fuck_history() {
     # JSON 模式：输出结构化 JSON
     if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
         jq -n --argjson count "$count" --slurpfile data "$history_file" \
-            '{status: "ok", schema_version: 1, version: $data[0].version, total: ($data[0].commands | length), count: $count, commands: ([$data[0].commands[] | reverse][] | .[0:$count])}' \
+            '{status: "ok", schema_version: 1, version: $data[0].version, total: ($data[0].commands | length), count: $count, commands: ($data[0].commands | reverse | .[0:$count])}' \
             2>/dev/null || printf '{"status":"error","schema_version":1,"code":"HISTORY_PARSE_FAILED","message":"Failed to parse history file"}\n'
         return 0
     fi
@@ -1403,7 +1403,7 @@ _fuck_confirm_and_execute() {
 # 主入口：联系 API 并执行命令
 _fuck_execute_prompt() {
     # 解析 --json 标志（从参数中提取并移除）
-    _FUCK_JSON_MODE=0
+    local _FUCK_JSON_MODE=0
     local _args=()
     for _arg in "$@"; do
         if [[ "$_arg" = "--json" ]]; then
