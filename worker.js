@@ -838,6 +838,7 @@ async function handleHealthCheck(env) {
       adminKey: Boolean(env?.ADMIN_ACCESS_KEY),
       kvStorage: quotaStore !== null,
       aiCache: Boolean(env?.AI_CACHE),
+      pollinations: Boolean(env?.POLLINATIONS_APP_KEY),
     },
     config: {
       sharedLimit: resolveSharedLimit(env),
