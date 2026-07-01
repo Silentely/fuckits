@@ -23,7 +23,7 @@ Three methods, checked in order:
 
 Check current auth status:
 ```bash
-fuck config
+fuck --config
 ```
 
 ## Output Contract
@@ -39,7 +39,7 @@ fuck config
 ```bash
 fuck <prompt>              # Generate and execute a shell command
 fuck <prompt> --json       # Output command as structured JSON (does not execute)
-# Note: --json can be placed at any position (e.g. fuck --json <prompt>, fuck history --json)
+# Note: --json can be placed at any position (e.g. fuck --json <prompt>, fuck --history --json)
 ```
 
 **Flow**: prompt → AI generates command → safety check → user confirmation → execute → log to history
@@ -53,25 +53,25 @@ FUCK_AUTO_EXEC=true fuck <prompt>
 
 ```bash
 # Configuration
-fuck config                # Show config file path and available options
+fuck --config                # Show config file path and available options
 
 # Version
 fuck version               # Show installed version (alias: fuck -v, fuck --version)
 
 # History
-fuck history               # Show recent 20 commands
-fuck history <N>           # Show recent N commands
-fuck history search <kw>   # Search history by keyword
-fuck history replay <N>    # Replay the Nth command from history
+fuck --history               # Show recent 20 commands
+fuck --history <N>           # Show recent N commands
+fuck --history search <kw>   # Search history by keyword
+fuck --history replay <N>    # Replay the Nth command from history
 
 # Favorites
-fuck favorite add <name> <prompt>   # Save a prompt as a named favorite
-fuck favorite list                  # List all favorites (alias: fuck favorite ls)
-fuck favorite run <N>               # Execute favorite #N (alias: fuck favorite exec)
-fuck favorite delete <N>            # Delete favorite #N (alias: fuck favorite del/rm)
+fuck --favorite add <name> <prompt>   # Save a prompt as a named favorite
+fuck --favorite list                  # List all favorites (alias: fuck --favorite ls)
+fuck --favorite run <N>               # Execute favorite #N (alias: fuck --favorite exec)
+fuck --favorite delete <N>            # Delete favorite #N (alias: fuck --favorite del/rm)
 
 # Uninstall
-fuck uninstall             # Remove fuckits from ~/.fuck/
+fuck --uninstall             # Remove fuckits from ~/.fuck/
 ```
 
 ### Configuration Options
@@ -175,8 +175,8 @@ All JSON error responses follow: `{"status":"error","code":"<CODE>","message":"<
 |------|---------|---------|
 | `MISSING_DEPENDENCY` | Required tool not installed | curl not found |
 | `MISSING_PROMPT` | No prompt provided | `fuck` with no args |
-| `MISSING_KEYWORD` | Search keyword missing | `fuck history search` with no keyword |
-| `INVALID_SUBCOMMAND` | Unknown subcommand | `fuck favorite` with invalid action |
+| `MISSING_KEYWORD` | Search keyword missing | `fuck --history search` with no keyword |
+| `INVALID_SUBCOMMAND` | Unknown subcommand | `fuck --favorite` with invalid action |
 | `HISTORY_PARSE_FAILED` | History file corrupt | jq parse error on history.json |
 | `FAVORITES_PARSE_FAILED` | Favorites file corrupt | jq parse error on favorites |
 

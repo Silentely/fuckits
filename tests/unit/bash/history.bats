@@ -279,7 +279,7 @@ EOF
 
 # ==================== Command Routing ====================
 
-@test "Routing: 'fuck history' should call _fuck_history" {
+@test "Routing: 'fuck --history' should call _fuck_history" {
     # Skip if jq is not installed
     if ! command -v jq &> /dev/null; then
         skip "jq not installed"
@@ -288,13 +288,13 @@ EOF
     local history_file="$INSTALL_DIR/history.json"
     _fuck_init_history_file "$history_file"
 
-    run _fuck_execute_prompt history
+    run _fuck_execute_prompt --history
 
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "No command history\|Recent commands"
 }
 
-@test "Routing: 'fuck history search' should call _fuck_history_search" {
+@test "Routing: 'fuck --history search' should call _fuck_history_search" {
     # Skip if jq is not installed
     if ! command -v jq &> /dev/null; then
         skip "jq not installed"
@@ -303,21 +303,21 @@ EOF
     local history_file="$INSTALL_DIR/history.json"
     _fuck_init_history_file "$history_file"
 
-    run _fuck_execute_prompt history search test
+    run _fuck_execute_prompt --history search test
 
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "No matching commands\|Matching commands"
 }
 
-@test "Routing: 'fuck favorite' should show usage" {
+@test "Routing: 'fuck --favorite' should show usage" {
     # Capture both stdout and stderr
-    run bash -c "export BATS_TEST_DIRNAME=/fake && export HOME='$TEST_HOME' && source ./main.sh && _fuck_execute_prompt favorite 2>&1"
+    run bash -c "export BATS_TEST_DIRNAME=/fake && export HOME='$TEST_HOME' && source ./main.sh && _fuck_execute_prompt --favorite 2>&1"
 
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "Usage.*favorite"
 }
 
-@test "Routing: 'fuck fav list' should work as alias" {
+@test "Routing: 'fuck --fav list' should work as alias" {
     # Skip if jq is not installed
     if ! command -v jq &> /dev/null; then
         skip "jq not installed"
@@ -326,8 +326,31 @@ EOF
     local history_file="$INSTALL_DIR/history.json"
     _fuck_init_history_file "$history_file"
 
-    run _fuck_execute_prompt fav list
+    run _fuck_execute_prompt --fav list
 
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "No favorites yet\|Favorite Commands"
+}
+
+@test "Routing: 'fuck --xxx' should show unsupported command error" {
+    run _fuck_execute_prompt --xxx
+
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "Unknown command"
+    echo "$output" | grep -q "\-\-xxx"
+}
+
+@test "Routing: 'fuck --invalid' should show unsupported command error" {
+    run _fuck_execute_prompt --invalid
+
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "Unknown command"
+    echo "$output" | grep -q "\-\-invalid"
+}
+
+@test "Routing: 'fuck --help' should show version in help output" {
+    run _fuck_execute_prompt --help
+
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "v[0-9]"
 }

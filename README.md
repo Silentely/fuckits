@@ -19,7 +19,7 @@
 
 * **云端限流/密钥体系升级**：除本地 `FUCK_OPENAI_API_KEY` 优先策略外，加入 `FUCK_ADMIN_KEY` + `ADMIN_ACCESS_KEY` 双端校验，让受信任维护者可在共享 Worker 上突破 200 次/日体验额度。
 * **全量双语 CLI + Worker**：英文 `main.sh` / 中文 `zh_main.sh` 以及 Worker 端 locale 自适应，脚本构建流程（`npm run build`）自动将两种安装脚本打包进 Worker。
-* **可视化配置能力**：`fuck config` 会生成示例文件、自动 `chmod 600`，并罗列所有可切换的旗标（API 端点、Alias、Auto-Exec、Timeout、Admin Key 等）。
+* **可视化配置能力**：`fuck --config` 会生成示例文件、自动 `chmod 600`，并罗列所有可切换的旗标（API 端点、Alias、Auto-Exec、Timeout、Admin Key 等）。
 * **一键部署/Setup 流程**：`npm run setup` / `npm run one-click-deploy` 覆盖登录、Secret 写入（包括新增管理员密钥）、构建与部署，用脚本化方式保证步骤统一。
 * **安全提示与文档体系**：README / DEPLOY / SUMMARY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格，方便 fork 二开的后续协作。
 
@@ -54,8 +54,8 @@
 
 * **代码质量提升**: 创建 `scripts/common.sh` 消除约 90 行重复代码，所有脚本遵循 DRY 原则，统一错误处理和编码参数。
 * **配置文件系统**: `~/.fuck/config.sh` 配置文件支持自定义 API 入口、命令别名、自动执行、超时时间等。
-* **本地密钥优先**: `fuck config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 200 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
-* **快速配置命令**: 新增 `fuck config` 命令，一键定位配置文件并查看可用开关。
+* **本地密钥优先**: `fuck --config` 会在 `~/.fuck/config.sh`（自动 `chmod 600`）里生成示例，填入 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` 后，请求会直接走本地密钥；共享 Worker 仅提供每天 200 次体验额度，超出会提示你配置自己的 Key。维护者还可以发放 `FUCK_ADMIN_KEY`（配合 Worker 侧的 `ADMIN_ACCESS_KEY`）给信任用户，以绕过共享限制。
+* **快速配置命令**: 新增 `fuck --config` 命令，一键定位配置文件并查看可用开关。
 * **自动执行模式**: `FUCK_AUTO_EXEC=true` 时可跳过确认（慎用）。
 * **自定义别名**: 通过 `FUCK_ALIAS="pls"` 等配置添加更顺手的命令。
 * **构建脚本重构**: `npm run build` 自动嵌入最新的安装脚本，支持跨平台编码和错误处理。
@@ -92,7 +92,7 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 > 3.  **运行**: `bash fuckits`
 
 > [!TIP]
-> 共享 Worker 只是体验通道（每天 200 次），装完脚本后立刻执行 `fuck config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
+> 共享 Worker 只是体验通道（每天 200 次），装完脚本后立刻执行 `fuck --config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
 
 安装完成后，请重启你的终端或运行 `source ~/.bashrc` / `source ~/.zshrc` 来让命令生效。
 
@@ -118,15 +118,13 @@ fuck find all files larger than 10MB in the current directory
 fuck install git
 
 # 卸载 git (同样会自动识别)
-fuck uninstall git
+fuck --uninstall git
 ```
 
 ### 查看帮助
 
 ```bash
-fuck help
 fuck --help
-fuck -h
 ```
 
 ### 更新工具
@@ -134,7 +132,7 @@ fuck -h
 检查并更新到最新版本：
 
 ```bash
-fuck update
+fuck --update
 ```
 
 ### 配置脚本
@@ -142,7 +140,7 @@ fuck update
 查看配置文件位置和可用选项：
 
 ```bash
-fuck config
+fuck --config
 ```
 
 配置文件位于 `~/.fuck/config.sh`，你可以在其中自定义：
@@ -161,40 +159,40 @@ fuckits 提供了强大的历史记录和收藏功能，帮助你管理常用命
 
 ```bash
 # 查看最近 20 条命令历史（默认）
-fuck history
+fuck --history
 
 # 查看最近 20 条命令历史
-fuck history 20
+fuck --history 20
 ```
 
 **搜索历史：**
 
 ```bash
 # 搜索包含 "git" 的历史命令
-fuck history search git
+fuck --history search git
 
 # 搜索包含 "install" 的历史命令
-fuck history search install
+fuck --history search install
 ```
 
 **管理收藏命令：**
 
 ```bash
 # 添加收藏（保存常用命令提示词）
-fuck favorite add git-status "show git status"
-fuck fav add docker-ps "list all docker containers"
+fuck --favorite add git-status "show git status"
+fuck --fav add docker-ps "list all docker containers"
 
 # 查看收藏列表
-fuck favorite list
-fuck fav list
+fuck --favorite list
+fuck --fav list
 
 # 运行收藏的命令（按序号）
-fuck favorite run 1
-fuck fav run 2
+fuck --favorite run 1
+fuck --fav run 2
 
 # 删除收藏（按序号）
-fuck favorite delete 1
-fuck fav delete 2
+fuck --favorite delete 1
+fuck --fav delete 2
 ```
 
 > [!NOTE]
@@ -210,7 +208,7 @@ fuck fav delete 2
 如果你不想用我了，随时可以滚蛋：
 
 ```bash
-fuck uninstall
+fuck --uninstall
 ```
 
 ---
@@ -282,7 +280,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。
 2. 运行 `curl -sS https://<你的域>/health | jq`，确认 `status: "ok"` 与 `services.apiKey: true` 返回正常。
 3. 使用 `curl -sS https://<你的域> | bash -s "echo ok"` 以及 `/zh` 版本做一次真实 round-trip。
-4. 最后再运行 `fuck config`，把本地 CLI 的 `FUCK_API_ENDPOINT` 更新为新域。
+4. 最后再运行 `fuck --config`，把本地 CLI 的 `FUCK_API_ENDPOINT` 更新为新域。
 
 ---
 
@@ -306,13 +304,13 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_SECURITY_WHITELIST` | 空 | 逗号分隔的信任命令模式，匹配的命令绕过安全检测 |
 | `FUCK_SECURITY_CHALLENGE_TEXT` | `I accept the risk` | 高风险命令的确认短语 |
 
-通过 `fuck config` 可以快速查看文件路径并创建默认示例。
+通过 `fuck --config` 可以快速查看文件路径并创建默认示例。
 安装脚本会自动将 `~/.fuck/config.sh` 的权限设置为 `chmod 600`，确保你的密钥只保留在本地。
 
 > [!NOTE]
 > **配置文件更新提醒**
 >
-> 如果你是 2025-12-06 之前的用户，可能需要手动添加新的配置项（如 `FUCK_ADMIN_KEY`）。运行 `fuck config` 会自动补全缺失的配置项，或参考 `config.example.sh` 获取最新模板。
+> 如果你是 2025-12-06 之前的用户，可能需要手动添加新的配置项（如 `FUCK_ADMIN_KEY`）。运行 `fuck --config` 会自动补全缺失的配置项，或参考 `config.example.sh` 获取最新模板。
 
 ---
 

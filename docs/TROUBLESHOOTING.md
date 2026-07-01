@@ -160,7 +160,7 @@ source ~/.bashrc
 FUCK! Shared demo quota exhausted (200 calls per day).
 0 calls left for today.
 
-Switch to your own key: run fuck config and set FUCK_OPENAI_API_KEY
+Switch to your own key: run fuck --config and set FUCK_OPENAI_API_KEY
 ```
 
 **Cause:** Shared Worker demo limit reached (200 requests/day per IP).
@@ -170,7 +170,7 @@ Switch to your own key: run fuck config and set FUCK_OPENAI_API_KEY
 **Option 1: Use Your Own API Key (Recommended)**
 ```bash
 # 1. Run config helper
-fuck config
+fuck --config
 
 # 2. Edit config file
 vim ~/.fuck/config.sh
@@ -250,8 +250,8 @@ FUCK! The AI returned an empty command.
 # Good: fuck restart network service
 
 # 3. Include context
-# Bad:  fuck update
-# Good: fuck update all system packages
+# Bad:  fuck --update
+# Good: fuck --update all system packages
 
 # 4. Enable debug mode
 export FUCK_DEBUG=true
@@ -475,7 +475,7 @@ _fuck_collect_sysinfo_string
 
 ```bash
 # 1. View current config
-fuck config
+fuck --config
 
 # 2. Test config file syntax
 bash -n ~/.fuck/config.sh
@@ -549,10 +549,10 @@ If you've tried these solutions and still have issues:
 
 ```bash
 # View configuration
-fuck config
+fuck --config
 
 # Uninstall
-fuck uninstall
+fuck --uninstall
 
 # Enable debug
 export FUCK_DEBUG=true

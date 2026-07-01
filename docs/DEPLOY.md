@@ -61,7 +61,7 @@ npx wrangler secret put OPENAI_API_KEY
 > 这个密钥用于共享 Worker 演示模式，提供每天 200 次的免费体验额度。
 >
 > **推荐用户配置本地密钥：**
-> - 运行 `fuck config` 查看配置文件位置
+> - 运行 `fuck --config` 查看配置文件位置
 > - 在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`
 > - 配置后 CLI 将直接使用用户自己的密钥，无使用限制
 > - 配置文件自动设置为 `chmod 600` 权限，确保密钥安全
@@ -228,7 +228,7 @@ preview_id = "<preview-id>"
 
 ### 问题：用户报告配额限制
 
-1. 提示用户运行 `fuck config` 配置本地密钥
+1. 提示用户运行 `fuck --config` 配置本地密钥
 2. 检查 Worker 的 `SHARED_DAILY_LIMIT` 设置
 3. 查看 Worker 日志确认限流是否正常工作
 
@@ -293,7 +293,7 @@ npx wrangler secret put OPENAI_API_KEY
 ```
 
 > [!TIP]
-> This secret only powers the shared demo Worker (200 calls/day). Ask end users to run `fuck config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
+> This secret only powers the shared demo Worker (200 calls/day). Ask end users to run `fuck --config` and set `FUCK_OPENAI_API_KEY` in `~/.fuck/config.sh` so the CLI uses their own key.
 
 **Optional: Admin bypass secret**
 

@@ -20,8 +20,8 @@ teardown() {
 
 # ==================== Help 命令测试 ====================
 
-@test "Help: fuck help should display usage information" {
-    run _fuck_execute_prompt help
+@test "Help: fuck --help should display usage information" {
+    run _fuck_execute_prompt --help
     [ "$status" -eq 0 ]
     [[ "${output}" == *"config"* ]]
     [[ "${output}" == *"history"* ]]
@@ -31,35 +31,16 @@ teardown() {
     [[ "${output}" == *"update"* ]]
 }
 
-@test "Help: fuck --help should display usage information" {
-    run _fuck_execute_prompt --help
-    [ "$status" -eq 0 ]
-    [[ "${output}" == *"config"* ]]
-}
-
-@test "Help: fuck -h should display usage information" {
-    run _fuck_execute_prompt -h
-    [ "$status" -eq 0 ]
-    [[ "${output}" == *"config"* ]]
-}
-
-@test "Help: help output should include command descriptions" {
-    run _fuck_execute_prompt help
-    [ "$status" -eq 0 ]
-    [[ "${output}" == *"config"* ]]
-    [[ "${output}" == *"history"* ]]
-}
-
-@test "Help: help with --json should return valid JSON with required fields" {
-    run _fuck_execute_prompt --json help
+@test "Help: --help with --json should return valid JSON with required fields" {
+    run _fuck_execute_prompt --json --help
     [ "$status" -eq 0 ]
     # 验证 JSON 结构：必须包含 status、schema_version、commands
     [[ "${output}" == *'"status":"ok"'* ]]
     [[ "${output}" == *'"schema_version"'* ]]
     [[ "${output}" == *'"commands"'* ]]
-    [[ "${output}" == *'"name":"help"'* ]]
-    [[ "${output}" == *'"name":"config"'* ]]
-    [[ "${output}" == *'"name":"update"'* ]]
+    [[ "${output}" == *'"name":"--help"'* ]]
+    [[ "${output}" == *'"name":"--config"'* ]]
+    [[ "${output}" == *'"name":"--update"'* ]]
 }
 
 # ==================== Update 命令测试 ====================
@@ -144,12 +125,12 @@ teardown() {
 
 # ==================== zh_main.sh 测试 ====================
 
-@test "zh_main Help: fuck help should display Chinese usage information" {
-    # 在子进程中 source zh_main.sh，传 help 参数走 execute 路径
+@test "zh_main Help: fuck --help should display Chinese usage information" {
+    # 在子进程中 source zh_main.sh，传 --help 参数走 execute 路径
     # 避免与 main.sh 的 readonly 变量冲突
     run bash -c '
         export HOME="'"$TEST_HOME"'"
-        source ./zh_main.sh help
+        source ./zh_main.sh --help
     '
     [ "$status" -eq 0 ]
     # 应包含中文

@@ -19,7 +19,7 @@ This repository (maintained by Silentely) is a derivative of [faithleysath/fucki
 
 * **Quota & admin key redesign** – besides the local-key-first workflow, the CLI now supports `FUCK_ADMIN_KEY` which pairs with the Worker secret `ADMIN_ACCESS_KEY`, so trusted maintainers can bypass the 200 calls/day shared bucket when necessary.
 * **Full bilingual toolchain** – English `main.sh`, Chinese `zh_main.sh`, and locale-aware Worker responses are embedded via `npm run build`, ensuring both installers stay in sync.
-* **Config UX upgrades** – `fuck config` scaffolds `~/.fuck/config.sh`, locks it to `chmod 600`, and lists every toggle (API endpoint, alias, auto-exec, timeout, admin key, etc.) so power users can tweak safely.
+* **Config UX upgrades** – `fuck --config` scaffolds `~/.fuck/config.sh`, locks it to `chmod 600`, and lists every toggle (API endpoint, alias, auto-exec, timeout, admin key, etc.) so power users can tweak safely.
 * **Automated setup/deploy scripts** – `npm run setup` and `npm run one-click-deploy` walk through Cloudflare login, secret provisioning (including the new admin key), builds, and deployment, reducing manual drift.
 * **Documentation & roadmap polish** – README/DEPLOY/SUMMARY/CLAUDE.md highlight the fork status, credits, Amber rewrite roadmap, and the expanded environment-variable matrix to simplify reuse for other forks.
 
@@ -52,8 +52,8 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 ## 🔧 What's New
 
 * Per-user config file (`~/.fuck/config.sh`) with custom API endpoints, aliases, auto-exec, timeouts, and debug flags.
-* Local-key-first workflow: `fuck config` generates `~/.fuck/config.sh` (auto `chmod 600`); once you set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`, the CLI calls OpenAI directly via your own quota. The shared Worker only exposes a 200 calls/day demo bucket and now tells you to switch once you hit the cap. Maintainers can also mint a `FUCK_ADMIN_KEY` (paired with the Worker's `ADMIN_ACCESS_KEY`) for trusted teammates who need unlimited shared access.
-* `fuck config` helper that tells you where the config lives and auto-generates a starter file.
+* Local-key-first workflow: `fuck --config` generates `~/.fuck/config.sh` (auto `chmod 600`); once you set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`, the CLI calls OpenAI directly via your own quota. The shared Worker only exposes a 200 calls/day demo bucket and now tells you to switch once you hit the cap. Maintainers can also mint a `FUCK_ADMIN_KEY` (paired with the Worker's `ADMIN_ACCESS_KEY`) for trusted teammates who need unlimited shared access.
+* `fuck --config` helper that tells you where the config lives and auto-generates a starter file.
 * Auto-exec mode controlled via `FUCK_AUTO_EXEC=true` for non-interactive workflows.
 * Custom aliases via `FUCK_ALIAS="pls"` while keeping the OG `fuck` command.
 * Rebuilt build/deploy workflow: `npm run build` now injects the latest installers into `worker.js`.
@@ -82,7 +82,7 @@ curl -sS https://fuckits.25500552.xyz | bash
 > Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
 >
 > [!TIP]
-> The shared Worker is just a tasting menu (200 calls/day). Right after installation run `fuck config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
+> The shared Worker is just a tasting menu (200 calls/day). Right after installation run `fuck --config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
 
@@ -108,15 +108,13 @@ fuck find all files larger than 10MB in the current directory
 fuck install git
 
 # Uninstall git (also auto-detects)
-fuck uninstall git
+fuck --uninstall git
 ```
 
 ### Help
 
 ```bash
-fuck help
 fuck --help
-fuck -h
 ```
 
 ### Update
@@ -124,7 +122,7 @@ fuck -h
 Check and update to the latest version:
 
 ```bash
-fuck update
+fuck --update
 ```
 
 ### Configure
@@ -132,7 +130,7 @@ fuck update
 See where the config file lives and generate a starter template:
 
 ```bash
-fuck config
+fuck --config
 ```
 
 The config file lives at `~/.fuck/config.sh`. You can tweak:
@@ -150,40 +148,40 @@ fuckits provides powerful history tracking and favorites management to help you 
 
 ```bash
 # View last 20 commands (default)
-fuck history
+fuck --history
 
 # View last 20 commands
-fuck history 20
+fuck --history 20
 ```
 
 **Search History:**
 
 ```bash
 # Search for commands containing "git"
-fuck history search git
+fuck --history search git
 
 # Search for commands containing "install"
-fuck history search install
+fuck --history search install
 ```
 
 **Manage Favorite Commands:**
 
 ```bash
 # Add favorites (save frequently used prompts)
-fuck favorite add git-status "show git status"
-fuck fav add docker-ps "list all docker containers"
+fuck --favorite add git-status "show git status"
+fuck --fav add docker-ps "list all docker containers"
 
 # List all favorites
-fuck favorite list
-fuck fav list
+fuck --favorite list
+fuck --fav list
 
 # Run a favorite command (by index)
-fuck favorite run 1
-fuck fav run 2
+fuck --favorite run 1
+fuck --fav run 2
 
 # Delete a favorite (by index)
-fuck favorite delete 1
-fuck fav delete 2
+fuck --favorite delete 1
+fuck --fav delete 2
 ```
 
 > [!NOTE]
@@ -199,7 +197,7 @@ fuck fav delete 2
 If you want to get rid of me, you can kick me out anytime:
 
 ```bash
-fuck uninstall
+fuck --uninstall
 ```
 
 ---
@@ -289,12 +287,12 @@ You should see `status: "ok"` and `services.apiKey: true`. The response also inc
 | `FUCK_SECURITY_WHITELIST` | empty | Comma-separated trusted command patterns that bypass security checks |
 | `FUCK_SECURITY_CHALLENGE_TEXT` | `I accept the risk` | Confirmation phrase for high-risk commands |
 
-Run `fuck config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
+Run `fuck --config` to print the file path and auto-generate a starter template. The installer pins `~/.fuck/config.sh` to `chmod 600` so your API keys never leave your machine.
 
 > [!NOTE]
 > **Configuration file update reminder**
 >
-> If you installed before 2025-12-06, you may need to manually add new configuration options (like `FUCK_ADMIN_KEY`). Run `fuck config` to auto-fill missing entries, or reference `config.example.sh` for the latest template.
+> If you installed before 2025-12-06, you may need to manually add new configuration options (like `FUCK_ADMIN_KEY`). Run `fuck --config` to auto-fill missing entries, or reference `config.example.sh` for the latest template.
 
 ---
 

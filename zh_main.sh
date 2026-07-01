@@ -424,7 +424,7 @@ _fuck_notify_demo_limit() {
     _fuck_ensure_config_exists
     _fuck_secure_config_file
 
-    echo -e "${C_CYAN}解决方案：${C_RESET}运行 ${C_GREEN}fuck config${C_RESET}，在 ${C_GREEN}$CONFIG_FILE${C_RESET} 中设置 ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET}，必要时同时配置 ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET}。" >&2
+    echo -e "${C_CYAN}解决方案：${C_RESET}运行 ${C_GREEN}fuck --config${C_RESET}，在 ${C_GREEN}$CONFIG_FILE${C_RESET} 中设置 ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET}，必要时同时配置 ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET}。" >&2
     echo -e "${C_CYAN}若你持有管理员免额密钥：${C_RESET}同样在该文件中配置 ${C_BOLD}FUCK_ADMIN_KEY${C_RESET}（需与 Worker 侧的 ADMIN_ACCESS_KEY 匹配）即可跳过共享额度限制。" >&2
     if [[ -n "${EDITOR:-}" ]]; then
         echo -e "${C_YELLOW}提示：${C_RESET}${EDITOR} \"$CONFIG_FILE\"" >&2
@@ -759,31 +759,30 @@ _fuck_show_config_help() {
 # 显示帮助信息，列出所有可用子命令
 _fuck_show_help() {
     if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-        printf '{"status":"ok","schema_version":1,"commands":[{"name":"help","description":"显示帮助信息"},{"name":"config","description":"查看配置帮助"},{"name":"version","description":"查看当前版本"},{"name":"history","description":"查看命令历史"},{"name":"history search <keyword>","description":"搜索历史命令"},{"name":"history replay <index>","description":"重放历史命令"},{"name":"favorite add <name> <prompt>","description":"添加收藏命令"},{"name":"favorite list","description":"查看收藏列表"},{"name":"favorite run <index>","description":"执行收藏命令"},{"name":"favorite delete <index>","description":"删除收藏"},{"name":"update","description":"更新 fuckits 到最新版本"},{"name":"uninstall","description":"卸载 fuckits"}]}\n'
+        printf '{"status":"ok","schema_version":1,"version":"%s","commands":[{"name":"--help","description":"显示帮助信息"},{"name":"--config","description":"查看配置帮助"},{"name":"--version","description":"查看当前版本"},{"name":"--history","description":"查看命令历史"},{"name":"--history search <keyword>","description":"搜索历史命令"},{"name":"--history replay <index>","description":"重放历史命令"},{"name":"--favorite add <name> <prompt>","description":"添加收藏命令"},{"name":"--favorite list","description":"查看收藏列表"},{"name":"--favorite run <index>","description":"执行收藏命令"},{"name":"--favorite delete <index>","description":"删除收藏"},{"name":"--update","description":"更新 fuckits 到最新版本"},{"name":"--uninstall","description":"卸载 fuckits"}]}\n' "${SCRIPT_VERSION}"
     else
-        echo -e "${C_BOLD}fuckits${C_RESET} — AI 自然语言转 Shell 命令"
+        echo -e "${C_BOLD}fuckits${C_RESET} ${C_DIM}v${SCRIPT_VERSION}${C_RESET} — AI 自然语言转 Shell 命令"
         echo ""
         echo -e "${C_YELLOW}用法:${C_RESET} fuck <你的需求>"
         echo ""
-        echo -e "${C_CYAN}可用命令:${C_RESET}"
-        echo -e "  ${C_BOLD}help${C_RESET}                       显示此帮助信息"
-        echo -e "  ${C_BOLD}config${C_RESET}                     查看配置帮助"
-        echo -e "  ${C_BOLD}version${C_RESET}                    查看当前版本"
-        echo -e "  ${C_BOLD}history${C_RESET}                    查看最近命令历史"
-        echo -e "  ${C_BOLD}history search <keyword>${C_RESET}   搜索历史命令"
-        echo -e "  ${C_BOLD}history replay <index>${C_RESET}     重放历史命令"
-        echo -e "  ${C_BOLD}favorite${C_RESET} (fav)              管理收藏命令"
-        echo -e "  ${C_BOLD}update${C_RESET}                     更新 fuckits 到最新版本"
-        echo -e "  ${C_BOLD}uninstall${C_RESET}                  卸载 fuckits"
+        echo -e "${C_CYAN}可用命令:${C_RESET} (使用 -- 前缀)"
+        echo -e "  ${C_BOLD}--help${C_RESET}                       显示此帮助信息"
+        echo -e "  ${C_BOLD}--config${C_RESET}                     查看配置帮助"
+        echo -e "  ${C_BOLD}--version${C_RESET}                    查看当前版本"
+        echo -e "  ${C_BOLD}--history${C_RESET}                    查看最近命令历史"
+        echo -e "  ${C_BOLD}--history search <keyword>${C_RESET}   搜索历史命令"
+        echo -e "  ${C_BOLD}--history replay <index>${C_RESET}     重放历史命令"
+        echo -e "  ${C_BOLD}--favorite${C_RESET} (fav)             管理收藏命令"
+        echo -e "  ${C_BOLD}--update${C_RESET}                     更新 fuckits 到最新版本"
+        echo -e "  ${C_BOLD}--uninstall${C_RESET}                  卸载 fuckits"
         echo ""
         echo -e "${C_DIM}选项:${C_RESET}"
         echo -e "  ${C_BOLD}--json${C_RESET}                     JSON 格式输出"
-        echo -e "  ${C_BOLD}-v, --version${C_RESET}              显示版本"
         echo ""
         echo -e "${C_DIM}示例:${C_RESET}"
         echo -e "  fuck 查找所有大于 10MB 的文件"
         echo -e "  fuck 安装 git"
-        echo -e "  fuck config"
+        echo -e "  fuck --config"
     fi
 }
 
@@ -930,83 +929,116 @@ _uninstall_script() {
     echo -e "${C_YELLOW}寐游浮沐，若雉飞舞。${C_RESET}"
 }
 
-# 跟 API 通信的主函数
-# 参数就是要执行的命令
-# 路由子命令：uninstall, config, version, help, update, history, favorite
-# Returns: 0 如果已处理子命令，1 如果不是子命令
+# 显示不支持的命令错误
+_fuck_show_unsupported_command() {
+    local cmd="$1"
+
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        printf '{"status":"error","schema_version":1,"code":"UNSUPPORTED_COMMAND","message":"未知命令: --%s. 使用 --help 查看可用命令。"}\n' "$cmd"
+    else
+        echo -e "${C_RED}❌ 未知命令: ${C_BOLD}--${cmd}${C_RESET}" >&2
+        echo -e "${C_YELLOW}使用 ${C_BOLD}fuck --help${C_RESET}${C_YELLOW} 查看可用命令。${C_RESET}" >&2
+    fi
+}
+
+# 异步检查远程版本（不阻塞主流程）
+_fuck_check_remote_version_async() {
+    # 使用子进程后台检查，不阻塞
+    (
+        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+        local health_url="${api_url%/}/health"
+        local remote_version
+        remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
+
+        if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
+            echo "" >&2
+            echo -e "${C_YELLOW}📦 新版本可用: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} (当前: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}${C_YELLOW})${C_RESET}" >&2
+            echo -e "${C_CYAN}运行 ${C_BOLD}fuck --update${C_RESET}${C_CYAN} 进行更新。${C_RESET}" >&2
+        fi
+    ) &
+
+    # 不等待子进程，立即返回
+}
+
+# 路由子命令：--help, --config, --version, --update, --uninstall, --history, --favorite
+# Returns: 0 如果已处理子命令，1 如果不是子命令（继续主流程）
 _fuck_route_subcommands() {
     local arg1="${1:-}"
 
-    if [[ "$arg1" = "uninstall" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}提示：${C_RESET}'fuck uninstall' 不接受参数，继续执行卸载。" >&2
-        fi
-        _uninstall_script
-        return 0
-    fi
+    # 只要第一个参数以 -- 开头，就作为本地命令处理
+    if [[ "$arg1" == --* ]]; then
+        local cmd="${arg1#--}"  # 移除 -- 前缀
 
-    if [[ "$arg1" = "config" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}提示：${C_RESET}'fuck config' 不接受参数，显示配置帮助。" >&2
-        fi
-        _fuck_show_config_help
-        return 0
-    fi
-
-    if [[ "$arg1" = "version" ]] || [[ "$arg1" = "-v" ]] || [[ "$arg1" = "--version" ]]; then
-        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-            printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
-        else
-            echo "fuckits ${SCRIPT_VERSION}"
-        fi
-        return 0
-    fi
-
-    if [[ "$arg1" = "help" ]] || [[ "$arg1" = "--help" ]] || [[ "$arg1" = "-h" ]]; then
-        _fuck_show_help
-        return 0
-    fi
-
-    if [[ "$arg1" = "update" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}提示：${C_RESET}'fuck update' 不接受参数，检查更新。" >&2
-        fi
-        _fuck_update_script
-        return $?
-    fi
-
-    if [[ "$arg1" = "history" ]]; then
-        shift
-        case "${1:-}" in
-            search)  _fuck_history_search "${2:-}" ; return 0 ;;
-            replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
-            *)       _fuck_history "${1:-}" ; return 0 ;;
-        esac
-    fi
-
-    if [[ "$arg1" = "favorite" ]] || [[ "$arg1" = "fav" ]]; then
-        shift
-        case "${1:-}" in
-            add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
-            list|ls)       _fuck_favorite_list ; return 0 ;;
-            run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
-            delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
-            *)
-                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-                    printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"用法: fuck favorite <add|list|run|delete>"}\n'
-                else
-                    echo -e "${C_YELLOW}用法:${C_RESET} fuck favorite <add|list|run|delete>" >&2
-                    echo -e "  ${C_DIM}add <名称> <提示词>${C_RESET}     添加收藏命令"
-                    echo -e "  ${C_DIM}list${C_RESET}                    列出所有收藏"
-                    echo -e "  ${C_DIM}run <索引>${C_RESET}             执行收藏命令"
-                    echo -e "  ${C_DIM}delete <索引>${C_RESET}          删除收藏"
+        case "$cmd" in
+            help|h)
+                _fuck_show_help
+                _fuck_check_remote_version_async
+                return 0
+                ;;
+            config)
+                if [[ "$#" -gt 1 ]]; then
+                    echo -e "${C_YELLOW}提示：${C_RESET}'--config' 不接受参数。" >&2
                 fi
+                _fuck_show_config_help
+                return 0
+                ;;
+            version|v)
+                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                    printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
+                else
+                    echo "fuckits ${SCRIPT_VERSION}"
+                fi
+                return 0
+                ;;
+            update)
+                _fuck_update_script
+                return 0
+                ;;
+            uninstall)
+                if [[ "$#" -gt 1 ]]; then
+                    echo -e "${C_YELLOW}提示：${C_RESET}'--uninstall' 不接受参数。" >&2
+                fi
+                _uninstall_script
+                return 0
+                ;;
+            history)
+                shift
+                case "${1:-}" in
+                    search)  _fuck_history_search "${2:-}" ; return 0 ;;
+                    replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
+                    *)       _fuck_history "${1:-}" ; return 0 ;;
+                esac
+                ;;
+            favorite|fav)
+                shift
+                case "${1:-}" in
+                    add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
+                    list|ls)       _fuck_favorite_list ; return 0 ;;
+                    run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
+                    delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
+                    *)
+                        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                            printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"用法: fuck --favorite <add|list|run|delete>"}\n'
+                        else
+                            echo -e "${C_YELLOW}用法:${C_RESET} fuck --favorite <add|list|run|delete>" >&2
+                            echo -e "  ${C_DIM}add <名称> <提示词>${C_RESET}     添加收藏命令"
+                            echo -e "  ${C_DIM}list${C_RESET}                    列出所有收藏"
+                            echo -e "  ${C_DIM}run <索引>${C_RESET}             执行收藏命令"
+                            echo -e "  ${C_DIM}delete <索引>${C_RESET}          删除收藏"
+                        fi
+                        return 0
+                        ;;
+                esac
+                ;;
+            *)
+                # 不支持的 -- 命令
+                _fuck_show_unsupported_command "$cmd"
                 return 0
                 ;;
         esac
     fi
 
-    return 1
+    return 1  # 不是 -- 命令，继续主流程（发送到 API）
 }
 
 # 发送 AI 请求并显示结果
@@ -1364,9 +1396,9 @@ CFG
         echo -e "使用 ${C_RED_BOLD}fuck${C_RESET} 命令后跟您想执行的操作即可。"
         echo -e "示例:"
         echo -e "  ${C_CYAN}fuck install git${C_RESET}"
-        echo -e "  ${C_CYAN}fuck uninstall git${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --uninstall git${C_RESET}"
         echo -e "  ${C_CYAN}fuck 找出当前目录所有大于10MB的文件${C_RESET}"
-        echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# 卸载 fuckits${C_RESET}"
+        echo -e "  ${C_RED_BOLD}fuck --uninstall${C_RESET} ${C_GREEN}# 卸载 fuckits${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# 显示配置帮助${C_RESET}"
         echo -e "\n${C_YELLOW}记得重启终端以使用新命令！${C_RESET}"
     else

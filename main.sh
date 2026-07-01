@@ -399,7 +399,7 @@ _fuck_notify_demo_limit() {
     _fuck_ensure_config_exists
     _fuck_secure_config_file
 
-    echo -e "${C_CYAN}Switch to your own key:${C_RESET} run ${C_GREEN}fuck config${C_RESET} and set ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET} (plus optional ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET})." >&2
+    echo -e "${C_CYAN}Switch to your own key:${C_RESET} run ${C_GREEN}fuck --config${C_RESET} and set ${C_BOLD}FUCK_OPENAI_API_KEY${C_RESET} (plus optional ${C_BOLD}FUCK_OPENAI_MODEL${C_RESET}/${C_BOLD}FUCK_OPENAI_API_BASE${C_RESET})." >&2
     echo -e "${C_CYAN}Trusted maintainer override:${C_RESET} set ${C_BOLD}FUCK_ADMIN_KEY${C_RESET} if you were issued the worker's ADMIN_ACCESS_KEY to bypass the shared quota." >&2
     echo -e "${C_CYAN}Config path:${C_RESET} ${C_GREEN}$CONFIG_FILE${C_RESET}" >&2
     if [[ -n "${EDITOR:-}" ]]; then
@@ -737,31 +737,30 @@ _fuck_show_config_help() {
 # 显示帮助信息，列出所有可用子命令
 _fuck_show_help() {
     if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-        printf '{"status":"ok","schema_version":1,"commands":[{"name":"help","description":"Show this help message"},{"name":"config","description":"Show configuration help"},{"name":"version","description":"Show current version"},{"name":"history","description":"View command history"},{"name":"history search <keyword>","description":"Search command history"},{"name":"history replay <index>","description":"Replay a history command"},{"name":"favorite add <name> <prompt>","description":"Add a favorite command"},{"name":"favorite list","description":"List all favorites"},{"name":"favorite run <index>","description":"Execute a favorite command"},{"name":"favorite delete <index>","description":"Delete a favorite"},{"name":"update","description":"Update fuckits to the latest version"},{"name":"uninstall","description":"Uninstall fuckits"}]}\n'
+        printf '{"status":"ok","schema_version":1,"version":"%s","commands":[{"name":"--help","description":"Show this help message"},{"name":"--config","description":"Show configuration help"},{"name":"--version","description":"Show current version"},{"name":"--history","description":"View command history"},{"name":"--history search <keyword>","description":"Search command history"},{"name":"--history replay <index>","description":"Replay a history command"},{"name":"--favorite add <name> <prompt>","description":"Add a favorite command"},{"name":"--favorite list","description":"List all favorites"},{"name":"--favorite run <index>","description":"Execute a favorite command"},{"name":"--favorite delete <index>","description":"Delete a favorite"},{"name":"--update","description":"Update fuckits to the latest version"},{"name":"--uninstall","description":"Uninstall fuckits"}]}\n'
     else
-        echo -e "${C_BOLD}fuckits${C_RESET} — AI natural language to shell command"
+        echo -e "${C_BOLD}fuckits${C_RESET} ${C_DIM}v${SCRIPT_VERSION}${C_RESET} — AI natural language to shell command"
         echo ""
         echo -e "${C_YELLOW}Usage:${C_RESET} fuck <your prompt>"
         echo ""
-        echo -e "${C_CYAN}Commands:${C_RESET}"
-        echo -e "  ${C_BOLD}help${C_RESET}                       Show this help message"
-        echo -e "  ${C_BOLD}config${C_RESET}                     Show configuration help"
-        echo -e "  ${C_BOLD}version${C_RESET}                    Show current version"
-        echo -e "  ${C_BOLD}history${C_RESET}                    View recent command history"
-        echo -e "  ${C_BOLD}history search <keyword>${C_RESET}   Search command history"
-        echo -e "  ${C_BOLD}history replay <index>${C_RESET}     Replay a history command"
-        echo -e "  ${C_BOLD}favorite${C_RESET} (fav)              Manage favorite commands"
-        echo -e "  ${C_BOLD}update${C_RESET}                     Update fuckits to the latest version"
-        echo -e "  ${C_BOLD}uninstall${C_RESET}                  Uninstall fuckits"
+        echo -e "${C_CYAN}Commands:${C_RESET} (use -- prefix)"
+        echo -e "  ${C_BOLD}--help${C_RESET}                       Show this help message"
+        echo -e "  ${C_BOLD}--config${C_RESET}                     Show configuration help"
+        echo -e "  ${C_BOLD}--version${C_RESET}                    Show current version"
+        echo -e "  ${C_BOLD}--history${C_RESET}                    View recent command history"
+        echo -e "  ${C_BOLD}--history search <keyword>${C_RESET}   Search command history"
+        echo -e "  ${C_BOLD}--history replay <index>${C_RESET}     Replay a history command"
+        echo -e "  ${C_BOLD}--favorite${C_RESET} (fav)             Manage favorite commands"
+        echo -e "  ${C_BOLD}--update${C_RESET}                     Update fuckits to the latest version"
+        echo -e "  ${C_BOLD}--uninstall${C_RESET}                  Uninstall fuckits"
         echo ""
         echo -e "${C_DIM}Options:${C_RESET}"
         echo -e "  ${C_BOLD}--json${C_RESET}                     Output in JSON format"
-        echo -e "  ${C_BOLD}-v, --version${C_RESET}              Show version"
         echo ""
         echo -e "${C_DIM}Examples:${C_RESET}"
         echo -e "  fuck find all files larger than 10MB"
         echo -e "  fuck install git"
-        echo -e "  fuck config"
+        echo -e "  fuck --config"
     fi
 }
 
@@ -937,7 +936,7 @@ _fuck_history() {
 
     echo ""
     echo -e "${C_DIM}Total: $total_count commands${C_RESET}"
-    echo -e "${C_DIM}Tip: Use 'fuck history search <keyword>' to search${C_RESET}"
+    echo -e "${C_DIM}Tip: Use 'fuck --history search <keyword>' to search${C_RESET}"
 }
 
 # Search command history
@@ -947,10 +946,10 @@ _fuck_history_search() {
 
     if [[ -z "$keyword" ]]; then
         if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-            printf '{"status":"error","schema_version":1,"code":"MISSING_KEYWORD","message":"Please provide a search keyword. Usage: fuck history search <keyword>"}\n'
+            printf '{"status":"error","schema_version":1,"code":"MISSING_KEYWORD","message":"Please provide a search keyword. Usage: fuck --history search <keyword>"}\n'
         else
             echo -e "${C_RED}❌ Please provide a search keyword.${C_RESET}" >&2
-            echo -e "${C_YELLOW}Usage:${C_RESET} fuck history search <keyword>" >&2
+            echo -e "${C_YELLOW}Usage:${C_RESET} fuck --history search <keyword>" >&2
         fi
         return 1
     fi
@@ -1014,8 +1013,8 @@ _fuck_history_replay() {
 
     if [[ -z "$index" ]]; then
         echo -e "${C_RED}❌ Please provide a command index.${C_RESET}" >&2
-        echo -e "${C_YELLOW}Usage:${C_RESET} fuck history replay <index>" >&2
-        echo -e "${C_DIM}Tip: Use 'fuck history' to see available commands${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck --history replay <index>" >&2
+        echo -e "${C_DIM}Tip: Use 'fuck --history' to see available commands${C_RESET}" >&2
         return 1
     fi
 
@@ -1079,8 +1078,8 @@ _fuck_favorite_add() {
 
     if [[ -z "$name" ]] || [[ -z "$prompt" ]]; then
         echo -e "${C_RED}❌ Both name and prompt are required.${C_RESET}" >&2
-        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite add <name> <prompt>" >&2
-        echo -e "${C_YELLOW}Example:${C_RESET} fuck favorite add \"Update System\" \"update all packages\"" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck --favorite add <name> <prompt>" >&2
+        echo -e "${C_YELLOW}Example:${C_RESET} fuck --favorite add \"Update System\" \"update all packages\"" >&2
         return 1
     fi
 
@@ -1171,7 +1170,7 @@ _fuck_favorite_list() {
             printf '{"status":"ok","schema_version":1,"total":0,"favorites":[]}\n'
         else
             echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
-            echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+            echo -e "${C_DIM}Add favorites with: fuck --favorite add <name> <prompt>${C_RESET}"
         fi
         return 0
     fi
@@ -1184,7 +1183,7 @@ _fuck_favorite_list() {
             printf '{"status":"ok","schema_version":1,"total":0,"favorites":[]}\n'
         else
             echo -e "${C_YELLOW}⭐ No favorites yet.${C_RESET}"
-            echo -e "${C_DIM}Add favorites with: fuck favorite add <name> <prompt>${C_RESET}"
+            echo -e "${C_DIM}Add favorites with: fuck --favorite add <name> <prompt>${C_RESET}"
         fi
         return 0
     fi
@@ -1206,7 +1205,7 @@ _fuck_favorite_list() {
     done
 
     echo -e "${C_DIM}Total: $total_count favorites${C_RESET}"
-    echo -e "${C_DIM}Tip: Use 'fuck favorite run <number>' to execute${C_RESET}"
+    echo -e "${C_DIM}Tip: Use 'fuck --favorite run <number>' to execute${C_RESET}"
 }
 
 # Execute a favorite command
@@ -1216,8 +1215,8 @@ _fuck_favorite_run() {
 
     if [[ -z "$index" ]]; then
         echo -e "${C_RED}❌ Please provide a favorite index.${C_RESET}" >&2
-        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite run <index>" >&2
-        echo -e "${C_DIM}Tip: Use 'fuck favorite list' to see available favorites${C_RESET}" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck --favorite run <index>" >&2
+        echo -e "${C_DIM}Tip: Use 'fuck --favorite list' to see available favorites${C_RESET}" >&2
         return 1
     fi
 
@@ -1283,7 +1282,7 @@ _fuck_favorite_delete() {
 
     if [[ -z "$index" ]]; then
         echo -e "${C_RED}❌ Please provide a favorite index to delete.${C_RESET}" >&2
-        echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite delete <index>" >&2
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck --favorite delete <index>" >&2
         return 1
     fi
 
@@ -1356,81 +1355,116 @@ _uninstall_script() {
     echo -e "${C_CYAN}Now restart your damn shell.${C_RESET}"
 }
 
-# 路由子命令：uninstall, config, history, favorite
+# 显示不支持的命令错误
+_fuck_show_unsupported_command() {
+    local cmd="$1"
+
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        printf '{"status":"error","schema_version":1,"code":"UNSUPPORTED_COMMAND","message":"Unknown command: --%s. Use --help to see available commands."}\n' "$cmd"
+    else
+        echo -e "${C_RED}❌ Unknown command: ${C_BOLD}--${cmd}${C_RESET}" >&2
+        echo -e "${C_YELLOW}Use ${C_BOLD}fuck --help${C_RESET}${C_YELLOW} to see available commands.${C_RESET}" >&2
+    fi
+}
+
+# 异步检查远程版本（不阻塞主流程）
+_fuck_check_remote_version_async() {
+    # 使用子进程后台检查，不阻塞
+    (
+        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+        local health_url="${api_url%/}/health"
+        local remote_version
+        remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
+
+        if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
+            echo "" >&2
+            echo -e "${C_YELLOW}📦 New version available: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} (current: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}${C_YELLOW})${C_RESET}" >&2
+            echo -e "${C_CYAN}Run ${C_BOLD}fuck --update${C_RESET}${C_CYAN} to update.${C_RESET}" >&2
+        fi
+    ) &
+
+    # 不等待子进程，立即返回
+}
+
+# 路由子命令：--help, --config, --version, --update, --uninstall, --history, --favorite
 # Returns: 0 如果已处理子命令，1 如果不是子命令（继续主流程）
 _fuck_route_subcommands() {
     local arg1="${1:-}"
 
-    if [[ "$arg1" = "uninstall" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck uninstall' doesn't take arguments. Proceeding with uninstall." >&2
-        fi
-        _uninstall_script
-        return 0
-    fi
+    # 只要第一个参数以 -- 开头，就作为本地命令处理
+    if [[ "$arg1" == --* ]]; then
+        local cmd="${arg1#--}"  # 移除 -- 前缀
 
-    if [[ "$arg1" = "config" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck config' doesn't take arguments. Showing config help instead." >&2
-        fi
-        _fuck_show_config_help
-        return 0
-    fi
-
-    if [[ "$arg1" = "version" ]] || [[ "$arg1" = "-v" ]] || [[ "$arg1" = "--version" ]]; then
-        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-            printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
-        else
-            echo "fuckits ${SCRIPT_VERSION}"
-        fi
-        return 0
-    fi
-
-    if [[ "$arg1" = "help" ]] || [[ "$arg1" = "--help" ]] || [[ "$arg1" = "-h" ]]; then
-        _fuck_show_help
-        return 0
-    fi
-
-    if [[ "$arg1" = "update" ]]; then
-        if [[ "$#" -gt 1 ]]; then
-            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck update' doesn't take arguments. Checking for updates." >&2
-        fi
-        _fuck_update_script
-        return $?
-    fi
-
-    if [[ "$arg1" = "history" ]]; then
-        shift
-        case "${1:-}" in
-            search)  _fuck_history_search "${2:-}" ; return 0 ;;
-            replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
-            *)       _fuck_history "${1:-}" ; return 0 ;;
-        esac
-    fi
-
-    if [[ "$arg1" = "favorite" ]] || [[ "$arg1" = "fav" ]]; then
-        shift
-        case "${1:-}" in
-            add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
-            list|ls)       _fuck_favorite_list ; return 0 ;;
-            run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
-            delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
-            *)
-                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-                    printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"Usage: fuck favorite <add|list|run|delete>"}\n'
-                else
-                    echo -e "${C_YELLOW}Usage:${C_RESET} fuck favorite <add|list|run|delete>" >&2
-                    echo -e "  ${C_DIM}add <name> <prompt>${C_RESET}     Add a new favorite command"
-                    echo -e "  ${C_DIM}list${C_RESET}                    List all favorites"
-                    echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
-                    echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
+        case "$cmd" in
+            help|h)
+                _fuck_show_help
+                _fuck_check_remote_version_async
+                return 0
+                ;;
+            config)
+                if [[ "$#" -gt 1 ]]; then
+                    echo -e "${C_YELLOW}Note:${C_RESET} '--config' doesn't take arguments." >&2
                 fi
+                _fuck_show_config_help
+                return 0
+                ;;
+            version|v)
+                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                    printf '{"status":"ok","schema_version":1,"version":"%s"}\n' "${SCRIPT_VERSION}"
+                else
+                    echo "fuckits ${SCRIPT_VERSION}"
+                fi
+                return 0
+                ;;
+            update)
+                _fuck_update_script
+                return 0
+                ;;
+            uninstall)
+                if [[ "$#" -gt 1 ]]; then
+                    echo -e "${C_YELLOW}Note:${C_RESET} '--uninstall' doesn't take arguments." >&2
+                fi
+                _uninstall_script
+                return 0
+                ;;
+            history)
+                shift
+                case "${1:-}" in
+                    search)  _fuck_history_search "${2:-}" ; return 0 ;;
+                    replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
+                    *)       _fuck_history "${1:-}" ; return 0 ;;
+                esac
+                ;;
+            favorite|fav)
+                shift
+                case "${1:-}" in
+                    add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
+                    list|ls)       _fuck_favorite_list ; return 0 ;;
+                    run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
+                    delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
+                    *)
+                        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                            printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"Usage: fuck --favorite <add|list|run|delete>"}\n'
+                        else
+                            echo -e "${C_YELLOW}Usage:${C_RESET} fuck --favorite <add|list|run|delete>" >&2
+                            echo -e "  ${C_DIM}add <name> <prompt>${C_RESET}     Add a new favorite command"
+                            echo -e "  ${C_DIM}list${C_RESET}                    List all favorites"
+                            echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
+                            echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
+                        fi
+                        return 0
+                        ;;
+                esac
+                ;;
+            *)
+                # 不支持的 -- 命令
+                _fuck_show_unsupported_command "$cmd"
                 return 0
                 ;;
         esac
     fi
 
-    return 1  # 不是子命令，继续主流程
+    return 1  # 不是 -- 命令，继续主流程（发送到 API）
 }
 
 # 发送 AI 请求并显示结果
@@ -1806,15 +1840,15 @@ CFG
         echo -e "Just type ${C_RED_BOLD}fuck${C_RESET} followed by what you want to do."
         echo -e "Examples:"
         echo -e "  ${C_CYAN}fuck install git${C_RESET}"
-        echo -e "  ${C_CYAN}fuck uninstall git${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --uninstall git${C_RESET}"
         echo -e "  ${C_CYAN}fuck find all files larger than 10MB in the current directory${C_RESET}"
-        echo -e "  ${C_RED_BOLD}fuck uninstall${C_RESET} ${C_GREEN}# Uninstalls ${C_RESET}${C_RED}fuck${C_RESET}${C_GREEN} itself${C_RESET}"
+        echo -e "  ${C_RED_BOLD}fuck --uninstall${C_RESET} ${C_GREEN}# Uninstalls ${C_RESET}${C_RED}fuck${C_RESET}${C_GREEN} itself${C_RESET}"
         echo -e "  ${C_RED_BOLD}fuck config${C_RESET} ${C_GREEN}# Show configuration help${C_RESET}"
         echo -e "\n${C_BOLD}--- HISTORY & FAVORITES (Task 1.4) ---${C_RESET}"
-        echo -e "  ${C_CYAN}fuck history${C_RESET} ${C_GREEN}# View recent commands${C_RESET}"
-        echo -e "  ${C_CYAN}fuck history search <keyword>${C_RESET} ${C_GREEN}# Search history${C_RESET}"
-        echo -e "  ${C_CYAN}fuck favorite add <name> <prompt>${C_RESET} ${C_GREEN}# Save a favorite${C_RESET}"
-        echo -e "  ${C_CYAN}fuck favorite list${C_RESET} ${C_GREEN}# List all favorites${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --history${C_RESET} ${C_GREEN}# View recent commands${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --history search <keyword>${C_RESET} ${C_GREEN}# Search history${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --favorite add <name> <prompt>${C_RESET} ${C_GREEN}# Save a favorite${C_RESET}"
+        echo -e "  ${C_CYAN}fuck --favorite list${C_RESET} ${C_GREEN}# List all favorites${C_RESET}"
         echo -e "\n${C_YELLOW}📦 Note: History features require 'jq' (JSON processor)${C_RESET}"
         echo -e "  Install it with: ${C_CYAN}brew install jq${C_RESET} (macOS)"
         echo -e "                   ${C_CYAN}apt install jq${C_RESET} (Ubuntu/Debian)"

@@ -324,7 +324,7 @@ teardown() {
     bash ./main.sh <<< ""
 
     # 运行 history 子命令（空历史应正常退出）
-    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh history' 2>&1
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh --history' 2>&1
     # 不应报错
     [ "$status" -eq 0 ] || echo "$output" | grep -qi "history\|no.*commands"
 }
@@ -344,7 +344,7 @@ teardown() {
 }
 JSON
 
-    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh history search "list"' 2>&1
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh --history search "list"' 2>&1
     echo "$output" | grep -qi "list files\|ls -la"
 }
 
