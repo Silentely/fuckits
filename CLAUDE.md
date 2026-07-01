@@ -136,7 +136,7 @@
 
 ## 项目愿景
 
-fuckits 是一个基于 AI 的智能命令行工具，通过自然语言描述自动生成并执行 Shell 命令。项目部署在 Cloudflare Workers 上，提供中英文双语支持，用户无需提供自己的 OpenAI API Key 即可使用。
+fuckits 是一个基于 AI 的智能命令行工具，通过自然语言描述自动生成并执行 Shell 命令。项目部署在 Cloudflare Workers 上，提供中英文双语支持，用户无需提供自己的 API Key 即可使用。
 
 **核心价值**：
 - 降低命令行使用门槛，让自然语言直接转换为可执行命令
@@ -460,7 +460,7 @@ Cloudflare Workers 配置文件：
 
 **可用配置项**：
 - `FUCK_API_ENDPOINT` - 自定义 Worker 地址
-- `FUCK_OPENAI_API_KEY` - 本地 OpenAI Key（推荐，绕过共享配额）
+- `FUCK_OPENAI_API_KEY` - 本地 OpenAI 兼容 API Key（推荐，绕过共享配额；默认连接 OpenAI 官方，配合 `FUCK_OPENAI_API_BASE` 可指向任意兼容渠道）
 - `FUCK_ADMIN_KEY` - 管理员免额度密钥（需 Worker 同步配置 `ADMIN_ACCESS_KEY`）
 - `FUCK_OPENAI_MODEL` - 自定义模型（仅在本地 Key 模式下生效）
 - `FUCK_OPENAI_API_BASE` - API 基础 URL（指向自建代理或第三方服务）

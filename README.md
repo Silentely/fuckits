@@ -29,7 +29,7 @@
 
 当你懒得去查 `man` 手册或者在 Google 上搜索时，直接 `fuck` 就完事了。
 
-**本项目完全免费，你无需提供自己的 OpenAI API Key 即可直接使用。**
+**本项目完全免费，你无需提供自己的 API Key 即可直接使用。**
 
 ## 预览
 
@@ -131,7 +131,7 @@ fuck config
 
 配置文件位于 `~/.fuck/config.sh`，你可以在其中自定义：
 - 自定义 API 端点（用于自建 Worker）
-- 本地 OpenAI Key（`FUCK_OPENAI_API_KEY`）以及对应的 `FUCK_OPENAI_MODEL` / `FUCK_OPENAI_API_BASE`
+- 本地 OpenAI 兼容 API Key（`FUCK_OPENAI_API_KEY`）以及对应的 `FUCK_OPENAI_MODEL` / `FUCK_OPENAI_API_BASE`（默认连接 OpenAI 官方，可指向任意兼容渠道）
 - 自动执行模式（跳过确认）
 - 请求超时时间
 - 调试模式
@@ -242,7 +242,7 @@ curl -sS https://fuckits.25500552.xyz | bash -s "find all files larger than 10MB
 npm run one-click-deploy
 ```
 
-脚本会引导你完成 Cloudflare 登录、设置 OpenAI Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./DEPLOY.md#简体中文)。
+脚本会引导你完成 Cloudflare 登录、设置 OpenAI API Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./DEPLOY.md#简体中文)。
 
 部署完成后，请在 Works（Cloudflare Workers）控制台中将 `fuckits.25500552.xyz` 绑定到该 Worker（中文版本通过 `/zh` 路径提供）。DNS/SSL 生效可能需要几分钟，可使用健康检查确保域名已指向你自己的 Worker：
 

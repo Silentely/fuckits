@@ -31,7 +31,7 @@ This repository (maintained by Silentely) is a derivative of [faithleysath/fucki
 
 When you're too lazy to check the `man` pages or search on Google, just `fuck` it.
 
-**This project is completely free to use. You do not need to provide your own OpenAI API Key.**
+**This project is completely free to use. You do not need to provide your own API Key.**
 
 ## Preview
 
