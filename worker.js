@@ -1076,6 +1076,8 @@ function getWebMcpStyles() {
     '    li{margin:.3rem 0}',
     '    a{color:#6366f1}',
     '    .footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #e5e7eb;color:#6b7280;font-size:.9rem}',
+    '    .lang-switch{position:fixed;top:1rem;right:1.5rem;z-index:100;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.4rem .9rem;border-radius:20px;font-size:.85rem;text-decoration:none;transition:background .2s,transform .2s;cursor:pointer}',
+    '    .lang-switch:hover{background:rgba(255,255,255,.3);transform:scale(1.05)}',
   ].join('\n');
 }
 
@@ -1151,6 +1153,7 @@ function generateZhHtml(title, desc, docsUrl) {
     '  </style>',
     '</head>',
     '<body>',
+    '  <a href="/" class="lang-switch">🌐 English</a>',
     '  <div class="hero">',
     '    <h1>fuckits <span class="version-badge">v' + VERSION + '</span></h1>',
     '    <p>用自然语言描述你需要什么，fuckits 帮你生成并执行 Shell 命令。</p>',
@@ -1267,6 +1270,7 @@ function generateEnHtml(title, desc, docsUrl) {
     '  </style>',
     '</head>',
     '<body>',
+    '  <a href="/zh" class="lang-switch">🌐 中文</a>',
     '  <div class="hero">',
     '    <h1>fuckits <span class="version-badge">v' + VERSION + '</span></h1>',
     '    <p>Describe what you need in natural language, fuckits generates and executes Shell commands for you.</p>',
