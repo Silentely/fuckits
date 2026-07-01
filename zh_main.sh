@@ -894,8 +894,9 @@ _fuck_update_script() {
         if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
             if mv -f "$tmp_update" "$MAIN_SH"; then
                 echo -e "${C_GREEN}✅ 已更新到版本 ${new_ver}。${C_RESET}"
-                echo -e "${C_YELLOW}⚠️  请重载终端以使用新版本：${C_RESET}"
-                echo -e "${C_CYAN}  source ~/.zshrc${C_RESET}  ${C_DIM}(或 ~/.bashrc)${C_RESET}"
+                # 重新加载脚本以恢复 alias 和函数定义
+                source "$MAIN_SH" 2>/dev/null
+                echo -e "${C_GREEN}🔄 已自动重载，fuck 命令可继续使用。${C_RESET}"
             else
                 rm -f "$tmp_update"
                 echo -e "${C_RED}❌ 替换脚本文件失败，更新未生效。${C_RESET}" >&2
