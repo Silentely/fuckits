@@ -407,6 +407,229 @@ _fuck_request_worker_model() {
     printf '%s\n' "$response"
 }
 
+# Pollinations OAuth Device Flow
+# 实现 RFC 8628 Device Authorization Grant
+_POLLINATIONS_CLIENT_ID="${FUCK_POLLINATIONS_CLIENT_ID:-}"
+_POLLINATIONS_DEVICE_API="https://enter.pollinations.ai/api/device"
+_POLLINATIONS_AUTH_BASE="https://enter.pollinations.ai"
+
+_fuck_pollinations_device_flow() {
+    local client_id="${_POLLINATIONS_CLIENT_ID}"
+
+    # Step 1: 请求设备码
+    local code_response
+    local code_payload
+    if [[ -n "$client_id" ]]; then
+        code_payload=$(printf '{"client_id":"%s","scope":"generate"}' "$client_id")
+    else
+        code_payload='{"scope":"generate"}'
+    fi
+
+    code_response=$(curl -sS --max-time 10 \
+        -X POST "${_POLLINATIONS_DEVICE_API}/code" \
+        -H "Content-Type: application/json" \
+        -d "$code_payload" 2>/dev/null)
+
+    if [[ $? -ne 0 ]] || [[ -z "$code_response" ]]; then
+        echo -e "$FUCK ${C_RED}连接 Pollinations 授权服务失败${C_RESET}" >&2
+        return 1
+    fi
+
+    # 解析响应（不依赖 jq，使用 sed/grep）
+    local device_code user_code verification_uri
+    device_code=$(printf '%s' "$code_response" | grep -o '"device_code"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"device_code"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    user_code=$(printf '%s' "$code_response" | grep -o '"user_code"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"user_code"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    verification_uri=$(printf '%s' "$code_response" | grep -o '"verification_uri"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"verification_uri"[[:space:]]*:[[:space:]]*"//;s/"$//')
+
+    if [[ -z "$device_code" ]] || [[ -z "$user_code" ]] || [[ -z "$verification_uri" ]]; then
+        echo -e "$FUCK ${C_RED}Pollinations 授权服务返回了无效响应${C_RESET}" >&2
+        echo -e "${C_DIM}$code_response${C_RESET}" >&2
+        return 1
+    fi
+
+    # Step 2: 显示授权指引
+    echo ""
+    echo -e "${C_BOLD}Pollinations OAuth 授权${C_RESET}"
+    echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
+    echo -e "1. 在浏览器中打开: ${C_CYAN}${verification_uri}${C_RESET}"
+    echo -e "2. 输入授权码: ${C_GREEN}${C_BOLD}${user_code}${C_RESET}"
+    echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
+    echo -e "${C_DIM}等待授权中... (最多 5 分钟)${C_RESET}"
+    echo ""
+
+    # Step 3: 轮询等待授权
+    local max_attempts=60
+    local attempt=0
+    local poll_interval=5
+    local token_response access_token
+
+    while [[ $attempt -lt $max_attempts ]]; do
+        attempt=$((attempt + 1))
+        sleep "$poll_interval"
+
+        token_response=$(curl -sS --max-time 10 \
+            -X POST "${_POLLINATIONS_DEVICE_API}/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"device_code\":\"${device_code}\"}" 2>/dev/null)
+
+        if [[ $? -ne 0 ]]; then
+            echo -e "${C_YELLOW}连接中断，重试中... ($attempt/$max_attempts)${C_RESET}" >&2
+            continue
+        fi
+
+        # 检查是否授权成功
+        if printf '%s' "$token_response" | grep -q '"access_token"'; then
+            access_token=$(printf '%s' "$token_response" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"access_token"[[:space:]]*:[[:space:]]*"//;s/"$//')
+
+            if [[ -n "$access_token" ]]; then
+                echo -e "${C_GREEN}✅ 授权成功！${C_RESET}"
+                echo ""
+                # 保存凭据
+                _fuck_pollinations_save_credentials "$access_token"
+                return 0
+            fi
+        fi
+
+        # 检查是否仍在等待
+        if printf '%s' "$token_response" | grep -q 'authorization_pending'; then
+            # 显示进度
+            printf "\r${C_DIM}等待授权中... (%d/%d)${C_RESET}" "$attempt" "$max_attempts" >&2
+            continue
+        fi
+
+        # 检查是否被拒绝
+        if printf '%s' "$token_response" | grep -q 'access_denied'; then
+            echo "" >&2
+            echo -e "${C_RED}❌ 授权被拒绝${C_RESET}" >&2
+            return 1
+        fi
+
+        # 检查是否过期
+        if printf '%s' "$token_response" | grep -q 'expired'; then
+            echo "" >&2
+            echo -e "${C_RED}❌ 授权码已过期，请重新运行 fuck --oauth${C_RESET}" >&2
+            return 1
+        fi
+
+        # 其他错误
+        echo "" >&2
+        echo -e "${C_YELLOW}⚠️ 未知响应: $token_response${C_RESET}" >&2
+        return 1
+    done
+
+    echo "" >&2
+    echo -e "${C_RED}❌ 授权超时（5 分钟），请重新运行 fuck --oauth${C_RESET}" >&2
+    return 1
+}
+
+# 保存 Pollinations 凭据到配置文件
+_fuck_pollinations_save_credentials() {
+    local access_token="$1"
+
+    _fuck_ensure_config_exists
+
+    # 移除旧的 Pollinations 配置（如果有）
+    if [[ -f "$CONFIG_FILE" ]]; then
+        # 使用临时文件安全地移除旧配置行
+        local tmp_config
+        tmp_config=$(mktemp) || return 1
+        grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
+        grep -v "^export FUCK_OPENAI_API_BASE=" | \
+        grep -v "^# FUCK_POLLINATIONS" > "$tmp_config" 2>/dev/null || true
+        mv "$tmp_config" "$CONFIG_FILE"
+        chmod 600 "$CONFIG_FILE"
+    fi
+
+    # 写入新配置
+    {
+        printf '\n# Pollinations OAuth (auto-configured by fuck --oauth)\n'
+        printf 'export FUCK_OPENAI_API_KEY="%s"\n' "$access_token"
+        printf 'export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"\n'
+    } >> "$CONFIG_FILE"
+
+    # 重新加载配置
+    export FUCK_OPENAI_API_KEY="$access_token"
+    export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
+
+    echo -e "${C_GREEN}✅ 凭据已保存到 $CONFIG_FILE${C_RESET}"
+    echo -e "${C_DIM}使用 'fuck --oauth status' 查看认证状态${C_RESET}"
+}
+
+# 查看 Pollinations OAuth 状态
+_fuck_pollinations_status() {
+    local api_key="${FUCK_OPENAI_API_KEY:-}"
+    local api_base="${FUCK_OPENAI_API_BASE:-}"
+
+    if [[ -z "$api_key" ]]; then
+        echo -e "${C_YELLOW}未配置 API Key${C_RESET}"
+        echo -e "运行 ${C_CYAN}fuck --oauth${C_RESET} 进行授权"
+        return 1
+    fi
+
+    echo -e "${C_BOLD}Pollinations OAuth 状态${C_RESET}"
+    echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
+
+    # 检查是否是 Pollinations key
+    if [[ "$api_key" == sk_* ]] && [[ "$api_base" == *"pollinations.ai"* ]]; then
+        echo -e "认证方式: ${C_GREEN}Pollinations OAuth${C_RESET}"
+        echo -e "API Base: ${C_CYAN}$api_base${C_RESET}"
+        echo -e "Key 前缀: ${C_DIM}${api_key:0:6}...${C_RESET}"
+
+        # 验证 key 有效性
+        echo -e "\n${C_DIM}验证 Key 有效性...${C_RESET}"
+        local profile_response
+        profile_response=$(curl -sS --max-time 10 \
+            "https://gen.pollinations.ai/account/profile" \
+            -H "Authorization: Bearer $api_key" 2>/dev/null)
+
+        if [[ $? -eq 0 ]] && printf '%s' "$profile_response" | grep -q 'githubUsername'; then
+            local username tier
+            username=$(printf '%s' "$profile_response" | grep -o '"githubUsername"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"githubUsername"[[:space:]]*:[[:space:]]*"//;s/"$//')
+            tier=$(printf '%s' "$profile_response" | grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"tier"[[:space:]]*:[[:space:]]*"//;s/"$//')
+            echo -e "GitHub 用户: ${C_GREEN}${username:-unknown}${C_RESET}"
+            echo -e "Tier: ${C_CYAN}${tier:-unknown}${C_RESET}"
+        else
+            echo -e "${C_YELLOW}⚠️ 无法验证 Key（可能是网络问题或 Key 已失效）${C_RESET}"
+        fi
+    elif [[ -n "$api_key" ]]; then
+        echo -e "认证方式: ${C_CYAN}本地 API Key${C_RESET}"
+        echo -e "API Base: ${C_CYAN}${api_base:-https://api.openai.com/v1}${C_RESET}"
+        echo -e "Key 前缀: ${C_DIM}${api_key:0:6}...${C_RESET}"
+    fi
+
+    echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
+}
+
+# 清除 Pollinations OAuth 凭据
+_fuck_pollinations_logout() {
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo -e "${C_YELLOW}配置文件不存在${C_RESET}"
+        return 0
+    fi
+
+    # 检查是否是 Pollinations 配置
+    local api_base="${FUCK_OPENAI_API_BASE:-}"
+    if [[ "$api_base" != *"pollinations.ai"* ]]; then
+        echo -e "${C_YELLOW}当前未使用 Pollinations OAuth${C_RESET}"
+        return 0
+    fi
+
+    # 移除 Pollinations 相关配置
+    local tmp_config
+    tmp_config=$(mktemp) || return 1
+    grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
+    grep -v "^export FUCK_OPENAI_API_BASE=" | \
+    grep -v "^# Pollinations OAuth" > "$tmp_config" 2>/dev/null || true
+    mv "$tmp_config" "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+
+    # 清除环境变量
+    unset FUCK_OPENAI_API_KEY
+    unset FUCK_OPENAI_API_BASE
+
+    echo -e "${C_GREEN}✅ 已清除 Pollinations OAuth 凭据${C_RESET}"
+}
+
 _fuck_notify_demo_limit() {
     local daily_limit="${1:-10}"
     local remaining="${2:-0}"
@@ -763,7 +986,7 @@ _fuck_show_config_help() {
 # 显示帮助信息，列出所有可用子命令
 _fuck_show_help() {
     if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
-        printf '{"status":"ok","schema_version":1,"version":"%s","commands":[{"name":"--help","description":"显示帮助信息"},{"name":"--config","description":"查看配置帮助"},{"name":"--version","description":"查看当前版本"},{"name":"--history","description":"查看命令历史"},{"name":"--history search <keyword>","description":"搜索历史命令"},{"name":"--history replay <index>","description":"重放历史命令"},{"name":"--favorite add <name> <prompt>","description":"添加收藏命令"},{"name":"--favorite list","description":"查看收藏列表"},{"name":"--favorite run <index>","description":"执行收藏命令"},{"name":"--favorite delete <index>","description":"删除收藏"},{"name":"--update","description":"更新 fuckits 到最新版本"},{"name":"--uninstall","description":"卸载 fuckits"}]}\n' "${SCRIPT_VERSION}"
+        printf '{"status":"ok","schema_version":1,"version":"%s","commands":[{"name":"--help","description":"显示帮助信息"},{"name":"--config","description":"查看配置帮助"},{"name":"--version","description":"查看当前版本"},{"name":"--history","description":"查看命令历史"},{"name":"--history search <keyword>","description":"搜索历史命令"},{"name":"--history replay <index>","description":"重放历史命令"},{"name":"--favorite add <name> <prompt>","description":"添加收藏命令"},{"name":"--favorite list","description":"查看收藏列表"},{"name":"--favorite run <index>","description":"执行收藏命令"},{"name":"--favorite delete <index>","description":"删除收藏"},{"name":"--update","description":"更新 fuckits 到最新版本"},{"name":"--uninstall","description":"卸载 fuckits"},{"name":"--oauth","description":"Pollinations OAuth 登录/状态/登出"}]}\n' "${SCRIPT_VERSION}"
     else
         echo -e "${C_BOLD}fuckits${C_RESET} ${C_DIM}v${SCRIPT_VERSION}${C_RESET} — AI 自然语言转 Shell 命令"
         echo ""
@@ -779,6 +1002,7 @@ _fuck_show_help() {
         echo -e "  ${C_BOLD}--favorite${C_RESET} (fav)             管理收藏命令"
         echo -e "  ${C_BOLD}--update${C_RESET}                     更新 fuckits 到最新版本"
         echo -e "  ${C_BOLD}--uninstall${C_RESET}                  卸载 fuckits"
+        echo -e "  ${C_BOLD}--oauth${C_RESET} (auth)               Pollinations OAuth 授权"
         echo ""
         echo -e "${C_DIM}选项:${C_RESET}"
         echo -e "  ${C_BOLD}--json${C_RESET}                     JSON 格式输出"
@@ -1060,6 +1284,34 @@ _fuck_route_subcommands() {
                 fi
                 _uninstall_script
                 return 0
+                ;;
+            oauth|auth)
+                shift
+                case "${1:-}" in
+                    status)
+                        _fuck_pollinations_status
+                        return 0
+                        ;;
+                    logout)
+                        _fuck_pollinations_logout
+                        return 0
+                        ;;
+                    "")
+                        _fuck_pollinations_device_flow
+                        return 0
+                        ;;
+                    *)
+                        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                            printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"Usage: fuck --oauth [status|logout]"}\n'
+                        else
+                            echo -e "${C_YELLOW}用法:${C_RESET} fuck --oauth [status|logout]" >&2
+                            echo -e "  ${C_DIM}(无参数)${C_RESET}     启动 OAuth 设备授权流程" >&2
+                            echo -e "  ${C_DIM}status${C_RESET}      查看当前认证状态" >&2
+                            echo -e "  ${C_DIM}logout${C_RESET}      清除已保存的凭据" >&2
+                        fi
+                        return 0
+                        ;;
+                esac
                 ;;
             history)
                 shift
