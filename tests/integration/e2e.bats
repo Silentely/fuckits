@@ -363,7 +363,7 @@ JSON
 }
 JSON
 
-    # favorite list 应该能识别并运行
-    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh favorite list' 2>&1
+    # --favorite list 应该能识别并运行
+    run bash -c 'HOME='"$TEST_HOME"' bash ./main.sh --favorite list' 2>&1
     [ "$status" -eq 0 ] || echo "$output" | grep -qi "List Files\|favorite\|No favorites"
 }

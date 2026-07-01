@@ -352,5 +352,6 @@ EOF
     run _fuck_execute_prompt --help
 
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "v[0-9]"
+    # 匹配版本号格式：v数字 或 __SCRIPT_VERSION__（构建前占位符）
+    echo "$output" | grep -qE "v[0-9]|__SCRIPT_VERSION__"
 }
