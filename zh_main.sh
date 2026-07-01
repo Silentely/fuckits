@@ -975,14 +975,17 @@ _fuck_show_unsupported_command() {
 # 异步检查远程版本（不阻塞主流程）
 _fuck_check_remote_version_async() {
     # 使用子进程后台检查，不阻塞
+    # 通过 fd 9 保存/恢复 stderr，抑制 set -x 追踪但保留版本提示输出
     (
-        set +x  # 关闭调试模式，防止命令泄露到终端
+        exec 9>&2 2>/dev/null
+        set +x
         local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
         local health_url="${api_url%/}"
         health_url="${health_url%/zh}"
         health_url="${health_url}/health"
         local remote_version
         remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
+        exec 2>&9 9>&-
 
         if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
             echo "" >&2

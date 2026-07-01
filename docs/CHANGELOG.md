@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.50
+- ✨ feat: 新增写入核心脚本逻辑的函数
+
 ## v2.1.49
 - 🐛 fix: 修复异步版本检查 health 接口路径错误并增强构建流程健壮性
 
