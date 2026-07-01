@@ -241,6 +241,8 @@ fuck install git
 fuck find all files larger than 10MB
 fuck uninstall  # 卸载工具本身
 fuck config     # 查看配置
+fuck help       # 查看帮助
+fuck update     # 更新到最新版本
 ```
 
 ### 开发者部署
@@ -423,6 +425,8 @@ Cloudflare Worker 主文件（约 1764 行，含嵌入的 base64 脚本），处
 - `_install_script()` - 安装逻辑
 - `_uninstall_script()` - 卸载逻辑
 - `_fuck_show_config_help()` - 配置帮助
+- `_fuck_show_help()` - 帮助信息显示（列出所有可用子命令）
+- `_fuck_update_script()` - 自更新（检查远程版本并更新本地安装）
 - `_fuck_collect_sysinfo_string()` - 系统信息收集（简化版）
 - `_fuck_security_evaluate_command()` - 安全检测引擎（32 条规则：8 Block + 20 Challenge + 4 Warn）
 - `_fuck_spinner()` - 加载动画

@@ -121,6 +121,22 @@ fuck install git
 fuck uninstall git
 ```
 
+### 查看帮助
+
+```bash
+fuck help
+fuck --help
+fuck -h
+```
+
+### 更新工具
+
+检查并更新到最新版本：
+
+```bash
+fuck update
+```
+
 ### 配置脚本
 
 查看配置文件位置和可用选项：
@@ -379,18 +395,6 @@ name = "your-worker-name"
 - `OPENAI_API_BASE`: API 基础 URL（默认：`https://api.openai.com/v1`）
 
 详细部署说明请参阅 [DEPLOY.md](./docs/DEPLOY.md)。
-
----
-
-## 🧠 未来规划
-
-* **多模型路由**: 在 OpenAI、Anthropic、DeepSeek、硅基流动等模型之间自动切换或负载均衡。
-* **场景模板**: 内置运维、开发、数据分析等场景的提示词模板，快速切换工作场景。
-* **UI 皮肤**: 可选猫娘/御姐/严肃模式等不同人设风格，让命令行更有趣。
-* **团队模式**: 共享自定义 alias、API key、调优模板，适合团队协作。
-* **跨平台桌面应用**: 提供 GUI 界面，降低命令行门槛。
-
-欢迎在 [Issue](https://github.com/Silentely/fuckits/issues) 中继续脑暴更多好玩的点子。
 
 ---
 

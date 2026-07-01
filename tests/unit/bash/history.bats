@@ -313,7 +313,7 @@ EOF
     # Capture both stdout and stderr
     run bash -c "export BATS_TEST_DIRNAME=/fake && export HOME='$TEST_HOME' && source ./main.sh && _fuck_execute_prompt favorite 2>&1"
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 0 ]
     echo "$output" | grep -q "Usage.*favorite"
 }
 

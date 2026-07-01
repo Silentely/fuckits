@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.39
+- 🐛 fix: 恢复 worker.js 中 CHANGELOG 和 buildTime 占位符，修复构建注入失效
+
 ## v2.1.38
 - 📝 docs: 文档迁移到 /docs 目录 + 更新日志自动化 + 健康检查隐藏模型 + API Key 措辞修正
 

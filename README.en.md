@@ -111,6 +111,22 @@ fuck install git
 fuck uninstall git
 ```
 
+### Help
+
+```bash
+fuck help
+fuck --help
+fuck -h
+```
+
+### Update
+
+Check and update to the latest version:
+
+```bash
+fuck update
+```
+
 ### Configure
 
 See where the config file lives and generate a starter template:
@@ -343,18 +359,6 @@ name = "your-worker-name"
 - `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com/v1`)
 
 For detailed deployment instructions, see [DEPLOY.md](./docs/DEPLOY.md).
-
----
-
-## 🧠 Brainstorming
-
-* Amber-lang rewrite: Cross-platform CLI + UI powered by Amber.
-* Multi-model routing: Seamlessly switch between OpenAI, Anthropic, DeepSeek, and other providers.
-* Scenario templates: Built-in prompt templates for ops, dev, data, etc.
-* UI skins: Cat-girl, professional, serious modes and more personalities.
-* Team mode: Share custom aliases, API keys, and tuned templates.
-
-Drop your ideas in the Issues—let's brainstorm more fun features together.
 
 ---
 

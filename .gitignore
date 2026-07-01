@@ -33,6 +33,8 @@ tmp/
 .codex
 .omc
 .omx
+.ace-tool/
+docs/superpowers/
 
 # OS
 .DS_Store
@@ -51,7 +53,6 @@ coverage/
 # Temporary files
 *.tmp
 .temp/
-.ace-tool/
 
 # Runtime cache (generated when main.sh is sourced)
 /runtime-common.sh

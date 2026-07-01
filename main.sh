@@ -734,6 +734,135 @@ _fuck_show_config_help() {
     echo -e "${C_DIM}Pro tip:${C_RESET} we lock ${CONFIG_FILE} to chmod 600 so your API key stays local."
 }
 
+# 显示帮助信息，列出所有可用子命令
+_fuck_show_help() {
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        printf '{"status":"ok","schema_version":1,"commands":[{"name":"help","description":"Show this help message"},{"name":"config","description":"Show configuration help"},{"name":"version","description":"Show current version"},{"name":"history","description":"View command history"},{"name":"history search <keyword>","description":"Search command history"},{"name":"history replay <index>","description":"Replay a history command"},{"name":"favorite add <name> <prompt>","description":"Add a favorite command"},{"name":"favorite list","description":"List all favorites"},{"name":"favorite run <index>","description":"Execute a favorite command"},{"name":"favorite delete <index>","description":"Delete a favorite"},{"name":"update","description":"Update fuckits to the latest version"},{"name":"uninstall","description":"Uninstall fuckits"}]}\n'
+    else
+        echo -e "${C_BOLD}fuckits${C_RESET} — AI natural language to shell command"
+        echo ""
+        echo -e "${C_YELLOW}Usage:${C_RESET} fuck <your prompt>"
+        echo ""
+        echo -e "${C_CYAN}Commands:${C_RESET}"
+        echo -e "  ${C_BOLD}help${C_RESET}                       Show this help message"
+        echo -e "  ${C_BOLD}config${C_RESET}                     Show configuration help"
+        echo -e "  ${C_BOLD}version${C_RESET}                    Show current version"
+        echo -e "  ${C_BOLD}history${C_RESET}                    View recent command history"
+        echo -e "  ${C_BOLD}history search <keyword>${C_RESET}   Search command history"
+        echo -e "  ${C_BOLD}history replay <index>${C_RESET}     Replay a history command"
+        echo -e "  ${C_BOLD}favorite${C_RESET} (fav)              Manage favorite commands"
+        echo -e "  ${C_BOLD}update${C_RESET}                     Update fuckits to the latest version"
+        echo -e "  ${C_BOLD}uninstall${C_RESET}                  Uninstall fuckits"
+        echo ""
+        echo -e "${C_DIM}Options:${C_RESET}"
+        echo -e "  ${C_BOLD}--json${C_RESET}                     Output in JSON format"
+        echo -e "  ${C_BOLD}-v, --version${C_RESET}              Show version"
+        echo ""
+        echo -e "${C_DIM}Examples:${C_RESET}"
+        echo -e "  fuck find all files larger than 10MB"
+        echo -e "  fuck install git"
+        echo -e "  fuck config"
+    fi
+}
+
+# 从脚本文件中提取版本号
+# Arguments: $1=脚本文件路径
+# Outputs: 版本号字符串
+_fuck_get_script_version() {
+    local file="$1"
+    grep -o "SCRIPT_VERSION='[^']*'" "$file" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//" | tr -cd '0-9a-zA-Z._-'
+}
+
+# 自更新：检查远程版本并更新本地安装
+# 仅在已安装模式下可用
+_fuck_update_script() {
+    # 检查是否已安装（非临时模式）
+    if [[ ! -f "$MAIN_SH" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"NOT_INSTALLED","message":"fuckits is not installed. Run the installer first."}\n'
+        else
+            echo -e "${C_RED}❌ fuckits is not installed. Run the installer first.${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+    local health_url="${api_url%/}/health"
+
+    # 获取远程版本
+    local remote_version
+    remote_version=$(curl -sS --fail --max-time 5 "$health_url" 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/"version"[[:space:]]*:[[:space:]]*"//;s/"$//' | tr -cd '0-9a-zA-Z._-') || true
+
+    if [[ -z "$remote_version" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"CHECK_FAILED","message":"Failed to check remote version"}\n'
+        else
+            echo -e "${C_RED}❌ Failed to check remote version. Check your network connection.${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    # 获取本地版本
+    local local_ver
+    local_ver=$(_fuck_get_script_version "$MAIN_SH") || true
+
+    # 版本对比
+    if [[ "$local_ver" = "$remote_version" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"message":"Already up to date","version":"%s"}\n' "$local_ver"
+        else
+            echo -e "${C_GREEN}✅ Version ${local_ver} is up to date.${C_RESET}"
+        fi
+        return 0
+    fi
+
+    # 执行更新
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        # 原子性替换：先写临时文件，验证后再替换
+        local tmp_update
+        tmp_update=$(mktemp) || { echo -e "${C_RED}❌ Failed to create temporary file.${C_RESET}" >&2; return 1; }
+        _fuck_write_core "$tmp_update"
+        chmod +x "$tmp_update"
+        local new_ver
+        new_ver=$(_fuck_get_script_version "$tmp_update") || true
+        if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
+            if mv -f "$tmp_update" "$MAIN_SH"; then
+                printf '{"status":"ok","schema_version":1,"message":"Updated successfully","from":"%s","to":"%s"}\n' "$local_ver" "$new_ver"
+            else
+                rm -f "$tmp_update"
+                printf '{"status":"error","schema_version":1,"code":"UPDATE_FAILED","message":"Failed to replace script file"}\n'
+            fi
+        else
+            rm -f "$tmp_update"
+            printf '{"status":"error","schema_version":1,"code":"UPDATE_FAILED","message":"Version mismatch after update: got %s, expected %s"}\n' "$new_ver" "$remote_version"
+        fi
+    else
+        echo -e "${C_YELLOW}📦 Local: ${C_BOLD}${local_ver}${C_RESET}${C_YELLOW} → Remote: ${C_BOLD}${remote_version}${C_RESET}"
+        echo -e "${C_CYAN}Updating...${C_RESET}"
+
+        # 原子性替换：先写临时文件，验证后再替换
+        local tmp_update
+        tmp_update=$(mktemp) || { echo -e "${C_RED}❌ Failed to create temporary file.${C_RESET}" >&2; return 1; }
+        _fuck_write_core "$tmp_update"
+        chmod +x "$tmp_update"
+
+        local new_ver
+        new_ver=$(_fuck_get_script_version "$tmp_update") || true
+        if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
+            if mv -f "$tmp_update" "$MAIN_SH"; then
+                echo -e "${C_GREEN}✅ Updated to version ${new_ver}.${C_RESET}"
+            else
+                rm -f "$tmp_update"
+                echo -e "${C_RED}❌ Failed to replace script file. The update was not applied.${C_RESET}" >&2
+            fi
+        else
+            rm -f "$tmp_update"
+            echo -e "${C_YELLOW}⚠️ Installed version ${new_ver}, expected ${remote_version}. Try running the installer:${C_RESET}"
+            echo -e "${C_CYAN}  curl -sS ${api_url} | bash${C_RESET}"
+        fi
+    fi
+}
+
 # Check if jq is available
 _fuck_check_jq() {
     if ! command -v jq &> /dev/null; then
@@ -1232,12 +1361,18 @@ _uninstall_script() {
 _fuck_route_subcommands() {
     local arg1="${1:-}"
 
-    if [[ "$arg1" = "uninstall" ]] && [[ "$#" -eq 1 ]]; then
+    if [[ "$arg1" = "uninstall" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck uninstall' doesn't take arguments. Proceeding with uninstall." >&2
+        fi
         _uninstall_script
         return 0
     fi
 
-    if [[ "$arg1" = "config" ]] && [[ "$#" -eq 1 ]]; then
+    if [[ "$arg1" = "config" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck config' doesn't take arguments. Showing config help instead." >&2
+        fi
         _fuck_show_config_help
         return 0
     fi
@@ -1251,22 +1386,35 @@ _fuck_route_subcommands() {
         return 0
     fi
 
+    if [[ "$arg1" = "help" ]] || [[ "$arg1" = "--help" ]] || [[ "$arg1" = "-h" ]]; then
+        _fuck_show_help
+        return 0
+    fi
+
+    if [[ "$arg1" = "update" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}Note:${C_RESET} 'fuck update' doesn't take arguments. Checking for updates." >&2
+        fi
+        _fuck_update_script
+        return $?
+    fi
+
     if [[ "$arg1" = "history" ]]; then
         shift
         case "${1:-}" in
-            search)  _fuck_history_search "${2:-}" ; return $? ;;
-            replay)  _fuck_history_replay "${2:-}" ; return $? ;;
-            *)       _fuck_history "${1:-}" ; return $? ;;
+            search)  _fuck_history_search "${2:-}" ; return 0 ;;
+            replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
+            *)       _fuck_history "${1:-}" ; return 0 ;;
         esac
     fi
 
     if [[ "$arg1" = "favorite" ]] || [[ "$arg1" = "fav" ]]; then
         shift
         case "${1:-}" in
-            add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return $? ;;
-            list|ls)       _fuck_favorite_list ; return $? ;;
-            run|exec)      _fuck_favorite_run "${2:-}" ; return $? ;;
-            delete|del|rm) _fuck_favorite_delete "${2:-}" ; return $? ;;
+            add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
+            list|ls)       _fuck_favorite_list ; return 0 ;;
+            run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
+            delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
             *)
                 if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
                     printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"Usage: fuck favorite <add|list|run|delete>"}\n'
@@ -1277,7 +1425,7 @@ _fuck_route_subcommands() {
                     echo -e "  ${C_DIM}run <index>${C_RESET}             Execute a favorite"
                     echo -e "  ${C_DIM}delete <index>${C_RESET}          Delete a favorite"
                 fi
-                return 1
+                return 0
                 ;;
         esac
     fi
@@ -1518,7 +1666,7 @@ _fuck_check_remote_version() {
     local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
     local health_url="${api_url%/}/health"
     local remote_version
-    remote_version=$(curl -sS --max-time 5 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
+    remote_version=$(curl -sS --max-time 5 "$health_url" 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/"version"[[:space:]]*:[[:space:]]*"//;s/"$//' | tr -cd '0-9a-zA-Z._-') || true
 
     if [[ -z "$remote_version" ]]; then
         return 0

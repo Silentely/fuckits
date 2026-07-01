@@ -756,6 +756,131 @@ _fuck_show_config_help() {
     echo -e "${C_DIM}安全说明：配置文件会自动 chmod 600，防止 Key 泄露。${C_RESET}"
 }
 
+# 显示帮助信息，列出所有可用子命令
+_fuck_show_help() {
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        printf '{"status":"ok","schema_version":1,"commands":[{"name":"help","description":"显示帮助信息"},{"name":"config","description":"查看配置帮助"},{"name":"version","description":"查看当前版本"},{"name":"history","description":"查看命令历史"},{"name":"history search <keyword>","description":"搜索历史命令"},{"name":"history replay <index>","description":"重放历史命令"},{"name":"favorite add <name> <prompt>","description":"添加收藏命令"},{"name":"favorite list","description":"查看收藏列表"},{"name":"favorite run <index>","description":"执行收藏命令"},{"name":"favorite delete <index>","description":"删除收藏"},{"name":"update","description":"更新 fuckits 到最新版本"},{"name":"uninstall","description":"卸载 fuckits"}]}\n'
+    else
+        echo -e "${C_BOLD}fuckits${C_RESET} — AI 自然语言转 Shell 命令"
+        echo ""
+        echo -e "${C_YELLOW}用法:${C_RESET} fuck <你的需求>"
+        echo ""
+        echo -e "${C_CYAN}可用命令:${C_RESET}"
+        echo -e "  ${C_BOLD}help${C_RESET}                       显示此帮助信息"
+        echo -e "  ${C_BOLD}config${C_RESET}                     查看配置帮助"
+        echo -e "  ${C_BOLD}version${C_RESET}                    查看当前版本"
+        echo -e "  ${C_BOLD}history${C_RESET}                    查看最近命令历史"
+        echo -e "  ${C_BOLD}history search <keyword>${C_RESET}   搜索历史命令"
+        echo -e "  ${C_BOLD}history replay <index>${C_RESET}     重放历史命令"
+        echo -e "  ${C_BOLD}favorite${C_RESET} (fav)              管理收藏命令"
+        echo -e "  ${C_BOLD}update${C_RESET}                     更新 fuckits 到最新版本"
+        echo -e "  ${C_BOLD}uninstall${C_RESET}                  卸载 fuckits"
+        echo ""
+        echo -e "${C_DIM}选项:${C_RESET}"
+        echo -e "  ${C_BOLD}--json${C_RESET}                     JSON 格式输出"
+        echo -e "  ${C_BOLD}-v, --version${C_RESET}              显示版本"
+        echo ""
+        echo -e "${C_DIM}示例:${C_RESET}"
+        echo -e "  fuck 查找所有大于 10MB 的文件"
+        echo -e "  fuck 安装 git"
+        echo -e "  fuck config"
+    fi
+}
+
+# 从脚本文件中提取版本号
+# Arguments: $1=脚本文件路径
+# Outputs: 版本号字符串
+_fuck_get_script_version() {
+    local file="$1"
+    grep -o "SCRIPT_VERSION='[^']*'" "$file" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//" | tr -cd '0-9a-zA-Z._-'
+}
+
+# 自更新：检查远程版本并更新本地安装
+_fuck_update_script() {
+    if [[ ! -f "$MAIN_SH" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"NOT_INSTALLED","message":"fuckits 尚未安装，请先运行安装脚本"}\n'
+        else
+            echo -e "${C_RED}❌ fuckits 尚未安装，请先运行安装脚本。${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+    local health_url="${api_url%/}"
+    health_url="${health_url%/zh}"
+    health_url="${health_url}/health"
+
+    local remote_version
+    remote_version=$(curl -sS --fail --max-time 5 "$health_url" 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/"version"[[:space:]]*:[[:space:]]*"//;s/"$//' | tr -cd '0-9a-zA-Z._-') || true
+
+    if [[ -z "$remote_version" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"error","schema_version":1,"code":"CHECK_FAILED","message":"检查远程版本失败"}\n'
+        else
+            echo -e "${C_RED}❌ 检查远程版本失败，请检查网络连接。${C_RESET}" >&2
+        fi
+        return 1
+    fi
+
+    local local_ver
+    local_ver=$(_fuck_get_script_version "$MAIN_SH") || true
+
+    if [[ "$local_ver" = "$remote_version" ]]; then
+        if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+            printf '{"status":"ok","schema_version":1,"message":"已是最新版本","version":"%s"}\n' "$local_ver"
+        else
+            echo -e "${C_GREEN}✅ 版本 ${local_ver} 已是最新。${C_RESET}"
+        fi
+        return 0
+    fi
+
+    if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+        # 原子性替换：先写临时文件，验证后再替换
+        local tmp_update
+        tmp_update=$(mktemp) || { echo -e "${C_RED}❌ 创建临时文件失败。${C_RESET}" >&2; return 1; }
+        _fuck_write_core "$tmp_update"
+        chmod +x "$tmp_update"
+        local new_ver
+        new_ver=$(_fuck_get_script_version "$tmp_update") || true
+        if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
+            if mv -f "$tmp_update" "$MAIN_SH"; then
+                printf '{"status":"ok","schema_version":1,"message":"更新成功","from":"%s","to":"%s"}\n' "$local_ver" "$new_ver"
+            else
+                rm -f "$tmp_update"
+                printf '{"status":"error","schema_version":1,"code":"UPDATE_FAILED","message":"替换脚本文件失败"}\n'
+            fi
+        else
+            rm -f "$tmp_update"
+            printf '{"status":"error","schema_version":1,"code":"UPDATE_FAILED","message":"更新后版本不匹配：实际 %s，预期 %s"}\n' "$new_ver" "$remote_version"
+        fi
+    else
+        echo -e "${C_YELLOW}📦 本地版本: ${C_BOLD}${local_ver}${C_RESET}${C_YELLOW} → 远程版本: ${C_BOLD}${remote_version}${C_RESET}"
+        echo -e "${C_CYAN}正在更新...${C_RESET}"
+
+        # 原子性替换：先写临时文件，验证后再替换
+        local tmp_update
+        tmp_update=$(mktemp) || { echo -e "${C_RED}❌ 创建临时文件失败。${C_RESET}" >&2; return 1; }
+        _fuck_write_core "$tmp_update"
+        chmod +x "$tmp_update"
+
+        local new_ver
+        new_ver=$(_fuck_get_script_version "$tmp_update") || true
+        if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
+            if mv -f "$tmp_update" "$MAIN_SH"; then
+                echo -e "${C_GREEN}✅ 已更新到版本 ${new_ver}。${C_RESET}"
+            else
+                rm -f "$tmp_update"
+                echo -e "${C_RED}❌ 替换脚本文件失败，更新未生效。${C_RESET}" >&2
+            fi
+        else
+            rm -f "$tmp_update"
+            echo -e "${C_YELLOW}⚠️ 安装版本 ${new_ver}，预期 ${remote_version}。请尝试运行安装脚本：${C_RESET}"
+            echo -e "${C_CYAN}  curl -sS ${api_url}/zh | bash${C_RESET}"
+        fi
+    fi
+}
+
 # 卸载脚本
 _uninstall_script() {
     echo -e "${C_RED_BOLD}好好好！${C_RESET}${C_YELLOW}怎么着，要卸磨杀驴啊？行啊你个老六，我真谢谢你了。${C_RESET}"
@@ -807,17 +932,23 @@ _uninstall_script() {
 
 # 跟 API 通信的主函数
 # 参数就是要执行的命令
-# 路由子命令：uninstall, config
+# 路由子命令：uninstall, config, version, help, update, history, favorite
 # Returns: 0 如果已处理子命令，1 如果不是子命令
 _fuck_route_subcommands() {
     local arg1="${1:-}"
 
-    if [[ "$arg1" = "uninstall" ]] && [[ "$#" -eq 1 ]]; then
+    if [[ "$arg1" = "uninstall" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}提示：${C_RESET}'fuck uninstall' 不接受参数，继续执行卸载。" >&2
+        fi
         _uninstall_script
         return 0
     fi
 
-    if [[ "$arg1" = "config" ]] && [[ "$#" -eq 1 ]]; then
+    if [[ "$arg1" = "config" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}提示：${C_RESET}'fuck config' 不接受参数，显示配置帮助。" >&2
+        fi
         _fuck_show_config_help
         return 0
     fi
@@ -829,6 +960,50 @@ _fuck_route_subcommands() {
             echo "fuckits ${SCRIPT_VERSION}"
         fi
         return 0
+    fi
+
+    if [[ "$arg1" = "help" ]] || [[ "$arg1" = "--help" ]] || [[ "$arg1" = "-h" ]]; then
+        _fuck_show_help
+        return 0
+    fi
+
+    if [[ "$arg1" = "update" ]]; then
+        if [[ "$#" -gt 1 ]]; then
+            echo -e "${C_YELLOW}提示：${C_RESET}'fuck update' 不接受参数，检查更新。" >&2
+        fi
+        _fuck_update_script
+        return $?
+    fi
+
+    if [[ "$arg1" = "history" ]]; then
+        shift
+        case "${1:-}" in
+            search)  _fuck_history_search "${2:-}" ; return 0 ;;
+            replay)  _fuck_history_replay "${2:-}" ; return 0 ;;
+            *)       _fuck_history "${1:-}" ; return 0 ;;
+        esac
+    fi
+
+    if [[ "$arg1" = "favorite" ]] || [[ "$arg1" = "fav" ]]; then
+        shift
+        case "${1:-}" in
+            add)           _fuck_favorite_add "${2:-}" "${3:-}" ; return 0 ;;
+            list|ls)       _fuck_favorite_list ; return 0 ;;
+            run|exec)      _fuck_favorite_run "${2:-}" ; return 0 ;;
+            delete|del|rm) _fuck_favorite_delete "${2:-}" ; return 0 ;;
+            *)
+                if _fuck_truthy "${_FUCK_JSON_MODE:-0}"; then
+                    printf '{"status":"error","schema_version":1,"code":"INVALID_SUBCOMMAND","message":"用法: fuck favorite <add|list|run|delete>"}\n'
+                else
+                    echo -e "${C_YELLOW}用法:${C_RESET} fuck favorite <add|list|run|delete>" >&2
+                    echo -e "  ${C_DIM}add <名称> <提示词>${C_RESET}     添加收藏命令"
+                    echo -e "  ${C_DIM}list${C_RESET}                    列出所有收藏"
+                    echo -e "  ${C_DIM}run <索引>${C_RESET}             执行收藏命令"
+                    echo -e "  ${C_DIM}delete <索引>${C_RESET}          删除收藏"
+                fi
+                return 0
+                ;;
+        esac
     fi
 
     return 1
@@ -1045,9 +1220,11 @@ _fuck_write_core() {
 # 检查远程版本并与本地版本对比
 _fuck_check_remote_version() {
     local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
-    local health_url="${api_url%/}/health"
+    local health_url="${api_url%/}"
+    health_url="${health_url%/zh}"
+    health_url="${health_url}/health"
     local remote_version
-    remote_version=$(curl -sS --max-time 5 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//') || true
+    remote_version=$(curl -sS --max-time 5 "$health_url" 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/"version"[[:space:]]*:[[:space:]]*"//;s/"$//' | tr -cd '0-9a-zA-Z._-') || true
 
     if [[ -z "$remote_version" ]]; then
         return 0
