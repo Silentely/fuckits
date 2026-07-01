@@ -871,7 +871,7 @@ _fuck_security_evaluate_command() {
 
 
 _fuck_seed_config_placeholders() {
-    [ -f "$CONFIG_FILE" ]] || return
+    [[ -f "$CONFIG_FILE" ]] || return
     _fuck_append_config_hint "FUCK_OPENAI_API_KEY" "Local OpenAI-compatible API key (recommended)" 'sk-...'
     _fuck_append_config_hint "FUCK_ADMIN_KEY" "Optional: admin bypass key for trusted maintainers" 'adm-...'
     _fuck_append_config_hint "FUCK_OPENAI_MODEL" "Optional: override model when using your own key" 'gpt-4o-mini'
