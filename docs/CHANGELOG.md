@@ -5,6 +5,13 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.37
+- ♻️ refactor: 将版本递增和 CHANGELOG 生成从部署脚本迁移到 pre-commit hook
+- 🔥 remove: 移除默认模型配置项
+- ✨ feat: 新增自动生成 CHANGELOG 功能并优化文案
+- 📝 docs: 更新文档中关于配额绕过和自定义API基址的说明
+- 📝 docs: 完善 CLAUDE.md 项目文档，新增基础检索与网络检索策略指南
+
 ## v2.1.35
 - ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理 (#7)
 

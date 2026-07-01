@@ -80,7 +80,7 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 ```
 
 > [!NOTE]
-> `fuckits.25500552.xyz` 通过 Works 自定义域映射到你部署的 Worker。按照本文档或 [DEPLOY.md](./DEPLOY.md#简体中文) 中的步骤重新部署后，域名会自动指向你的实例，中文脚本使用 `/zh` 路径。
+> `fuckits.25500552.xyz` 通过 Works 自定义域映射到你部署的 Worker。按照本文档或 [DEPLOY.md](./docs/DEPLOY.md#简体中文) 中的步骤重新部署后，域名会自动指向你的实例，中文脚本使用 `/zh` 路径。
 > 自行部署时请在 `~/.fuck/config.sh` 中把 `FUCK_API_ENDPOINT` 改成你自己的域名，避免所有请求仍指向默认演示服务。
 
 > [!WARNING]
@@ -242,7 +242,7 @@ curl -sS https://fuckits.25500552.xyz | bash -s "find all files larger than 10MB
 npm run one-click-deploy
 ```
 
-脚本会引导你完成 Cloudflare 登录、设置 OpenAI API Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./DEPLOY.md#简体中文)。
+脚本会引导你完成 Cloudflare 登录、设置 OpenAI API Key，并自动将最新的 `main.sh`/`zh_main.sh` 嵌入 `worker.js`。需要了解更多细节可以阅读 [DEPLOY.md](./docs/DEPLOY.md#简体中文)。
 
 部署完成后，请在 Works（Cloudflare Workers）控制台中将 `fuckits.25500552.xyz` 绑定到该 Worker（中文版本通过 `/zh` 路径提供）。DNS/SSL 生效可能需要几分钟，可使用健康检查确保域名已指向你自己的 Worker：
 
@@ -259,7 +259,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 > 设置 Cloudflare Custom Domain 时不要在路由中添加通配符或路径（例如 `fuckits.25500552.xyz/*` 或 `fuckits.25500552.xyz/zh`），Cloudflare 会直接拒绝。只需绑定裸域，`/zh` 由 Worker 内部根据路径自动处理。
 
 > [!IMPORTANT]
-> 若希望共享 Worker 的演示配额（`SHARED_DAILY_LIMIT`）在不同 PoP/实例间都严格生效，请在 Cloudflare 中为该 Worker 绑定一个 KV 命名空间。推荐直接将绑定名设为 `QUOTA_KV`；如果想沿用别的名字（例如 `fuckits`），在 `[vars]` 中加一项 `QUOTA_KV_BINDING="你的绑定名"` 也可以。文档 [DEPLOY.md](./DEPLOY.md#%E6%9C%89%E5%85%B3-kv-%E9%99%90%E6%B5%81) 提供了命令示例。若未配置 KV，Worker 会回退为内存 Map 计数，可能被 Cloudflare 的实例切换“清零”。
+> 若希望共享 Worker 的演示配额（`SHARED_DAILY_LIMIT`）在不同 PoP/实例间都严格生效，请在 Cloudflare 中为该 Worker 绑定一个 KV 命名空间。推荐直接将绑定名设为 `QUOTA_KV`；如果想沿用别的名字（例如 `fuckits`），在 `[vars]` 中加一项 `QUOTA_KV_BINDING="你的绑定名"` 也可以。文档 [DEPLOY.md](./docs/DEPLOY.md#%E6%9C%89%E5%85%B3-kv-%E9%99%90%E6%B5%81) 提供了命令示例。若未配置 KV，Worker 会回退为内存 Map 计数，可能被 Cloudflare 的实例切换“清零”。
 
 ### 部署后自检
 
@@ -378,7 +378,7 @@ name = "your-worker-name"
 - `OPENAI_API_MODEL`: AI 模型（默认：`gpt-5-nano`）
 - `OPENAI_API_BASE`: API 基础 URL（默认：`https://api.openai.com/v1`）
 
-详细部署说明请参阅 [DEPLOY.md](./DEPLOY.md)。
+详细部署说明请参阅 [DEPLOY.md](./docs/DEPLOY.md)。
 
 ---
 

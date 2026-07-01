@@ -225,7 +225,7 @@ One command handles dependencies, Cloudflare login, secrets, build, and deploy:
 npm run one-click-deploy
 ```
 
-The script walks you through Cloudflare auth, prompts for your OpenAI key, and embeds the freshest `main.sh`/`zh_main.sh` into `worker.js`. Need more details? Check [DEPLOY.md](./DEPLOY.md#english).
+The script walks you through Cloudflare auth, prompts for your OpenAI key, and embeds the freshest `main.sh`/`zh_main.sh` into `worker.js`. Need more details? Check [DEPLOY.md](./docs/DEPLOY.md#english).
 
 After deployment, map `fuckits.25500552.xyz` to this Worker via the Works (Cloudflare Workers) custom domain UI; append `/zh` to expose the Chinese installer endpoint. DNS/SSL might take a few minutes to propagate, so run:
 
@@ -242,7 +242,7 @@ You should see `status: "ok"` and `services.apiKey: true`. The response also inc
 > Cloudflare Custom Domains do not allow wildcard or path suffixes (e.g., `fuckits.25500552.xyz/*` or `/zh`). Bind the bare domain only—the Worker itself routes `/zh` requests internally.
 
 > [!IMPORTANT]
-> To enforce `SHARED_DAILY_LIMIT` across every Cloudflare POP/edge instance, bind a KV namespace to your Worker. Using `QUOTA_KV` as the binding name is the simplest option; if you prefer another name (e.g., `fuckits`), add `QUOTA_KV_BINDING="that_name"` under `[vars]` so the Worker can locate it. Details live in [DEPLOY.md](./DEPLOY.md#kv-backed-quota). Without KV, the fallback in-memory counter can reset whenever Cloudflare spins up a fresh isolate, so demo users might exceed the intended limit without seeing the reminder.
+> To enforce `SHARED_DAILY_LIMIT` across every Cloudflare POP/edge instance, bind a KV namespace to your Worker. Using `QUOTA_KV` as the binding name is the simplest option; if you prefer another name (e.g., `fuckits`), add `QUOTA_KV_BINDING="that_name"` under `[vars]` so the Worker can locate it. Details live in [DEPLOY.md](./docs/DEPLOY.md#kv-backed-quota). Without KV, the fallback in-memory counter can reset whenever Cloudflare spins up a fresh isolate, so demo users might exceed the intended limit without seeing the reminder.
 
 ### Post-deploy checklist
 
@@ -342,7 +342,7 @@ name = "your-worker-name"
 - `OPENAI_API_MODEL`: AI model (default: `gpt-5-nano`)
 - `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com/v1`)
 
-For detailed deployment instructions, see [DEPLOY.md](./DEPLOY.md).
+For detailed deployment instructions, see [DEPLOY.md](./docs/DEPLOY.md).
 
 ---
 

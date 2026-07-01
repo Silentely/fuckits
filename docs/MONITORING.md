@@ -517,7 +517,7 @@ git log --oneline -5
 
 - [API Documentation](./API.md)
 - [Troubleshooting Guide](./TROUBLESHOOTING.md)
-- [Contributing Guide](../CONTRIBUTING.md)
+- [Contributing Guide](./CONTRIBUTING.md)
 
 ---
 
