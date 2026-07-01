@@ -409,7 +409,7 @@ _fuck_request_worker_model() {
 
 # Pollinations OAuth Device Flow
 # 实现 RFC 8628 Device Authorization Grant
-_POLLINATIONS_CLIENT_ID="${FUCK_POLLINATIONS_CLIENT_ID:-}"
+_POLLINATIONS_CLIENT_ID="${FUCK_POLLINATIONS_CLIENT_ID:-pk_1lgmLD1Fsk9N6ftr}"
 _POLLINATIONS_DEVICE_API="https://enter.pollinations.ai/api/device"
 _POLLINATIONS_AUTH_BASE="https://enter.pollinations.ai"
 
@@ -934,7 +934,7 @@ _fuck_ensure_config_exists() {
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
 
 # Pollinations OAuth 授权（使用 'fuck --oauth' 授权）
-# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
+# export FUCK_POLLINATIONS_CLIENT_ID="pk_..."
 
 # 额外别名（不会影响默认 fuck）
 # export FUCK_ALIAS="运行"
@@ -1669,7 +1669,7 @@ _install_script() {
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
 
 # Pollinations OAuth 授权（使用 'fuck --oauth' 授权）
-# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
+# export FUCK_POLLINATIONS_CLIENT_ID="pk_..."
 
 # 额外别名（不会影响默认 fuck）
 # export FUCK_ALIAS="运行"
