@@ -877,7 +877,10 @@ _fuck_update_script() {
         else
             rm -f "$tmp_update"
             echo -e "${C_YELLOW}⚠️ 安装版本 ${new_ver}，预期 ${remote_version}。请尝试运行安装脚本：${C_RESET}"
-            echo -e "${C_CYAN}  curl -sS ${api_url}/zh | bash${C_RESET}"
+            # 移除末尾斜杠，避免重复 /zh
+            local install_url="${api_url%/}"
+            [[ "$install_url" == */zh ]] || install_url="${install_url}/zh"
+            echo -e "${C_CYAN}  curl -sS ${install_url} | bash${C_RESET}"
         fi
     fi
 }
@@ -1211,6 +1214,25 @@ EOF
 
 # --- 核心逻辑 Heredoc 结束 ---
 
+_fuck_write_core() {
+    local target="$1"
+    printf '%s\n' "$CORE_LOGIC" > "$target"
+    # 运行时替换版本占位符（安装时从 package.json 注入）
+    if grep -q '__SCRIPT_VERSION__' "$target" 2>/dev/null; then
+        local _pkg
+        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
+            if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
+                local _ver
+                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
+                if [[ -n "$_ver" ]]; then
+                    sed -i.bak "s/__SCRIPT_VERSION__/${_ver}/g" "$target" && rm -f "${target}.bak"
+                    break
+                fi
+            fi
+        done
+    fi
+}
+
 # 将内嵌核心逻辑写到文件中（安装/临时模式都会用到）
 
 # 将核心逻辑载入当前 shell
@@ -1232,25 +1254,6 @@ _installer_secure_config_file() {
     fi
 }
 
-_fuck_write_core() {
-    local target="$1"
-    printf '%s\n' "$CORE_LOGIC" > "$target"
-    # 运行时替换版本占位符（安装时从 package.json 注入）
-    if grep -q '__SCRIPT_VERSION__' "$target" 2>/dev/null; then
-        local _pkg
-        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
-            if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
-                local _ver
-                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
-                if [[ -n "$_ver" ]]; then
-                    sed -i.bak "s/__SCRIPT_VERSION__/${_ver}/g" "$target" && rm -f "${target}.bak"
-                    break
-                fi
-            fi
-        done
-    fi
-}
-
 # 检查远程版本并与本地版本对比
 _fuck_check_remote_version() {
     local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
@@ -1266,7 +1269,10 @@ _fuck_check_remote_version() {
 
     if [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
         echo -e "${C_YELLOW}📦 远程版本: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} | 本地版本: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}"
-        echo -e "${C_CYAN}运行 'curl -sS ${api_url}/zh | bash' 以更新。${C_RESET}"
+        # 移除末尾斜杠，避免重复 /zh
+        local install_url="${api_url%/}"
+        [[ "$install_url" == */zh ]] || install_url="${install_url}/zh"
+        echo -e "${C_CYAN}运行 'curl -sS ${install_url} | bash' 以更新。${C_RESET}"
     else
         echo -e "${C_GREEN}✅ 版本 ${SCRIPT_VERSION} 已是最新。${C_RESET}"
     fi
