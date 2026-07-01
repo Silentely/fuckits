@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.67
+- feat: auto-set FUCK_OPENAI_MODEL=openai during Pollinations OAuth
+
 ## v2.1.66
 - fix: translate remaining Chinese string in main.sh help text
 

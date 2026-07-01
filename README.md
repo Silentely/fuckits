@@ -31,6 +31,14 @@
 
 **本项目完全免费，你无需提供自己的 API Key 即可直接使用。**
 
+> [!TIP]
+> 🆓 **免费获取无限额度**：运行 `fuck --oauth` 通过 Pollinations 授权，即可免费使用 AI 命令生成，无需共享配额限制！
+> 
+> ```bash
+> fuck --oauth        # 一键授权，浏览器中确认即可
+> fuck --oauth status # 查看认证状态
+> ```
+
 ## 预览
 
 ![预览](preview.gif)
@@ -92,7 +100,11 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 > 3.  **运行**: `bash fuckits`
 
 > [!TIP]
-> 共享 Worker 只是体验通道（每天 200 次），装完脚本后立刻执行 `fuck --config`，在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥；该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
+> 共享 Worker 只是体验通道（每天 200 次），你可以通过以下方式获得更好的体验：
+> - **🆓 免费方案（推荐）**：运行 `fuck --oauth` 通过 Pollinations 授权，免费使用 AI 命令生成
+> - **💰 自有 Key**：在 `~/.fuck/config.sh` 中设置 `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE`，CLI 就会直接走你的密钥
+> 
+> 该文件默认 `chmod 600`，只对本地用户可读。维护者可以额外发放 `FUCK_ADMIN_KEY`（服务器端配置 `ADMIN_ACCESS_KEY`）给内部成员，绕过共享额度限制。
 
 安装完成后，请重启你的终端或运行 `source ~/.bashrc` / `source ~/.zshrc` 来让命令生效。
 
@@ -146,6 +158,7 @@ fuck --config
 配置文件位于 `~/.fuck/config.sh`，你可以在其中自定义：
 - 自定义 API 端点（用于自建 Worker）
 - 本地 OpenAI 兼容 API Key（`FUCK_OPENAI_API_KEY`）以及对应的 `FUCK_OPENAI_MODEL` / `FUCK_OPENAI_API_BASE`（默认连接 OpenAI 官方，可指向任意兼容渠道）
+- Pollinations OAuth 配置（`FUCK_POLLINATIONS_CLIENT_ID`）
 - 自动执行模式（跳过确认）
 - 请求超时时间
 - 调试模式

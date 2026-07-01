@@ -33,6 +33,14 @@ When you're too lazy to check the `man` pages or search on Google, just `fuck` i
 
 **This project is completely free to use. You do not need to provide your own API Key.**
 
+> [!TIP]
+> 🆓 **Free unlimited access**: Run `fuck --oauth` to authorize via Pollinations and use AI command generation for free, no shared quota limits!
+> 
+> ```bash
+> fuck --oauth        # One-click authorization, confirm in browser
+> fuck --oauth status # Check auth status
+> ```
+
 ## Preview
 
 ![Preview](preview.gif)
@@ -82,7 +90,11 @@ curl -sS https://fuckits.25500552.xyz | bash
 > Hosting your own instance? Point `FUCK_API_ENDPOINT` in `~/.fuck/config.sh` to your custom domain so the CLI doesn't keep calling the demo server.
 >
 > [!TIP]
-> The shared Worker is just a tasting menu (200 calls/day). Right after installation run `fuck --config`, set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh`, and every request will hit your own key instead of the shared quota. The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
+> The shared Worker is just a tasting menu (200 calls/day). You have two options for a better experience:
+> - **🆓 Free (Recommended)**: Run `fuck --oauth` to authorize via Pollinations for free AI command generation
+> - **💰 Own Key**: Set `FUCK_OPENAI_API_KEY`/`FUCK_OPENAI_MODEL`/`FUCK_OPENAI_API_BASE` in `~/.fuck/config.sh` to use your own key
+> 
+> The installer locks that file to `chmod 600`, so the key never leaves your box. Trusted maintainers can optionally hand out a `FUCK_ADMIN_KEY` (the Worker must define `ADMIN_ACCESS_KEY`) so selected users bypass the shared cap.
 
 After installation, restart your shell or run `source ~/.bashrc` / `source ~/.zshrc` for the command to take effect.
 
