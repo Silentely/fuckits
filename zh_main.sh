@@ -973,24 +973,46 @@ _fuck_show_unsupported_command() {
 }
 
 # 异步检查远程版本（不阻塞主流程）
+# 使用缓存文件避免后台进程通知
 _fuck_check_remote_version_async() {
-    # 使用子进程后台检查，不阻塞
-    (
-        set +x 2>/dev/null
-        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
-        local health_url="${api_url%/}"
-        health_url="${health_url%/zh}"
-        health_url="${health_url}/health"
-        local remote_version
-        remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
+    local cache_file="${INSTALL_DIR:-$HOME/.fuck}/.version_check_cache"
+    local cache_ttl=3600  # 缓存 1 小时
+    local now
+    now=$(date +%s 2>/dev/null) || return 0
 
-        if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
-            echo "" >&2
-            echo -e "${C_YELLOW}📦 新版本可用: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} (当前: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}${C_YELLOW})${C_RESET}" >&2
-            echo -e "${C_CYAN}运行 ${C_BOLD}fuck --update${C_RESET}${C_CYAN} 进行更新。${C_RESET}" >&2
+    # 检查缓存是否有效
+    if [[ -f "$cache_file" ]]; then
+        local cached_time cached_version
+        cached_time=$(head -1 "$cache_file" 2>/dev/null) || true
+        cached_version=$(tail -1 "$cache_file" 2>/dev/null) || true
+        if [[ -n "$cached_time" ]] && [[ $((now - cached_time)) -lt $cache_ttl ]]; then
+            # 缓存有效，直接使用缓存结果
+            if [[ -n "$cached_version" ]] && [[ "$cached_version" != "$SCRIPT_VERSION" ]]; then
+                echo "" >&2
+                echo -e "${C_YELLOW}📦 新版本可用: ${C_BOLD}${cached_version}${C_RESET}${C_YELLOW} (当前: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}${C_YELLOW})${C_RESET}" >&2
+                echo -e "${C_CYAN}运行 ${C_BOLD}fuck --update${C_RESET}${C_CYAN} 进行更新。${C_RESET}" >&2
+            fi
+            return 0
         fi
-    ) &
-    disown 2>/dev/null  # 从 job table 移除，防止 zsh 显示 completion 通知
+    fi
+
+    # 缓存过期，同步检查（有 3 秒超时）
+    local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+    local health_url="${api_url%/}"
+    health_url="${health_url%/zh}"
+    health_url="${health_url}/health"
+    local remote_version
+    remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
+
+    # 写入缓存
+    mkdir -p "$(dirname "$cache_file")" 2>/dev/null
+    printf '%s\n%s\n' "$now" "$remote_version" > "$cache_file" 2>/dev/null
+
+    if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
+        echo "" >&2
+        echo -e "${C_YELLOW}📦 新版本可用: ${C_BOLD}${remote_version}${C_RESET}${C_YELLOW} (当前: ${C_BOLD}${SCRIPT_VERSION}${C_RESET}${C_YELLOW})${C_RESET}" >&2
+        echo -e "${C_CYAN}运行 ${C_BOLD}fuck --update${C_RESET}${C_CYAN} 进行更新。${C_RESET}" >&2
+    fi
 }
 
 # 路由子命令：--help, --config, --version, --update, --uninstall, --history, --favorite
