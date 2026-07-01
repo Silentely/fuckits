@@ -840,7 +840,6 @@ async function handleHealthCheck(env) {
       aiCache: Boolean(env?.AI_CACHE),
     },
     config: {
-      model: env?.OPENAI_API_MODEL || 'gpt-5-nano',
       sharedLimit: resolveSharedLimit(env),
     },
     stats: {
