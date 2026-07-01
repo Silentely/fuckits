@@ -501,6 +501,18 @@ _fuck_should_use_local_api() {
     return 1
 }
 
+# 检查是否配置了 Pollinations API（作为本地 API 的子集）
+_fuck_should_use_pollinations_api() {
+    if [[ -n "${FUCK_OPENAI_API_KEY:-}" ]] && [[ "${FUCK_OPENAI_API_KEY}" == sk_* ]]; then
+        # 检查 API base 是否指向 Pollinations
+        local api_base="${FUCK_OPENAI_API_BASE:-}"
+        if [[ "$api_base" == *"pollinations.ai"* ]]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # --- 以下为共享工具函数（从 main.sh/zh_main.sh 提取） ---
 
 # 安全验证配置文件，防止代码注入
