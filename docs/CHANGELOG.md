@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.43
+- ✅ test: 修复集成测试中 base64 解码长字符串的问题
+
 ## v2.1.42
 - ✨ feat: 新增 --favorite 命令行选项替代 favorite 子命令
 

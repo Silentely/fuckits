@@ -89,10 +89,10 @@ teardown() {
     fi
 
     # Extract base64 string from INSTALLER_SCRIPT
-    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/' | tr -d '\n')
 
-    # Attempt to decode (use printf to avoid echo issues with long strings)
-    run bash -c "printf '%s' '$(echo "$b64_en" | tr -d '\n')' | base64 -d > /dev/null 2>&1"
+    # Attempt to decode (pipe to stdin, works on both macOS and Linux)
+    run bash -c "printf '%s' \"$b64_en\" | base64 -d > /dev/null 2>&1"
     [ "$status" -eq 0 ]
 }
 
