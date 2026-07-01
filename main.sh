@@ -979,7 +979,7 @@ _fuck_show_help() {
         echo -e "  ${C_BOLD}--favorite${C_RESET} (fav)             Manage favorite commands"
         echo -e "  ${C_BOLD}--update${C_RESET}                     Update fuckits to the latest version"
         echo -e "  ${C_BOLD}--uninstall${C_RESET}                  Uninstall fuckits"
-        echo -e "  ${C_BOLD}--oauth${C_RESET} (auth)               Pollinations OAuth 授权"
+        echo -e "  ${C_BOLD}--oauth${C_RESET} (auth)               Pollinations OAuth authorization"
         echo ""
         echo -e "${C_DIM}Options:${C_RESET}"
         echo -e "  ${C_BOLD}--json${C_RESET}                     Output in JSON format"
