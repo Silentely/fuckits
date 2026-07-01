@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.46
+- ✨ feat: 更新成功后提示用户重载 shell
+
 ## v2.1.45
 - ✅ test: 删除无效的 Base64 编码验证测试
 
