@@ -1,8 +1,41 @@
 #!/bin/sh
 #
 # pre-commit hook
-# 版本管理已迁移到 deploy.sh（方案 B：版本号在部署时递增，非提交时）
-# 此 hook 保留用于未来扩展（如 lint、格式检查）
+# 本地提交时自动递增版本号 + 生成 CHANGELOG
+# 版本变更会自动加入暂存区，随 commit 一起提交
 #
+
+# 版本递增（patch bump）
+if [ -f "VERSION" ]; then
+    NEW_VERSION=$(node -e "
+        const fs = require('fs');
+        const v = fs.readFileSync('VERSION', 'utf-8').trim();
+        const parts = v.split('.');
+        parts[2] = parseInt(parts[2] || 0) + 1;
+        console.log(parts.join('.'));
+    " 2>/dev/null)
+
+    if [ -n "$NEW_VERSION" ]; then
+        echo "$NEW_VERSION" > VERSION
+
+        # 同步 package.json
+        node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+        " 2>/dev/null
+
+        echo "📦 Version bumped: $NEW_VERSION"
+    fi
+fi
+
+# 生成 CHANGELOG
+if [ -f "scripts/gen-changelog.sh" ]; then
+    bash scripts/gen-changelog.sh 2>/dev/null
+fi
+
+# 将版本变更加入暂存区
+git add VERSION package.json docs/CHANGELOG.md 2>/dev/null
 
 exit 0

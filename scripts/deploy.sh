@@ -24,34 +24,8 @@ if ! npx wrangler --version > /dev/null 2>&1; then
     npm install wrangler --save-dev
 fi
 
-# 版本递增（patch bump）— 部署时递增而非提交时
-# 避免每次 commit 都产生版本号 + worker.js 变更
-if [ -f "VERSION" ]; then
-    NEW_VERSION=$(node -e "
-        const fs = require('fs');
-        const v = fs.readFileSync('VERSION', 'utf-8').trim();
-        const parts = v.split('.');
-        parts[2] = parseInt(parts[2] || 0) + 1;
-        console.log(parts.join('.'));
-    " 2>/dev/null)
-
-    if [ -n "$NEW_VERSION" ]; then
-        echo "$NEW_VERSION" > VERSION
-
-        # 同步 package.json
-        node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-            pkg.version = '$NEW_VERSION';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-        " 2>/dev/null
-
-        echo -e "${C_CYAN}📦 Version bumped: ${NEW_VERSION}${C_RESET}"
-    fi
-fi
-
-echo -e "${C_CYAN}📝 Generating changelog...${C_RESET}"
-bash scripts/gen-changelog.sh
+# 版本递增和 CHANGELOG 生成已由 pre-commit hook 自动处理
+# deploy.sh 只负责构建和部署
 
 echo -e "${C_CYAN}🔧 Running build script...${C_RESET}"
 bash scripts/build.sh
