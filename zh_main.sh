@@ -534,6 +534,7 @@ _fuck_pollinations_save_credentials() {
         tmp_config=$(mktemp) || return 1
         grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
         grep -v "^export FUCK_OPENAI_API_BASE=" | \
+        grep -v "^export FUCK_OPENAI_MODEL=" | \
         grep -v "^# Pollinations OAuth" > "$tmp_config" 2>/dev/null || true
         mv "$tmp_config" "$CONFIG_FILE"
         chmod 600 "$CONFIG_FILE"
@@ -544,11 +545,13 @@ _fuck_pollinations_save_credentials() {
         printf '\n# Pollinations OAuth (auto-configured by fuck --oauth)\n'
         printf 'export FUCK_OPENAI_API_KEY="%s"\n' "$access_token"
         printf 'export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"\n'
+        printf 'export FUCK_OPENAI_MODEL="openai"\n'
     } >> "$CONFIG_FILE"
 
     # 重新加载配置
     export FUCK_OPENAI_API_KEY="$access_token"
     export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
+    export FUCK_OPENAI_MODEL="openai"
 
     echo -e "${C_GREEN}✅ 凭据已保存到 $CONFIG_FILE${C_RESET}"
     echo -e "${C_DIM}使用 'fuck --oauth status' 查看认证状态${C_RESET}"
@@ -618,6 +621,7 @@ _fuck_pollinations_logout() {
     tmp_config=$(mktemp) || return 1
     grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
     grep -v "^export FUCK_OPENAI_API_BASE=" | \
+    grep -v "^export FUCK_OPENAI_MODEL=" | \
     grep -v "^# Pollinations OAuth" > "$tmp_config" 2>/dev/null || true
     mv "$tmp_config" "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
@@ -625,6 +629,7 @@ _fuck_pollinations_logout() {
     # 清除环境变量
     unset FUCK_OPENAI_API_KEY
     unset FUCK_OPENAI_API_BASE
+    unset FUCK_OPENAI_MODEL
 
     echo -e "${C_GREEN}✅ 已清除 Pollinations OAuth 凭据${C_RESET}"
 }

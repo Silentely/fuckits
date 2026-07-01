@@ -89,6 +89,7 @@ EOF
     [ -f "$CONFIG_FILE" ]
     grep -q 'FUCK_OPENAI_API_KEY="sk_test_token_123"' "$CONFIG_FILE"
     grep -q 'FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"' "$CONFIG_FILE"
+    grep -q 'FUCK_OPENAI_MODEL="openai"' "$CONFIG_FILE"
 }
 
 @test "OAuth: save_credentials 设置环境变量" {
@@ -96,6 +97,7 @@ EOF
     _fuck_pollinations_save_credentials "sk_test_token_456"
     [ "$FUCK_OPENAI_API_KEY" = "sk_test_token_456" ]
     [ "$FUCK_OPENAI_API_BASE" = "https://gen.pollinations.ai/v1" ]
+    [ "$FUCK_OPENAI_MODEL" = "openai" ]
 }
 
 @test "OAuth: save_credentials 覆盖旧配置" {
