@@ -850,6 +850,8 @@ _fuck_update_script() {
         if [[ -n "$new_ver" ]] && [[ "$new_ver" = "$remote_version" ]]; then
             if mv -f "$tmp_update" "$MAIN_SH"; then
                 echo -e "${C_GREEN}✅ Updated to version ${new_ver}.${C_RESET}"
+                echo -e "${C_YELLOW}⚠️  Please reload your shell to use the new version:${C_RESET}"
+                echo -e "${C_CYAN}  source ~/.zshrc${C_RESET}  ${C_DIM}(or ~/.bashrc)${C_RESET}"
             else
                 rm -f "$tmp_update"
                 echo -e "${C_RED}❌ Failed to replace script file. The update was not applied.${C_RESET}" >&2
