@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.42
+- ✨ feat: 新增 --favorite 命令行选项替代 favorite 子命令
+
 ## v2.1.41
 - ♻️ refactor: 统一子命令格式，使用 `--` 前缀
 
