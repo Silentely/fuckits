@@ -1373,6 +1373,7 @@ _fuck_show_unsupported_command() {
 _fuck_check_remote_version_async() {
     # 使用子进程后台检查，不阻塞
     (
+        set +x  # 关闭调试模式，防止命令泄露到终端
         local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
         local health_url="${api_url%/}/health"
         local remote_version

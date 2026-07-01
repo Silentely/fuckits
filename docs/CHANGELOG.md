@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.48
+- 🐛 fix: 修复安装更新提示中 URL 拼接重复斜杠问题并优化函数定义顺序
+
 ## v2.1.47
 - ♻️ refactor: 优化 worker.js 中的代码结构
 

@@ -189,9 +189,24 @@ if changelog_path.exists():
     # 用 \\n 拼接，确保注入后是 JavaScript 转义换行而非字面换行
     changelog_html = '\\n'.join(li_items)
 
-    text = text.replace('<!--CHANGELOG_ZH-->', changelog_html)
-    text = text.replace('<!--CHANGELOG_EN-->', changelog_html)
-    print(f"  Changelog: injected {len(entries)} entries")
+    # 先尝试替换占位符
+    if '<!--CHANGELOG_ZH-->' in text:
+        text = text.replace('<!--CHANGELOG_ZH-->', changelog_html)
+        text = text.replace('<!--CHANGELOG_EN-->', changelog_html)
+        print(f"  Changelog: injected {len(entries)} entries (placeholder)")
+    else:
+        # 占位符不存在时，用正则匹配已注入的更新日志行并替换
+        # 匹配以 '<li><strong>v 开头、以 </li>', 结尾的整行（含多条 \\n 分隔的条目）
+        pattern = r"    '<li><strong>v[\d.]+</strong>.*?</li>',"
+        match = _re.search(pattern, text)
+        if match:
+            old_line = match.group(0)
+            # 构造新行：保持同样的缩进和引号格式
+            new_line = f"    '{changelog_html}',"
+            text = text.replace(old_line, new_line)
+            print(f"  Changelog: injected {len(entries)} entries (regex replace)")
+        else:
+            print("  Changelog: no placeholder or existing block found, skipped", file=sys.stderr)
 else:
     print("  Changelog: docs/CHANGELOG.md not found, skipped", file=sys.stderr)
 
