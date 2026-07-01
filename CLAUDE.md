@@ -116,6 +116,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-07-01 | Pollinations OAuth 集成 | 新增 `fuck --oauth` 命令，支持 Device Flow 授权；用户可通过 Pollinations 账号授权后使用自己的 Pollen 余额；支持 status/logout 子命令；新增 14 个 bats 测试；测试总数 285 个（151 JS + 134 Bash） |
 | 2026-05-06 | 版本管理系统 + 安装优化 | 新增 VERSION 文件作为单一版本来源；`fuck version` 子命令；安装前版本对比（本地 vs 远程）；更新时先删旧脚本再重装（保留配置）；health 端点增加 buildTime 字段；修复 stdout 输出污染 bug；部署输出敏感信息过滤；pre-commit hook 自动递增版本号；测试总数 228 个（119 JS + 109 Bash） |
 | 2026-05-03 | 文档同步与质量修正 | 更新 TEST_ARCHITECTURE.md 目录结构与实际文件一致；修正 tests/CLAUDE.md 中 R2 遗留代码说明；修正 CONTRIBUTING.md 测试命令写法；确认共享配额默认值（代码回退=10，生产环境=200） |
 | 2026-05-05 | 功能修复 + 测试补全 | 修复 fuzzing.bats 依赖路径 + 并发测试 bug；新增 security-utils.test.js（26 tests）+ history-extended.bats（18 tests）；worker.js 导出安全关键函数；测试总数 215 个（109 JS + 106 Bash） |
