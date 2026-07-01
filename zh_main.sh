@@ -682,6 +682,7 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_SECURITY_MODE" "安全引擎模式：strict|balanced|off" 'balanced'
     _fuck_append_config_hint "FUCK_SECURITY_WHITELIST" "以逗号或换行分隔的信任命令片段" ''
     _fuck_append_config_hint "FUCK_SECURITY_CHALLENGE_TEXT" "高危命令需要输入的确认短语" '我确认承担风险'
+    _fuck_append_config_hint "FUCK_POLLINATIONS_CLIENT_ID" "可选：Pollinations OAuth 应用密钥（pk_...）" ''
 }
 
 _fuck_ensure_config_exists() {
@@ -708,6 +709,9 @@ _fuck_ensure_config_exists() {
 # 覆盖默认模型或 API 基址
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# Pollinations OAuth 授权（使用 'fuck --oauth' 授权）
+# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
 
 # 额外别名（不会影响默认 fuck）
 # export FUCK_ALIAS="运行"
@@ -1411,6 +1415,9 @@ _install_script() {
 # 覆盖默认模型或 API 基址
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# Pollinations OAuth 授权（使用 'fuck --oauth' 授权）
+# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
 
 # 额外别名（不会影响默认 fuck）
 # export FUCK_ALIAS="运行"

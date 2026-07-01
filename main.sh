@@ -884,6 +884,7 @@ _fuck_seed_config_placeholders() {
     _fuck_append_config_hint "FUCK_SECURITY_MODE" "Security engine mode: strict|balanced|off" 'balanced'
     _fuck_append_config_hint "FUCK_SECURITY_WHITELIST" "Comma/newline separated command patterns to bypass security checks" ''
     _fuck_append_config_hint "FUCK_SECURITY_CHALLENGE_TEXT" "Phrase required for high-risk command confirmation" 'I accept the risk'
+    _fuck_append_config_hint "FUCK_POLLINATIONS_CLIENT_ID" "Optional: Pollinations App Key for OAuth (pk_...)" ''
 }
 
 _fuck_ensure_config_exists() {
@@ -910,6 +911,9 @@ _fuck_ensure_config_exists() {
 # Optional: override model/base when using your own key
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# Pollinations OAuth (use 'fuck --oauth' to authorize)
+# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
 
 # Add an extra alias besides the default 'fuck'
 # export FUCK_ALIAS="pls"
@@ -2097,6 +2101,9 @@ _install_script() {
 # Optional: override model/base when using your own key
 # export FUCK_OPENAI_MODEL="gpt-4o-mini"
 # export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
+
+# Pollinations OAuth (use 'fuck --oauth' to authorize)
+# export FUCK_POLLINATIONS_CLIENT_ID="pk-..."
 
 # Add an extra alias besides the default 'fuck'
 # export FUCK_ALIAS="pls"
