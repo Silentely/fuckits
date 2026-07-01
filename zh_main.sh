@@ -975,17 +975,14 @@ _fuck_show_unsupported_command() {
 # 异步检查远程版本（不阻塞主流程）
 _fuck_check_remote_version_async() {
     # 使用子进程后台检查，不阻塞
-    # 通过 fd 9 保存/恢复 stderr，抑制 set -x 追踪但保留版本提示输出
     (
-        exec 9>&2 2>/dev/null
-        set +x
+        set +x 2>/dev/null
         local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
         local health_url="${api_url%/}"
         health_url="${health_url%/zh}"
         health_url="${health_url}/health"
         local remote_version
         remote_version=$(curl -sS --max-time 3 "$health_url" 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | sed 's/"version":"//;s/"//' | tr -cd '0-9a-zA-Z._-') || true
-        exec 2>&9 9>&-
 
         if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$SCRIPT_VERSION" ]]; then
             echo "" >&2
@@ -993,8 +990,7 @@ _fuck_check_remote_version_async() {
             echo -e "${C_CYAN}运行 ${C_BOLD}fuck --update${C_RESET}${C_CYAN} 进行更新。${C_RESET}" >&2
         fi
     ) &
-
-    # 不等待子进程，立即返回
+    disown 2>/dev/null  # 从 job table 移除，防止 zsh 显示 completion 通知
 }
 
 # 路由子命令：--help, --config, --version, --update, --uninstall, --history, --favorite
