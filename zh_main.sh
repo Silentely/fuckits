@@ -794,6 +794,32 @@ _fuck_get_script_version() {
     grep -o "SCRIPT_VERSION='[^']*'" "$file" 2>/dev/null | head -1 | sed "s/SCRIPT_VERSION='//;s/'//" | tr -cd '0-9a-zA-Z._-'
 }
 
+# 写入核心逻辑到文件（安装脚本内部版本，供 _fuck_update_script 使用）
+_fuck_write_core() {
+    local target="$1"
+    if [[ -n "${CORE_LOGIC:-}" ]]; then
+        printf '%s\n' "$CORE_LOGIC" > "$target"
+    else
+        local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
+        local script_url="${api_url%/}"
+        script_url="${script_url%/zh}"
+        curl -sS --max-time 10 "$script_url/zh" > "$target" 2>/dev/null
+    fi
+    if grep -q '__SCRIPT_VERSION__' "$target" 2>/dev/null; then
+        local _pkg
+        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
+            if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
+                local _ver
+                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
+                if [[ -n "$_ver" ]]; then
+                    sed -i.bak "s/__SCRIPT_VERSION__/${_ver}/g" "$target" && rm -f "${target}.bak"
+                    break
+                fi
+            fi
+        done
+    fi
+}
+
 # 自更新：检查远程版本并更新本地安装
 _fuck_update_script() {
     if [[ ! -f "$MAIN_SH" ]]; then

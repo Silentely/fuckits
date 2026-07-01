@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.49
+- 🐛 fix: 修复异步版本检查 health 接口路径错误并增强构建流程健壮性
+
 ## v2.1.48
 - 🐛 fix: 修复安装更新提示中 URL 拼接重复斜杠问题并优化函数定义顺序
 
