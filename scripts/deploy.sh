@@ -50,6 +50,9 @@ if [ -f "VERSION" ]; then
     fi
 fi
 
+echo -e "${C_CYAN}📝 Generating changelog...${C_RESET}"
+bash scripts/gen-changelog.sh
+
 echo -e "${C_CYAN}🔧 Running build script...${C_RESET}"
 bash scripts/build.sh
 

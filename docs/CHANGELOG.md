@@ -6,28 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## v2.1.35
-- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
-
-## v2.1.34
-- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
+- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理 (#7)
 
 ## v2.1.33
-- ✨ feat: Agent 友好性改造 + 社区规范 + 技术债务清理
+- 📦 chore: 恢复 .husky 目录到 git 跟踪
 
 ## v2.1.32
 - 📦 chore: 恢复 post-commit hook 到 git 跟踪
 
 ## v2.1.31
-- 📦 chore: 恢复 post-commit hook 到 git 跟踪
+- 🐛 fix: post-commit hook 用 replaceAll 替换所有占位符 + 清理残留
 
 ## v2.1.30
-- 版本更新
+- 🐛 fix: 恢复 worker.js 更新日志占位符确保构建时动态注入
 
 ## v2.1.29
 - 📦 chore: 版本号更新至 2.1.28
-
-## v2.1.28
-- 版本更新
 
 ## v2.1.27
 - 📝 docs: 修复 CHANGELOG.md v2.1.25 条目换行显示问题
@@ -36,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✨ feat: 版本徽章移至标题内联 + health buildTime 改为动态生成
 
 ## v2.1.25
-- 🐛 fix: 更新日志注入使用换行转义防止 JS 字符串中断
+- 🐛 fix: 更新日志注入使用 \n 转义换行防止 JS 字符串中断
 
 ## v2.1.24
 - 🐛 fix: 改用 post-commit + amend 修复 CHANGELOG 占位符替换
@@ -62,264 +56,201 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.1.17
 - ✨ feat: CHANGELOG.md 单一来源 + CI 修复 + 更新日志自动同步
 
-## [Unreleased]
-
-- 修正多处文档中的过时数据和不一致信息
-
-## [2.1.13] - 2026-05-19
-
-### Fixed
-
-- 修复 `BASH_SOURCE` 路径解析导致 `runtime-common.sh` 污染项目目录的问题
-
-## [2.1.3] - 2026-05-10
-
-### Added
-
-- **SEO 优化**：添加 Canonical/OG/Twitter/JSON-LD 元标签 + 社交预览图 + 缓存头
-- **GEO 内容优化**：着陆页升级为完整项目主页
-- **Agent 可发现性端点**：实现 sitemap/robots.txt/.well-known/WebMCP 端点
-- README 添加社交预览图展示
-
-### Fixed
-
-- 修复 SonarCloud 代码质量问题
-
-## [2.1.2] - 2026-05-06
-
-### Added
-
-- **版本管理系统**：新增 VERSION 文件作为单一版本来源；`fuck version` 子命令；安装前版本对比（本地 vs 远程）；更新时先删旧脚本再重装（保留配置）
-- **健康检查增强**：health 端点增加 `buildTime` 字段
-- **安全加固**：部署输出敏感信息过滤
-
-### Fixed
-
-- 修复 stdout 输出污染 bug
-- 修复版本号变量作用域和 readonly 重赋值问题
-- 修复构建时版本号只替换第一个占位符的 bug
-
-### Changed
-
-- pre-commit hook 自动递增版本号
-- 注入脚本版本占位符并支持版本查看与远程更新提示
-- 安装时运行时注入版本号到已安装脚本
-
-## [2.1.1] - 2026-05-05
-
-### Added
-
-- **安全工具函数测试**：新增 `security-utils.test.js`（26 个测试），覆盖 `sanitizeCommand`/`timingSafeEqual`/`createErrorResponse`/`generateRequestId`
-- **历史扩展测试**：新增 `history-extended.bats`（18 个测试），覆盖 `history_replay` + `favorite_run` + `favorite_delete`
-- `worker.js` 导出安全关键函数以支持测试
-
-### Fixed
-
-- 修复 fuzzing.bats 依赖路径和并发测试 bug
-
-### Changed
-
-- 提取共享函数到 `runtime-common.sh` 减少主脚本重复
-
-## [2.1.0] - 2026-01-25
-
-### Added
-
-#### Documentation
-- **API Documentation** (`docs/API.md`): Comprehensive API reference with examples
-- **Troubleshooting Guide** (`docs/TROUBLESHOOTING.md`): Common issues and solutions
-- **Monitoring Guide** (`docs/MONITORING.md`): Observability and incident response
-- **Contributing Guide** (`CONTRIBUTING.md`): Development workflow and coding standards
-
-#### Features
-- **Command History & Favorites** (Task 1.4):
-  - New `fuck history` command to view recent command history (default: last 20 entries)
-  - `fuck history search <keyword>` to search through command history
-  - `fuck favorite add <name> <prompt>` to save frequently used commands
-  - `fuck favorite list` to view all saved favorites
-  - `fuck favorite run <index>` to execute a favorite command
-  - `fuck favorite delete <index>` to remove a favorite
-  - Short alias `fuck fav` for all favorite operations
-  - History stored in `~/.fuck/history.json` with 1000 entry limit
-  - Automatic timestamp, exit code, and duration tracking
-  - Requires `jq` tool for JSON processing
-
-- **Audit Logging**: New `FUCK_AUDIT_LOG` configuration option to log all command executions
-  - Logs include timestamp, user, event type, exit code, and command
-  - Log file secured with 600 permissions
-  - Configurable log file path via `FUCK_AUDIT_LOG_FILE`
-  - Events tracked: EXEC (execution), BLOCK (security block), ABORT (user cancel)
-
-- **Security Enhancements**:
-  - Added `FUCK_SECURITY_MODE` configuration (strict/balanced/off)
-  - Added `FUCK_SECURITY_WHITELIST` for trusted command patterns
-  - Integrated audit logging for blocked commands
-
-#### Testing
-- **Command History Tests** (`tests/unit/bash/history.bats`):
-  - 18 comprehensive test cases for history and favorites functionality
-  - History file initialization and structure validation
-  - jq dependency checking and error handling
-  - History logging with 1000 entry limit
-  - History viewing and searching
-  - Favorite command management (add/list/run/delete)
-  - Command routing integration tests
-  - All tests passing with 100% coverage
-
-- **Performance Tests** (`tests/performance/quota-benchmark.test.js`):
-  - Benchmark quota system performance
-  - Test in-memory vs KV-based quota handling
-  - Concurrent request testing
-  - Race condition demonstration
-
-- **Security Fuzzing Tests** (`tests/security/fuzzing.bats`):
-  - 100+ fuzzing test cases for security engine
-  - Unicode character handling
-  - Special character injection prevention
-  - Long command buffer overflow prevention
-  - Nested quote and glob pattern testing
-
-- **End-to-End Deployment Tests** (`tests/e2e/real-deployment.test.sh`):
-  - Live deployment health checks
-  - CORS verification
-  - Locale switching validation
-  - Performance benchmarking
-
-#### DevOps
-- **Automated Rollback** (`.github/workflows/rollback.yml`):
-  - GitHub Actions workflow for emergency rollbacks
-  - Automatic health check after rollback
-  - Incident issue creation
-  - Failure notifications
-
-- **Environment Isolation** (`wrangler.toml`):
-  - Staging environment configuration
-  - Production environment configuration
-  - Environment-specific variable overrides
-
-#### Scripts
-- New npm scripts:
-  - `npm run deploy:production` - Deploy to production environment
-  - `npm run deploy:staging` - Deploy to staging environment
-  - `npm run test:fuzzing` - Run security fuzzing tests
-  - `npm run test:performance` - Run performance benchmarks
-  - `npm run test:e2e` - Run end-to-end deployment tests
-  - `npm run audit` - Run security audit
-  - `npm run audit:fix` - Auto-fix security vulnerabilities
-  - `npm run security:scan` - Comprehensive security scan
-
-### Changed
-
-- **Version**: Bumped to 2.1.0
-- **Configuration Template**: Updated with new security and audit options in both `main.sh` and `zh_main.sh`
-- **Config Display**: Added new options to `fuck config` output
-
-### Fixed
-
-- N/A (No bug fixes in this release, pure feature addition)
-
-### Security
-
-- Enhanced configuration validation to prevent code injection
-- Audit logging provides forensic trail for security incidents
-- Improved error handling in security engine
-
-## [2.0.0] - 2025-12-01
-
-### Added
-
-- Initial public release
-- AI-powered natural language to shell command conversion
-- Dual language support (English and Chinese)
-- Security engine with 21 detection rules
-- Shared demo quota system
-- KV-based persistent quota storage
-- Admin bypass mechanism
-- System information caching
-- Configuration management
-- Comprehensive test suite (145 tests)
-
-### Features
-
-- One-line installation via curl
-- Temporary mode (no installation required)
-- Interactive command confirmation
-- Dangerous command detection and blocking
-- Custom API endpoint support
-- Local OpenAI API key integration
-- Cloudflare Workers deployment
-- GitHub Actions CI/CD
-
----
-
-## Release Notes
-
-### v2.1.0 Highlights
-
-This release focuses on **production readiness** and **operational excellence**:
-
-1. **📚 Documentation**: Complete API docs, troubleshooting guide, and monitoring playbook
-2. **🔍 Audit Logging**: Track all command executions for security and compliance
-3. **🛡️ Security**: Enhanced fuzzing tests and whitelist mechanism
-4. **🚀 DevOps**: Automated rollback, environment isolation, and comprehensive monitoring
-5. **🧪 Testing**: 171 tests covering functionality, security, performance, and deployment (83 JS + 88 Bash)
-
-### Upgrade Guide (v2.0.0 → v2.1.0)
-
-**For Users:**
-```bash
-# Simply reinstall (your config will be preserved)
-curl -sS https://fuckits.25500552.xyz | bash
-
-# Or manually update main.sh
-cd ~/.fuck
-curl -sS https://fuckits.25500552.xyz > main.sh
-chmod +x main.sh
-```
-
-**New Configuration Options:**
-```bash
-# Edit ~/.fuck/config.sh and add:
-
-# Enable audit logging
-export FUCK_AUDIT_LOG=true
-
-# Customize security mode
-export FUCK_SECURITY_MODE="balanced"
-
-# Whitelist trusted commands
-export FUCK_SECURITY_WHITELIST="docker rm -f"
-```
-
-**For Developers:**
-```bash
-# Update dependencies
-npm install
-
-# Rebuild worker with new features
-npm run build
-
-# Run all tests including new ones
-npm test
-npm run test:performance
-npm run test:fuzzing
-npm run test:e2e https://your-worker.workers.dev
-```
-
-### Breaking Changes
-
-None. This is a backward-compatible feature release.
-
-### Deprecations
-
-None.
-
----
-
-## Links
-
-- [Repository](https://github.com/Silentely/fuckits)
-- [API Documentation](./docs/API.md)
-- [Troubleshooting](./docs/TROUBLESHOOTING.md)
-- [Contributing](./CONTRIBUTING.md)
-- [Issues](https://github.com/Silentely/fuckits/issues)
+## v2.1.16
+- 🐛 fix: 修复 CI 安全测试失败 + 网页移除贡献指南
+
+## v2.1.15
+- ✨ feat: 版本号统一管理 + 网页版本徽章 + 更新日志补全
+
+## v2.1.14
+- 📝 docs: 全量文档同步 — 修正版本号/代码行数/安全规则数量/函数列表
+
+## v2.1.13
+- 🐛 fix(shell): 修复 BASH_SOURCE 路径解析导致 runtime-common.sh 污染项目目录
+
+## v2.1.12
+- fix: 修复 SonarCloud 代码质量问题
+
+## v2.1.11
+- 📝 docs: README 添加社交预览图展示
+
+## v2.1.10
+- ✨ feat: SEO 优化 — 添加 Canonical/OG/Twitter/JSON-LD 元标签 + 社交预览图 + 缓存头
+
+## v2.1.9
+- ✨ feat: GEO 内容优化 — 着陆页升级为完整项目主页
+
+## v2.1.8
+- ✨ feat: 实现 Agent 可发现性端点 — sitemap/robots.txt/.well-known/WebMCP
+
+## v2.1.7
+- ⚡ perf: 优化配额 KV 竞态处理 — 指数退避重试 + 写入验证
+
+## v2.1.6
+- ⚡ perf: 多维度性能优化 — OpenAI 超时/缓存键规范化/健康检查缓存
+
+## v2.1.5
+- 📝 docs: 更新部署文档和测试文档 — health 端点字段说明、测试数量同步
+
+## v2.1.4
+- 📝 docs: 更新测试文档 + 修复 Husky pre-commit hook
+
+## v2.1.3
+- 📦 chore: bump version to 2.1.3
+- 📝 docs: 更新 CLAUDE.md — 版本号、测试数量、变更记录同步
+- 🐛 fix: 修复版本号变量作用域和 readonly 重赋值问题
+
+## v2.1.2
+- ✨ feat: 单一版本来源 — VERSION 文件统一管理版本号
+- ✨ feat: health 端点增加构建时间字段 buildTime
+- 📦 chore: rebuild worker with version fixes
+- ✨ feat: 优化安装/更新流程 — 版本对比 + 清洁更新
+- 🐛 fix: 修复构建时版本号只替换第一个占位符的 bug
+- ✨ feat: 安装时运行时注入版本号到已安装脚本
+- ✨ feat: 注入脚本版本占位符并支持版本查看与远程更新提示
+- 🔒 security: 过滤 wrangler deploy 输出中的敏感信息
+- 🛠️ chore: 删除 Codex Intelligence Hub 工作流并将 AI 输出重定向到标准错误
+- refactor: 提取共享函数到 runtime-common.sh 减少主脚本重复
+- ✨ feat: 新增安全工具函数测试和历史扩展功能测试，修复 fuzzing 测试问题
+- 📝 docs: 更新文档内容，修正测试架构说明并优化开发指南
+- 📝 docs: 更新文档内容以修正过时数据和完善架构说明
+- 📝 docs: 更新项目文档和版本信息
+- chore: 优化文件操作命令并更新忽略配置 - 在所有 mv 操作中添加了 command 前缀和 -f -- 参数以确保安全性和一致性 - 在 .gitignore 中添加 .omx 文件忽略规则 - 改进了缓存和历史记录文件的处理方式，增强系统稳定性
+- fix: 改进系统信息收集、JSON 转义和命令执行安全性
+- test: 修复 CI 环境中的测试失败
+- fix: 在 CI 工作流中添加 bats-core 安装步骤
+- fix: 修复 CI 工作流中的 BATS 测试警告
+- revert: 完全回退 R2 对象存储迁移，恢复 base64 嵌入式架构
+- feat: 将安装脚本迁移至 Cloudflare R2 存储
+- feat: 实现 AI 响应缓存系统并完成性能优化
+- feat: 引入全面的项目改进计划和技术债务管理
+- feat: 扩展测试套件并完善文档
+- docs: 澄清统计数据排除管理员绕过请求
+- docs: 更新部署和自检文档
+- feat: 增强 API 健壮性，改进健康检查和错误处理
+- fix(build): rebuild embedded installer scripts
+- fix: 改进审计日志健壮性，优化性能测试，并移除任务报告
+- docs(review): compile comprehensive project review and improvement plan (#5)
+- feat(docs): 添加 Pollinations 构建徽章到 README 文件
+- Update GitHub Actions workflow for codex_hub
+- Create codex_hub.yml
+- test: 大幅改进 Worker 和 Shell 脚本测试覆盖率
+- test: 增加全面的自动化测试套件
+- fix: 修复代码审查发现的关键问题并统一注释语言
+- fix: 增强正则表达式定义以提升 Zsh 兼容性和代码可维护性
+- feat: 增强配置文件加载安全性并扩展命令注入检测规则
+- fix: 移除终端颜色代码以解决输出格式问题
+- feat: 优化AI提示词以生成更直接可执行的命令
+- chore: 从仓库中彻底移除 .claude 和备份文件
+- chore: 从仓库中移除 .bats 目录并更新 .gitignore
+- fix(ci): 修复工作流清理步骤权限问题
+- docs: 补充完整项目文档和测试架构说明
+- feat: 添加 CORS 支持并改进语言检测
+- refactor: 创建 scripts/common.sh 消除代码重复
+- test: 添加完整测试套件（Vitest + bats-core）
+- feat: 改进 spinner 动画，支持前缀标签显示
+- refactor: 更新终端加载动画并改进配置文件文档
+- fix: 修复终端动画和更新进度显示
+- perf: 简化系统信息收集并提高健壮性
+- refactor: 使安全规则数组可被环境变量覆盖
+- fix: 增强 JSON 转义功能并修复只读变量错误
+- feat: 新增系统信息缓存和增强型安全检测引擎
+- Fix: Optimize display of thinking message and spinner in zh_main.sh
+- docs: 将共享演示模式的每日调用限额从10次提升至200次
+- fix: 部署输出中添加API密钥过滤并改进错误处理
+- fix: 修复部署脚本中环境变量缺失时的路径回退逻辑
+- ci: 在部署工作流中增加 OpenAI API 密钥掩码功能
+- fix: 改进 GitHub Actions 工作流中的敏感信息屏蔽逻辑
+- ci: 在部署工作流中添加敏感值屏蔽
+- ci: 修复敏感值掩码脚本的缩进格式
+- ci: 改进Wrangler配置敏感信息屏蔽脚本的健壮性
+- ci: 添加 Cloudflare 环境变量到 GitHub Actions 输出掩码
+- ci: 增强 GitHub Actions 中敏感值的掩码功能
+- ci: 改进 GitHub Actions 部署工作流的可靠性和安全性
+- style: 修复wrangler配置掩码脚本的缩进格式
+- ci: 改进安全变量掩蔽与工作流清理逻辑
+- refactor: 以 AWK 替换 Python 脚本来解析和遮蔽敏感配置变量
+- ci: 修复Python脚本的缩进以提高可读性
+- ci: 增强部署工作流并更新相关文档
+- ci: 支持从 Secrets 回退到 Variables 的 wrangler 配置下载
+- ci: 添加 GitHub Actions 自动部署工作流到 Cloudflare Workers
+- refactor: 移除复杂的输出边框，改为更简洁的分隔线
+- feat: 增强命令执行界面的用户体验和安全性
+- feat: 将默认 AI 模型从 gpt-4-turbo 升级为 gpt-5-nano
+- docs: 调整README文档结构，删除临时文件
+- remove: 移除后台执行功能及相关配置选项
+- feat: 添加后台执行命令功能
+- feat: 支持自定义 KV 绑定名，增强配额存储配置灵活性
+- feat: 添加 KV 持久化配额计数以跨 PoP 严格限制调用次数
+- refactor: 重构代码架构和优化安装流程
+- feat: 添加配置文件占位符提示和详细配置说明
+- Delete SUMMARY.md
+- Fix formatting and update project maintenance info
+- Update README by removing badges and changing links
+- feat: 新增管理员免额度密钥机制
+- feat: 添加本地API密钥优先模式，支持绕过共享Worker配额限制
+- feat: 更新项目名称和仓库URL，改进错误处理和用户体验
+- fix: 修复默认 API 端点配置逻辑，避免环境变量覆盖问题
+- fix: 修复shell脚本逻辑错误和文件格式问题
+- refactor: 改进部署脚本配置管理方式
+- chore: 更新项目配置和文档中的项目名称
+- Delete .serena directory
+- docs: 修复 Cloudflare Custom Domain 配置说明
+- Update CHANGELOG.md
+- feat: 迁移到统一域名并增强用户体验
+- fix
+- docs: 新增项目文档和开发环境配置
+- refactor-project-add-one-click-deploy-and-improve-features (#1)
+- Merge pull request #6 from faithleysath/copilot/improve-inclusivity-and-chinese-support
+- Polish remaining informal language to be fully civilized
+- Remove confirmation loop from uninstall to keep only echo statement changes
+- Make zh_main.sh more civilized by replacing offensive language with polite alternatives
+- Initial plan
+- update star history
+- Revise project details and customization options in README
+- Revise README for project restructuring details
+- Revise README with project refactoring details
+- Update README with project refactoring information
+- 降低攻击性
+- update doc
+- update preview
+- UPDATE DOC
+- update doc
+- fix bugs
+- update worker
+- update chart
+- update chart
+- update doc
+- update doc
+- update doc
+- update doc
+- update echo
+- fix bugs
+- fix encode
+- update
+- clean
+- Revert "更新CI"
+- 更新CI
+- 增加攻击性
+- 优化翻译
+- 增加攻击性
+- deepseek祖安版本
+- update echo
+- fix
+- v1.0
+- wip
+- wip
+- fix
+- clean output
+- update output
+- fix
+- update domain
+- fix bugs
+- update CI
+- fix
+- cloudflare worker
+- fix bugs
+- colorful
+- fix bugs
+- fuck!
+- first commit
