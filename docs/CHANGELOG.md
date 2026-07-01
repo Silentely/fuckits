@@ -5,6 +5,9 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.62
+- feat: embed default Pollinations App Key for OAuth attribution
+
 ## v2.1.61
 - docs: update changelog for Pollinations OAuth
 

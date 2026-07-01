@@ -411,7 +411,6 @@ _fuck_request_worker_model() {
 # 实现 RFC 8628 Device Authorization Grant
 _POLLINATIONS_CLIENT_ID="${FUCK_POLLINATIONS_CLIENT_ID:-pk_1lgmLD1Fsk9N6ftr}"
 _POLLINATIONS_DEVICE_API="https://enter.pollinations.ai/api/device"
-_POLLINATIONS_AUTH_BASE="https://enter.pollinations.ai"
 
 _fuck_pollinations_device_flow() {
     local client_id="${_POLLINATIONS_CLIENT_ID}"
@@ -535,7 +534,7 @@ _fuck_pollinations_save_credentials() {
         tmp_config=$(mktemp) || return 1
         grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
         grep -v "^export FUCK_OPENAI_API_BASE=" | \
-        grep -v "^# FUCK_POLLINATIONS" > "$tmp_config" 2>/dev/null || true
+        grep -v "^# Pollinations OAuth" > "$tmp_config" 2>/dev/null || true
         mv "$tmp_config" "$CONFIG_FILE"
         chmod 600 "$CONFIG_FILE"
     fi

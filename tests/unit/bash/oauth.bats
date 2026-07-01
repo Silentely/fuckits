@@ -32,7 +32,7 @@ teardown() {
     unset FUCK_OPENAI_API_BASE
     run _fuck_pollinations_status
     [ "$status" -eq 1 ]
-    echo "$output" | grep -q "未配置"
+    echo "$output" | grep -q "No API Key"
 }
 
 @test "OAuth: status 有普通 key 时显示本地 API" {
@@ -40,7 +40,7 @@ teardown() {
     export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
     run _fuck_pollinations_status
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "本地 API Key"
+    echo "$output" | grep -q "Local API Key"
 }
 
 # ==================== OAuth 登出 ====================
@@ -51,7 +51,7 @@ teardown() {
     rm -f "$CONFIG_FILE"
     run _fuck_pollinations_logout
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "配置文件不存在"
+    echo "$output" | grep -q "Config file not found"
 }
 
 @test "OAuth: logout 非 Pollinations 配置时提示" {
@@ -63,7 +63,7 @@ export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
 EOF
     run _fuck_pollinations_logout
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "当前未使用 Pollinations"
+    echo "$output" | grep -q "Not using Pollinations"
 }
 
 @test "OAuth: logout 清除 Pollinations 配置" {
@@ -75,7 +75,7 @@ export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
 EOF
     run _fuck_pollinations_logout
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "已清除"
+    echo "$output" | grep -q "cleared"
     # Verify config file no longer contains Pollinations lines
     ! grep -q 'gen.pollinations.ai' "$CONFIG_FILE"
 }
@@ -112,30 +112,23 @@ EOF
 
 # ==================== API 检测 ====================
 
-@test "OAuth: should_use_pollinations_api 检测 Pollinations key" {
+@test "OAuth: _should_use_local_api 检测 Pollinations key" {
     export FUCK_OPENAI_API_KEY="sk_test_abc"
     export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
-    run _fuck_should_use_pollinations_api
+    run _fuck_should_use_local_api
     [ "$status" -eq 0 ]
 }
 
-@test "OAuth: should_use_pollinations_api 拒绝普通 key" {
+@test "OAuth: _should_use_local_api 检测普通 key" {
     export FUCK_OPENAI_API_KEY="sk-proj-abc"
     export FUCK_OPENAI_API_BASE="https://api.openai.com/v1"
-    run _fuck_should_use_pollinations_api
-    [ "$status" -eq 1 ]
+    run _fuck_should_use_local_api
+    [ "$status" -eq 0 ]
 }
 
-@test "OAuth: should_use_pollinations_api 拒绝无 key" {
+@test "OAuth: _should_use_local_api 拒绝无 key" {
     unset FUCK_OPENAI_API_KEY
-    run _fuck_should_use_pollinations_api
-    [ "$status" -eq 1 ]
-}
-
-@test "OAuth: should_use_pollinations_api 非 sk_ 前缀拒绝" {
-    export FUCK_OPENAI_API_KEY="not-sk-prefix"
-    export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
-    run _fuck_should_use_pollinations_api
+    run _fuck_should_use_local_api
     [ "$status" -eq 1 ]
 }
 

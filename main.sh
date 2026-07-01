@@ -386,7 +386,6 @@ _fuck_request_worker_model() {
 # 实现 RFC 8628 Device Authorization Grant
 _POLLINATIONS_CLIENT_ID="${FUCK_POLLINATIONS_CLIENT_ID:-pk_1lgmLD1Fsk9N6ftr}"
 _POLLINATIONS_DEVICE_API="https://enter.pollinations.ai/api/device"
-_POLLINATIONS_AUTH_BASE="https://enter.pollinations.ai"
 
 _fuck_pollinations_device_flow() {
     local client_id="${_POLLINATIONS_CLIENT_ID}"
@@ -424,12 +423,12 @@ _fuck_pollinations_device_flow() {
 
     # Step 2: 显示授权指引
     echo ""
-    echo -e "${C_BOLD}Pollinations OAuth 授权${C_RESET}"
+    echo -e "${C_BOLD}Pollinations OAuth Authorization${C_RESET}"
     echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
-    echo -e "1. 在浏览器中打开: ${C_CYAN}${verification_uri}${C_RESET}"
-    echo -e "2. 输入授权码: ${C_GREEN}${C_BOLD}${user_code}${C_RESET}"
+    echo -e "1. Open in browser: ${C_CYAN}${verification_uri}${C_RESET}"
+    echo -e "2. Enter code: ${C_GREEN}${C_BOLD}${user_code}${C_RESET}"
     echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
-    echo -e "${C_DIM}等待授权中... (最多 5 分钟)${C_RESET}"
+    echo -e "${C_DIM}Waiting for authorization... (up to 5 minutes)${C_RESET}"
     echo ""
 
     # Step 3: 轮询等待授权
@@ -448,7 +447,7 @@ _fuck_pollinations_device_flow() {
             -d "{\"device_code\":\"${device_code}\"}" 2>/dev/null)
 
         if [[ $? -ne 0 ]]; then
-            echo -e "${C_YELLOW}连接中断，重试中... ($attempt/$max_attempts)${C_RESET}" >&2
+            echo -e "${C_YELLOW}Connection lost, retrying... ($attempt/$max_attempts)${C_RESET}" >&2
             continue
         fi
 
@@ -457,7 +456,7 @@ _fuck_pollinations_device_flow() {
             access_token=$(printf '%s' "$token_response" | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"access_token"[[:space:]]*:[[:space:]]*"//;s/"$//')
 
             if [[ -n "$access_token" ]]; then
-                echo -e "${C_GREEN}✅ 授权成功！${C_RESET}"
+                echo -e "${C_GREEN}✅ Authorization successful!${C_RESET}"
                 echo ""
                 # 保存凭据
                 _fuck_pollinations_save_credentials "$access_token"
@@ -468,32 +467,32 @@ _fuck_pollinations_device_flow() {
         # 检查是否仍在等待
         if printf '%s' "$token_response" | grep -q 'authorization_pending'; then
             # 显示进度
-            printf "\r${C_DIM}等待授权中... (%d/%d)${C_RESET}" "$attempt" "$max_attempts" >&2
+            printf "\r${C_DIM}Waiting for authorization... (%d/%d)${C_RESET}" "$attempt" "$max_attempts" >&2
             continue
         fi
 
         # 检查是否被拒绝
         if printf '%s' "$token_response" | grep -q 'access_denied'; then
             echo "" >&2
-            echo -e "${C_RED}❌ 授权被拒绝.${C_RESET}" >&2
+            echo -e "${C_RED}❌ Authorization denied.${C_RESET}" >&2
             return 1
         fi
 
         # 检查是否过期
         if printf '%s' "$token_response" | grep -q 'expired'; then
             echo "" >&2
-            echo -e "${C_RED}❌ 授权码已过期，请重新运行 fuck --oauth${C_RESET}" >&2
+            echo -e "${C_RED}❌ Code expired, run fuck --oauth again${C_RESET}" >&2
             return 1
         fi
 
         # 其他错误
         echo "" >&2
-        echo -e "${C_YELLOW}⚠️ 未知响应: $token_response${C_RESET}" >&2
+        echo -e "${C_YELLOW}⚠️ Unknown response: $token_response${C_RESET}" >&2
         return 1
     done
 
     echo "" >&2
-    echo -e "${C_RED}❌ 授权超时（5 分钟），请重新运行 fuck --oauth${C_RESET}" >&2
+    echo -e "${C_RED}❌ Authorization timed out (5 min), run fuck --oauth again${C_RESET}" >&2
     return 1
 }
 
@@ -510,7 +509,7 @@ _fuck_pollinations_save_credentials() {
         tmp_config=$(mktemp) || return 1
         grep -v "^export FUCK_OPENAI_API_KEY=" "$CONFIG_FILE" | \
         grep -v "^export FUCK_OPENAI_API_BASE=" | \
-        grep -v "^# FUCK_POLLINATIONS" > "$tmp_config" 2>/dev/null || true
+        grep -v "^# Pollinations OAuth" > "$tmp_config" 2>/dev/null || true
         mv "$tmp_config" "$CONFIG_FILE"
         chmod 600 "$CONFIG_FILE"
     fi
@@ -526,8 +525,8 @@ _fuck_pollinations_save_credentials() {
     export FUCK_OPENAI_API_KEY="$access_token"
     export FUCK_OPENAI_API_BASE="https://gen.pollinations.ai/v1"
 
-    echo -e "${C_GREEN}✅ 凭据已保存到 $CONFIG_FILE${C_RESET}"
-    echo -e "${C_DIM}使用 'fuck --oauth status' 查看认证状态${C_RESET}"
+    echo -e "${C_GREEN}✅ Credentials saved to $CONFIG_FILE${C_RESET}"
+    echo -e "${C_DIM}Use 'fuck --oauth status' to check auth status${C_RESET}"
 }
 
 # 查看 Pollinations OAuth 状态
@@ -536,22 +535,22 @@ _fuck_pollinations_status() {
     local api_base="${FUCK_OPENAI_API_BASE:-}"
 
     if [[ -z "$api_key" ]]; then
-        echo -e "${C_YELLOW}未配置 API Key${C_RESET}"
-        echo -e "运行 ${C_CYAN}fuck --oauth${C_RESET} 进行授权"
+        echo -e "${C_YELLOW}No API Key configured${C_RESET}"
+        echo -e "Run ${C_CYAN}fuck --oauth${C_RESET} to authorize"
         return 1
     fi
 
-    echo -e "${C_BOLD}Pollinations OAuth 状态${C_RESET}"
+    echo -e "${C_BOLD}Pollinations OAuth Status${C_RESET}"
     echo -e "${C_DIM}────────────────────────────────────────${C_RESET}"
 
     # 检查是否是 Pollinations key
     if [[ "$api_key" == sk_* ]] && [[ "$api_base" == *"pollinations.ai"* ]]; then
-        echo -e "认证方式: ${C_GREEN}Pollinations OAuth${C_RESET}"
+        echo -e "Auth method: ${C_GREEN}Pollinations OAuth${C_RESET}"
         echo -e "API Base: ${C_CYAN}$api_base${C_RESET}"
         echo -e "Key 前缀: ${C_DIM}${api_key:0:6}...${C_RESET}"
 
         # 验证 key 有效性
-        echo -e "\n${C_DIM}验证 Key 有效性...${C_RESET}"
+        echo -e "\n${C_DIM}Validating key...${C_RESET}"
         local profile_response
         profile_response=$(curl -sS --max-time 10 \
             "https://gen.pollinations.ai/account/profile" \
@@ -561,13 +560,13 @@ _fuck_pollinations_status() {
             local username tier
             username=$(printf '%s' "$profile_response" | grep -o '"githubUsername"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"githubUsername"[[:space:]]*:[[:space:]]*"//;s/"$//')
             tier=$(printf '%s' "$profile_response" | grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"tier"[[:space:]]*:[[:space:]]*"//;s/"$//')
-            echo -e "GitHub 用户: ${C_GREEN}${username:-unknown}${C_RESET}"
+            echo -e "GitHub user: ${C_GREEN}${username:-unknown}${C_RESET}"
             echo -e "Tier: ${C_CYAN}${tier:-unknown}${C_RESET}"
         else
-            echo -e "${C_YELLOW}⚠️ 无法验证 Key（可能是网络问题或 Key 已失效）${C_RESET}"
+            echo -e "${C_YELLOW}⚠️ Unable to validate key (network issue or key expired)${C_RESET}"
         fi
     elif [[ -n "$api_key" ]]; then
-        echo -e "认证方式: ${C_CYAN}本地 API Key${C_RESET}"
+        echo -e "Auth method: ${C_CYAN}Local API Key${C_RESET}"
         echo -e "API Base: ${C_CYAN}${api_base:-https://api.openai.com/v1}${C_RESET}"
         echo -e "Key 前缀: ${C_DIM}${api_key:0:6}...${C_RESET}"
     fi
@@ -578,14 +577,14 @@ _fuck_pollinations_status() {
 # 清除 Pollinations OAuth 凭据
 _fuck_pollinations_logout() {
     if [[ ! -f "$CONFIG_FILE" ]]; then
-        echo -e "${C_YELLOW}配置文件不存在${C_RESET}"
+        echo -e "${C_YELLOW}Config file not found${C_RESET}"
         return 0
     fi
 
     # 检查是否是 Pollinations 配置
     local api_base="${FUCK_OPENAI_API_BASE:-}"
     if [[ "$api_base" != *"pollinations.ai"* ]]; then
-        echo -e "${C_YELLOW}当前未使用 Pollinations OAuth${C_RESET}"
+        echo -e "${C_YELLOW}Not using Pollinations OAuth${C_RESET}"
         return 0
     fi
 
@@ -602,7 +601,7 @@ _fuck_pollinations_logout() {
     unset FUCK_OPENAI_API_KEY
     unset FUCK_OPENAI_API_BASE
 
-    echo -e "${C_GREEN}✅ 已清除 Pollinations OAuth 凭据${C_RESET}"
+    echo -e "${C_GREEN}✅ Pollinations OAuth credentials cleared${C_RESET}"
 }
 
 _fuck_notify_demo_limit() {
