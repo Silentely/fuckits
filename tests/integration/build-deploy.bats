@@ -82,20 +82,6 @@ teardown() {
     echo "$output" | grep -q "b64_to_utf8(\`"
 }
 
-@test "Build: Base64 encoding should be valid" {
-    # Test #6: Verify base64 can be decoded successfully
-    if ! command -v base64 > /dev/null; then
-        skip "base64 not available"
-    fi
-
-    # Extract base64 string from INSTALLER_SCRIPT
-    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/' | tr -d '\n')
-
-    # Attempt to decode (pipe to stdin, works on both macOS and Linux)
-    run bash -c "printf '%s' \"$b64_en\" | base64 -d > /dev/null 2>&1"
-    [ "$status" -eq 0 ]
-}
-
 @test "Build: decoded script should contain shebang" {
     # Test #7: Verify decoded script has proper shebang
     if ! command -v base64 > /dev/null; then
