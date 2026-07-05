@@ -84,6 +84,39 @@ def inject_version(content, script_name):
         print(f"  {script_name}: injected version {version}")
     return content
 
+def inline_runtime_common(content, script_name):
+    """将运行时共享函数内联进生成脚本，保证安装后的单文件脚本可独立 source"""
+    try:
+        runtime_content = Path('scripts/runtime-common.sh').read_text(encoding='utf-8')
+    except Exception as e:
+        print(f"Error reading scripts/runtime-common.sh: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    runtime_block = (
+        "# --- 内联运行时共享函数（由 build.sh 从 scripts/runtime-common.sh 注入）---\n"
+        + runtime_content
+        + "\n# --- 内联运行时共享函数结束 ---"
+    )
+    pattern = (
+        r'# --- 加载运行时共享函数 ---\n'
+        r'# 仓库源码优先使用 scripts/runtime-common\.sh；安装后的单文件场景则使用同目录副本。\n'
+        r'_FC_SCRIPT_DIR="\$\{_FC_SCRIPT_DIR:-\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)" && pwd\)\}"\n'
+        r'if \[\[ -f "\$_FC_SCRIPT_DIR/scripts/runtime-common\.sh" \]\]; then\n'
+        r'    # shellcheck disable=SC1091\n'
+        r'    source "\$_FC_SCRIPT_DIR/scripts/runtime-common\.sh"\n'
+        r'elif \[\[ -f "\$_FC_SCRIPT_DIR/runtime-common\.sh" \]\]; then\n'
+        r'    # shellcheck disable=SC1091\n'
+        r'    source "\$_FC_SCRIPT_DIR/runtime-common\.sh"\n'
+        r'fi'
+    )
+    # 使用函数替换，避免 re.sub 将 runtime-common.sh 中的 \r/\n 等字面反斜杠序列解释成控制字符。
+    content, count = re.subn(pattern, lambda _match: runtime_block, content, count=1)
+    if count != 1:
+        print(f"Error: Expected to inline runtime-common.sh once for {script_name}, replaced {count}", file=sys.stderr)
+        sys.exit(1)
+    print(f"  {script_name}: inlined runtime-common.sh")
+    return content
+
 # 读取 fuckits.sh 作为源码
 try:
     source_content = Path('fuckits.sh').read_text(encoding='utf-8')
@@ -94,10 +127,12 @@ except Exception as e:
 # 生成英文版（默认语言为英文）
 en_content = inject_locale(source_content, 'en')
 en_content = inject_version(en_content, 'main.sh')
+en_content = inline_runtime_common(en_content, 'main.sh')
 
 # 生成中文版（默认语言为中文）
 zh_content = inject_locale(source_content, 'zh')
 zh_content = inject_version(zh_content, 'zh_main.sh')
+zh_content = inline_runtime_common(zh_content, 'zh_main.sh')
 
 try:
     Path('main.sh').write_text(en_content, encoding='utf-8')

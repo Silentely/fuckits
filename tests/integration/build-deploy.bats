@@ -22,6 +22,7 @@ setup_file() {
 
     # 复制必需文件到临时目录
     cp "$PROJECT_ROOT/worker.js" "$TEST_DIR/"
+    cp "$PROJECT_ROOT/fuckits.sh" "$TEST_DIR/"
     cp "$PROJECT_ROOT/main.sh" "$TEST_DIR/"
     cp "$PROJECT_ROOT/zh_main.sh" "$TEST_DIR/"
     cp "$PROJECT_ROOT/wrangler.toml" "$TEST_DIR/"
@@ -57,9 +58,21 @@ teardown() {
 }
 
 @test "Build: required files should exist before build" {
-    [ -f "main.sh" ]
-    [ -f "zh_main.sh" ]
+    [ -f "fuckits.sh" ]
     [ -f "worker.js" ]
+}
+
+@test "Build: VERSION should match package.json" {
+    if ! command -v node > /dev/null; then
+        skip "Node.js not available"
+    fi
+
+    local package_version
+    package_version=$(node -e "console.log(require('./package.json').version)")
+    local file_version
+    file_version=$(cat VERSION)
+
+    [ "$file_version" = "$package_version" ]
 }
 
 @test "Build: build should complete successfully" {
@@ -107,6 +120,35 @@ teardown() {
     echo "$decoded" | grep -q '_install_script'
 }
 
+@test "Build: decoded script should be valid for system bash" {
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
+    fi
+
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local decoded=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
+    local decoded_file="${BATS_TEST_TMPDIR}/decoded-main.sh"
+    printf '%s\n' "$decoded" > "$decoded_file"
+
+    run /bin/bash -n "$decoded_file"
+    [ "$status" -eq 0 ]
+}
+
+@test "Build: decoded script should not contain literal carriage returns" {
+    if ! command -v base64 > /dev/null; then
+        skip "base64 not available"
+    fi
+
+    local b64_en=$(grep 'const INSTALLER_SCRIPT = b64_to_utf8' worker.js | sed -E 's/.*b64_to_utf8\(`(.+)`\);/\1/')
+    local decoded=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
+    local cr
+    cr=$(printf '\r')
+
+    if printf '%s' "$decoded" | grep -q "$cr"; then
+        return 1
+    fi
+}
+
 @test "Build: EN and ZH scripts should have different LOCALE settings" {
     # Test #9: Verify language variants have correct LOCALE
     if ! command -v base64 > /dev/null; then
@@ -119,30 +161,30 @@ teardown() {
     local decoded_en=$(echo "$b64_en" | base64 -d 2>/dev/null || echo "")
     local decoded_zh=$(echo "$b64_zh" | base64 -d 2>/dev/null || echo "")
 
-    echo "$decoded_en" | grep -q 'FUCKITS_LOCALE="en"'
-    echo "$decoded_zh" | grep -q 'FUCKITS_LOCALE="zh"'
+    echo "$decoded_en" | grep -q '_FUCKITS_BUILD_DEFAULT_LOCALE="en"'
+    echo "$decoded_zh" | grep -q '_FUCKITS_BUILD_DEFAULT_LOCALE="zh"'
 }
 
 # ==================== 构建错误处理测试 ====================
 
-@test "Build: should fail when main.sh is missing" {
-    # Temporarily move main.sh (operates in temp dir, doesn't affect project)
-    mv main.sh main.sh.tmp
+@test "Build: should fail when unified source is missing" {
+    # Temporarily move fuckits.sh (operates in temp dir, doesn't affect project)
+    mv fuckits.sh fuckits.sh.tmp
 
     run bash scripts/build.sh
     [ "$status" -ne 0 ]
 
     # Restore
-    mv main.sh.tmp main.sh
+    mv fuckits.sh.tmp fuckits.sh
 }
 
-@test "Build: should fail when zh_main.sh is missing" {
-    mv zh_main.sh zh_main.sh.tmp
+@test "Build: should fail when worker.js is missing" {
+    mv worker.js worker.js.tmp
 
     run bash scripts/build.sh
     [ "$status" -ne 0 ]
 
-    mv zh_main.sh.tmp zh_main.sh
+    mv worker.js.tmp worker.js
 }
 
 @test "Build: should restore backup on build failure" {
@@ -272,4 +314,5 @@ teardown() {
     # 检查是否存在临时文件（不应该有）
     [ ! -f "main.sh.tmp" ]
     [ ! -f "zh_main.sh.tmp" ]
+    [ ! -f "fuckits.sh.tmp" ]
 }

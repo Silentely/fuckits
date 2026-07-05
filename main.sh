@@ -33,79 +33,117 @@ FUCKITS_CONSTANTS_DEFINED=1
 # 当前语言（构建时可覆盖默认值）
 _FUCKITS_LOCALE="${FUCKITS_LOCALE:-en}"
 
-# 翻译表（关联数组）
-declare -gA _I18N_TABLE=()
-
 # 初始化翻译表
 _i18n_init() {
     # 如果已初始化，跳过
-    [[ ${#_I18N_TABLE[@]} -gt 0 ]] && return 0
+    [[ "${_I18N_INITIALIZED:-0}" = "1" ]] && return 0
 
-    # --- 英文翻译 ---
-    _I18N_TABLE[msg.help.title]="AI natural language to shell command"
-    _I18N_TABLE[msg.help.usage]="Usage: fuck <your prompt>"
-    _I18N_TABLE[msg.help.commands]="Commands:"
-    _I18N_TABLE[msg.help.options]="Options:"
-    _I18N_TABLE[msg.help.examples]="Examples:"
-    _I18N_TABLE[msg.config.title]="Configuration"
-    _I18N_TABLE[msg.config.edit_with]="Edit with:"
-    _I18N_TABLE[msg.config.open_file]="Open this file in your favourite editor to customise fuckits."
-    _I18N_TABLE[msg.config.available_toggles]="Available toggles:"
-    _I18N_TABLE[msg.config.pro_tip]="Pro tip:"
-    _I18N_TABLE[msg.config.lock_info]="we lock CONFIG_FILE to chmod 600 so your API key stays local."
-    _I18N_TABLE[msg.error.api_key_not_set]="Local API key not configured. Set FUCK_OPENAI_API_KEY in ~/.fuck/config.sh."
-    _I18N_TABLE[msg.error.api_request_failed]="Local API request failed."
-    _I18N_TABLE[msg.error.parse_response_failed]="Unable to parse local model response."
-    _I18N_TABLE[msg.error.home_not_set]="Your HOME variable isn't set. I don't know where to install this shit. Set it yourself (e.g., export HOME=/root)."
-    _I18N_TABLE[msg.status.thinking]="Thinking... "
-    _I18N_TABLE[msg.status.using_local_key]="Using your local API key... "
-    _I18N_TABLE[msg.status.here_is_result]="Here is what I came up with:"
-    _I18N_TABLE[msg.security.potentially_dangerous]="Potentially dangerous command detected"
-    _I18N_TABLE[msg.security.high_risk]="High-risk command detected"
-    _I18N_TABLE[msg.security.blocked]="Command blocked by policy"
-    _I18N_TABLE[msg.security.confirm_risk]="I accept the risk"
-    _I18N_TABLE[msg.update.new_version]="New version available:"
-    _I18N_TABLE[msg.update.current]="current:"
-    _I18N_TABLE[msg.update.up_to_date]="is up to date."
-    _I18N_TABLE[msg.update.remote_version]="Remote version:"
-    _I18N_TABLE[msg.update.local_version]="Local version:"
-    _I18N_TABLE[msg.lang.current]="Current language:"
-    _I18N_TABLE[msg.lang.switched]="Language switched to:"
-    _I18N_TABLE[msg.lang.invalid]="Invalid language. Use 'en' or 'zh'."
-    _I18N_TABLE[msg.lang.detecting]="Detected system language:"
+    _I18N_KEYS='msg.help.title
+msg.help.usage
+msg.help.commands
+msg.help.options
+msg.help.examples
+msg.config.title
+msg.config.edit_with
+msg.config.open_file
+msg.config.available_toggles
+msg.config.pro_tip
+msg.config.lock_info
+msg.error.api_key_not_set
+msg.error.api_request_failed
+msg.error.parse_response_failed
+msg.error.home_not_set
+msg.status.thinking
+msg.status.using_local_key
+msg.status.here_is_result
+msg.security.potentially_dangerous
+msg.security.high_risk
+msg.security.blocked
+msg.security.confirm_risk
+msg.update.new_version
+msg.update.current
+msg.update.up_to_date
+msg.update.remote_version
+msg.update.local_version
+msg.lang.current
+msg.lang.switched
+msg.lang.invalid
+msg.lang.detecting'
+    _I18N_INITIALIZED=1
+}
 
-    # --- 中文翻译 ---
-    _I18N_TABLE[msg.help.title.zh]="AI 自然语言转 Shell 命令"
-    _I18N_TABLE[msg.help.usage.zh]="用法: fuck <你的需求>"
-    _I18N_TABLE[msg.help.commands.zh]="可用命令:"
-    _I18N_TABLE[msg.help.options.zh]="选项:"
-    _I18N_TABLE[msg.help.examples.zh]="示例:"
-    _I18N_TABLE[msg.config.title.zh]="配置"
-    _I18N_TABLE[msg.config.edit_with.zh]="可以使用："
-    _I18N_TABLE[msg.config.open_file.zh]="用任意编辑器打开该文件即可修改配置。"
-    _I18N_TABLE[msg.config.available_toggles.zh]="可用选项："
-    _I18N_TABLE[msg.config.pro_tip.zh]="安全说明："
-    _I18N_TABLE[msg.config.lock_info.zh]="配置文件会自动 chmod 600，防止 Key 泄露。"
-    _I18N_TABLE[msg.error.api_key_not_set.zh]="未配置本地 API Key，请在 ~/.fuck/config.sh 中设置 FUCK_OPENAI_API_KEY。"
-    _I18N_TABLE[msg.error.api_request_failed.zh]="本地 API 请求失败。"
-    _I18N_TABLE[msg.error.parse_response_failed.zh]="无法解析本地模型响应。"
-    _I18N_TABLE[msg.error.home_not_set.zh]="HOME 变量未设置，无法确定安装位置。请自行设置（如 export HOME=/root）。"
-    _I18N_TABLE[msg.status.thinking.zh]="思考中... "
-    _I18N_TABLE[msg.status.using_local_key.zh]="正在使用本地 API Key... "
-    _I18N_TABLE[msg.status.here_is_result.zh]="这是我想出来的命令："
-    _I18N_TABLE[msg.security.potentially_dangerous.zh]="检测到潜在风险"
-    _I18N_TABLE[msg.security.high_risk.zh]="高危命令，请再次确认"
-    _I18N_TABLE[msg.security.blocked.zh]="命令被安全策略阻止"
-    _I18N_TABLE[msg.security.confirm_risk.zh]="我确认承担风险"
-    _I18N_TABLE[msg.update.new_version.zh]="新版本可用："
-    _I18N_TABLE[msg.update.current.zh]="当前："
-    _I18N_TABLE[msg.update.up_to_date.zh]="已是最新。"
-    _I18N_TABLE[msg.update.remote_version.zh]="远程版本："
-    _I18N_TABLE[msg.update.local_version.zh]="本地版本："
-    _I18N_TABLE[msg.lang.current.zh]="当前语言："
-    _I18N_TABLE[msg.lang.switched.zh]="语言已切换为："
-    _I18N_TABLE[msg.lang.invalid.zh]="无效语言。请使用 'en' 或 'zh'。"
-    _I18N_TABLE[msg.lang.detecting.zh]="检测到系统语言："
+# 查询翻译文本；使用 case 保持 Bash 3.2 兼容，避免关联数组依赖。
+# Arguments: $1=翻译键
+_i18n_lookup() {
+    case "$1" in
+        msg.help.title) echo "AI natural language to shell command" ;;
+        msg.help.usage) echo "Usage: fuck <your prompt>" ;;
+        msg.help.commands) echo "Commands:" ;;
+        msg.help.options) echo "Options:" ;;
+        msg.help.examples) echo "Examples:" ;;
+        msg.config.title) echo "Configuration" ;;
+        msg.config.edit_with) echo "Edit with:" ;;
+        msg.config.open_file) echo "Open this file in your favourite editor to customise fuckits." ;;
+        msg.config.available_toggles) echo "Available toggles:" ;;
+        msg.config.pro_tip) echo "Pro tip:" ;;
+        msg.config.lock_info) echo "we lock CONFIG_FILE to chmod 600 so your API key stays local." ;;
+        msg.error.api_key_not_set) echo "Local API key not configured. Set FUCK_OPENAI_API_KEY in ~/.fuck/config.sh." ;;
+        msg.error.api_request_failed) echo "Local API request failed." ;;
+        msg.error.parse_response_failed) echo "Unable to parse local model response." ;;
+        msg.error.home_not_set) echo "Your HOME variable isn't set. I don't know where to install this shit. Set it yourself (e.g., export HOME=/root)." ;;
+        msg.status.thinking) echo "Thinking... " ;;
+        msg.status.using_local_key) echo "Using your local API key... " ;;
+        msg.status.here_is_result) echo "Here is what I came up with:" ;;
+        msg.security.potentially_dangerous) echo "Potentially dangerous command detected" ;;
+        msg.security.high_risk) echo "High-risk command detected" ;;
+        msg.security.blocked) echo "Command blocked by policy" ;;
+        msg.security.confirm_risk) echo "I accept the risk" ;;
+        msg.update.new_version) echo "New version available:" ;;
+        msg.update.current) echo "current:" ;;
+        msg.update.up_to_date) echo "is up to date." ;;
+        msg.update.remote_version) echo "Remote version:" ;;
+        msg.update.local_version) echo "Local version:" ;;
+        msg.lang.current) echo "Current language:" ;;
+        msg.lang.switched) echo "Language switched to:" ;;
+        msg.lang.invalid) echo "Invalid language. Use 'en' or 'zh'." ;;
+        msg.lang.detecting) echo "Detected system language:" ;;
+        msg.help.title.zh) echo "AI 自然语言转 Shell 命令" ;;
+        msg.help.usage.zh) echo "用法: fuck <你的需求>" ;;
+        msg.help.commands.zh) echo "可用命令:" ;;
+        msg.help.options.zh) echo "选项:" ;;
+        msg.help.examples.zh) echo "示例:" ;;
+        msg.config.title.zh) echo "配置" ;;
+        msg.config.edit_with.zh) echo "可以使用：" ;;
+        msg.config.open_file.zh) echo "用任意编辑器打开该文件即可修改配置。" ;;
+        msg.config.available_toggles.zh) echo "可用选项：" ;;
+        msg.config.pro_tip.zh) echo "安全说明：" ;;
+        msg.config.lock_info.zh) echo "配置文件会自动 chmod 600，防止 Key 泄露。" ;;
+        msg.error.api_key_not_set.zh) echo "未配置本地 API Key，请在 ~/.fuck/config.sh 中设置 FUCK_OPENAI_API_KEY。" ;;
+        msg.error.api_request_failed.zh) echo "本地 API 请求失败。" ;;
+        msg.error.parse_response_failed.zh) echo "无法解析本地模型响应。" ;;
+        msg.error.home_not_set.zh) echo "HOME 变量未设置，无法确定安装位置。请自行设置（如 export HOME=/root）。" ;;
+        msg.status.thinking.zh) echo "思考中... " ;;
+        msg.status.using_local_key.zh) echo "正在使用本地 API Key... " ;;
+        msg.status.here_is_result.zh) echo "这是我想出来的命令：" ;;
+        msg.security.potentially_dangerous.zh) echo "检测到潜在风险" ;;
+        msg.security.high_risk.zh) echo "高危命令，请再次确认" ;;
+        msg.security.blocked.zh) echo "命令被安全策略阻止" ;;
+        msg.security.confirm_risk.zh) echo "我确认承担风险" ;;
+        msg.update.new_version.zh) echo "新版本可用：" ;;
+        msg.update.current.zh) echo "当前：" ;;
+        msg.update.up_to_date.zh) echo "已是最新。" ;;
+        msg.update.remote_version.zh) echo "远程版本：" ;;
+        msg.update.local_version.zh) echo "本地版本：" ;;
+        msg.lang.current.zh) echo "当前语言：" ;;
+        msg.lang.switched.zh) echo "语言已切换为：" ;;
+        msg.lang.invalid.zh) echo "无效语言。请使用 'en' 或 'zh'。" ;;
+        msg.lang.detecting.zh) echo "检测到系统语言：" ;;
+        *) return 1 ;;
+    esac
+}
+
+_i18n_has_key() {
+    _i18n_lookup "$1" >/dev/null 2>&1
 }
 
 # 获取翻译文本
@@ -115,18 +153,16 @@ _i18n_get() {
     local key="$1"
 
     # 确保翻译表已初始化
-    [[ ${#_I18N_TABLE[@]} -eq 0 ]] && _i18n_init
+    [[ "${_I18N_INITIALIZED:-0}" != "1" ]] && _i18n_init
 
     # 先尝试获取当前语言的翻译
     local localized_key="${key}.${_FUCKITS_LOCALE}"
-    if [[ -n "${_I18N_TABLE[$localized_key]+x}" ]]; then
-        echo "${_I18N_TABLE[$localized_key]}"
+    if _i18n_lookup "$localized_key"; then
         return 0
     fi
 
     # 回退到基础键（英文）
-    if [[ -n "${_I18N_TABLE[$key]+x}" ]]; then
-        echo "${_I18N_TABLE[$key]}"
+    if _i18n_lookup "$key"; then
         return 0
     fi
 
@@ -311,23 +347,826 @@ if [[ -z "${INSTALL_DIR+x}" ]] || [[ -z "${MAIN_SH+x}" ]] || [[ -z "${CONFIG_FIL
     INSTALL_DIR="$HOME/.fuck"
     MAIN_SH="$INSTALL_DIR/main.sh"
     CONFIG_FILE="$INSTALL_DIR/config.sh"
-    SCRIPT_VERSION='2.1.68'
+    SCRIPT_VERSION='2.2.0'
 fi
 
 if [[ -z "${DEFAULT_API_ENDPOINT+x}" ]]; then
     DEFAULT_API_ENDPOINT="https://fuckits.25500552.xyz/"
 fi
 
-# --- 加载运行时共享函数 ---
-# 仓库源码优先使用 scripts/runtime-common.sh；安装后的单文件场景则使用同目录副本。
-_FC_SCRIPT_DIR="${_FC_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-if [[ -f "$_FC_SCRIPT_DIR/scripts/runtime-common.sh" ]]; then
-    # shellcheck disable=SC1091
-    source "$_FC_SCRIPT_DIR/scripts/runtime-common.sh"
-elif [[ -f "$_FC_SCRIPT_DIR/runtime-common.sh" ]]; then
-    # shellcheck disable=SC1091
-    source "$_FC_SCRIPT_DIR/runtime-common.sh"
-fi
+# --- 内联运行时共享函数（由 build.sh 从 scripts/runtime-common.sh 注入）---
+#!/bin/bash
+#
+# Runtime common functions for fuckits
+# Shared between main.sh (EN) and zh_main.sh (ZH)
+# This file is sourced at runtime, not during build
+#
+
+_fuck_json_escape() {
+    local input="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s' "$input" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read())[1:-1], end='')"
+        return
+    fi
+    if command -v node >/dev/null 2>&1; then
+        printf '%s' "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(JSON.stringify(d).slice(1,-1)))"
+        return
+    fi
+    # Minimal fallback: escape backslashes and double quotes only
+    printf '%s' "$input" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g'
+}
+
+_fuck_truthy() {
+    local value="${1:-}"
+    local normalized
+    normalized=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+    case "$normalized" in
+        1|true|yes|y|on|是|开|真)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+_fuck_security_level_value() {
+    case "$1" in
+        block) printf '3\n' ;;
+        challenge) printf '2\n' ;;
+        warn) printf '1\n' ;;
+        *) printf '0\n' ;;
+    esac
+    return 0
+}
+
+_fuck_security_match_rule() {
+    local command="$1"
+    local table="$2"
+    local -a rules=()
+
+    # SECURITY NOTE: This eval is SAFE because:
+    # - $table only receives hardcoded internal array names from callers within this script
+    # - Valid values: _FUCK_SECURITY_BLOCK_RULES, _FUCK_SECURITY_CHALLENGE_RULES, _FUCK_SECURITY_WARN_RULES
+    # - No user input can reach this variable; it's purely for dynamic array name resolution
+    # - This pattern is a standard Bash idiom for indirect array access (Bash 3.x compatible)
+    eval "rules=(\"\${${table}[@]}\")"
+
+    local rule pattern reason
+    for rule in "${rules[@]}"; do
+        pattern=${rule%%|||*}
+        reason=${rule#*|||}
+        [[ -z "$pattern" ]] && continue
+
+        if printf '%s' "$command" | grep -Eiq -- "$pattern"; then
+            printf '%s\n' "$reason"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+_fuck_security_is_whitelisted() {
+    local command="$1"
+    local whitelist="${FUCK_SECURITY_WHITELIST:-}"
+
+    if [[ -z "$whitelist" ]]; then
+        return 1
+    fi
+
+    local normalized entry
+    normalized=$(printf '%s' "$whitelist" | tr ',' '\n')
+
+    while IFS= read -r entry; do
+        entry=$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        [[ -z "$entry" ]] && continue
+
+        # 前缀匹配：命令必须以白名单条目开头（或完全相等）
+        # 例如白名单 "ls" 匹配 "ls -la" 但不匹配 "vls"
+        if [[ "$command" == "$entry" ]] || [[ "$command" == "$entry "* ]]; then
+            return 0
+        fi
+    done <<< "$normalized"
+
+    return 1
+}
+
+_fuck_security_mode() {
+    local mode="${FUCK_SECURITY_MODE:-balanced}"
+    mode=$(printf '%s' "$mode" | tr '[:upper:]' '[:lower:]')
+
+    case "$mode" in
+        strict) printf 'strict\n' ;;
+        off|disabled|none) printf 'off\n' ;;
+        balanced|default|"") printf 'balanced\n' ;;
+        *) printf 'balanced\n' ;;
+    esac
+    return 0
+}
+
+_fuck_mark_static_cache_dirty() {
+    _FUCK_STATIC_CACHE_DIRTY=1
+    return 0
+}
+
+_fuck_load_static_cache() {
+    # Return early if cache is already loaded
+    if [[ "${_FUCK_STATIC_CACHE_LOADED:-0}" -eq 1 ]]; then
+        return 0
+    fi
+
+    _FUCK_STATIC_CACHE_LOADED=1
+
+    # Source cache file if it exists
+    if [[ -f "$FUCK_SYSINFO_CACHE_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$FUCK_SYSINFO_CACHE_FILE" || true
+    fi
+}
+
+_fuck_persist_static_cache() {
+    # Only persist if cache is dirty
+    if [[ "${_FUCK_STATIC_CACHE_DIRTY:-0}" -ne 1 ]]; then
+        return 0
+    fi
+
+    # Ensure cache directory exists
+    local cache_dir
+    cache_dir=$(dirname "$FUCK_SYSINFO_CACHE_FILE")
+    if ! mkdir -p "$cache_dir" 2>/dev/null; then
+        return 1
+    fi
+
+    # Create temporary file for atomic write
+    local tmp_file
+    tmp_file=$(mktemp) || return 1
+
+    # Write cached variables to temporary file
+    {
+        printf '_FUCK_CACHED_DISTRO=%q\\n' "${_FUCK_CACHED_DISTRO:-}"
+        printf '_FUCK_CACHED_KERNEL=%q\\n' "${_FUCK_CACHED_KERNEL:-}"
+        printf '_FUCK_CACHED_ARCH=%q\\n' "${_FUCK_CACHED_ARCH:-}"
+        printf '_FUCK_CACHED_PKG_MANAGER=%q\\n' "${_FUCK_CACHED_PKG_MANAGER:-}"
+    } > "$tmp_file"
+
+    # Atomic move to final location
+    if command mv -f -- "$tmp_file" "$FUCK_SYSINFO_CACHE_FILE" 2>/dev/null; then
+        _FUCK_STATIC_CACHE_DIRTY=0
+        return 0
+    else
+        # Clean up temporary file on failure
+        rm -f "$tmp_file"
+        return 1
+    fi
+}
+
+_fuck_audit_log() {
+    # Check if audit logging is enabled
+    if [[ "${FUCK_AUDIT_LOG:-false}" != "true" ]]; then
+        return 0
+    fi
+
+    local event="$1"
+    local command="$2"
+    local exit_code="${3:--}"
+    local timestamp
+    timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')
+    local log_file="${FUCK_AUDIT_LOG_FILE:-$INSTALL_DIR/.audit.log}"
+
+    # Ensure log directory exists
+    mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
+
+    # Sanitize command for logging (normalize newlines, escape delimiter, limit length)
+    local sanitized_cmd
+    local raw_len=${#command}
+    sanitized_cmd=$(printf '%s' "$command" | tr '\r\n' '  ' | sed 's/|/\\|/g' | head -c 200)
+    if [[ "$raw_len" -gt 200 ]]; then
+        sanitized_cmd="${sanitized_cmd}..."
+    fi
+
+    # Write to log file (format: timestamp|user|event|exit_code|command)
+    printf '%s|%s|%s|%s|%s\n' "${timestamp}" "${USER:-unknown}" "${event}" "${exit_code}" "${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
+
+    # Secure the log file
+    chmod 600 "$log_file" 2>/dev/null || true
+}
+
+_fuck_detect_distro() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [[ -n "${_FUCK_CACHED_DISTRO:-}" ]]; then
+        printf '%s\n' "$_FUCK_CACHED_DISTRO"
+        return 0
+    fi
+
+    local kernel_name distro id version pretty family
+    kernel_name=$(uname -s 2>/dev/null || printf 'unknown')
+    distro="unknown"
+
+    # macOS detection
+    if [[ "$kernel_name" = "Darwin" ]]; then
+        local product version
+        product=$(sw_vers -productName 2>/dev/null || printf 'macOS')
+        product=$(printf '%s' "$product" | tr -d '\r\n')
+        version=$(sw_vers -productVersion 2>/dev/null || printf 'unknown')
+        version=$(printf '%s' "$version" | tr -d '\r\n')
+        distro="$product $version"
+    # Linux detection using /etc/os-release
+    elif [[ -r /etc/os-release ]]; then
+        id=$(grep -E '^ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+        version=$(grep -E '^VERSION_ID=' /etc/os-release | head -n1 | cut -d= -f2 | tr -d '"')
+        pretty=$(grep -E '^PRETTY_NAME=' /etc/os-release | head -n1 | cut -d= -f2- | tr -d '"')
+
+        # Determine OS family for better categorization
+        family=""
+        case "$id" in
+            ubuntu|debian)
+                family="Debian-based"
+                ;;
+            centos|rhel|rocky|almalinux|fedora)
+                family="RHEL-based"
+                ;;
+            arch|manjaro|endeavouros)
+                family="Arch-based"
+                ;;
+        esac
+
+        # Format distribution string with family and version
+        if [[ -n "$family" ]]; then
+            distro="$family ${version:-}"
+            if [[ -n "$pretty" ]]; then
+                distro="$distro (${pretty})"
+            fi
+        else
+            distro="${pretty:-Linux $version}"
+        fi
+    else
+        distro="$kernel_name"
+    fi
+
+    # Cache and return result
+    _FUCK_CACHED_DISTRO="$distro"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$distro"
+}
+
+_fuck_detect_pkg_manager() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [[ -n "${_FUCK_CACHED_PKG_MANAGER:-}" ]]; then
+        printf '%s\n' "$_FUCK_CACHED_PKG_MANAGER"
+        return 0
+    fi
+
+    local manager="unknown"
+
+    # Detect package manager in order of preference
+    if command -v apt-get &> /dev/null; then
+        manager="apt"
+    elif command -v yum &> /dev/null; then
+        manager="yum"
+    elif command -v dnf &> /dev/null; then
+        manager="dnf"
+    elif command -v pacman &> /dev/null; then
+        manager="pacman"
+    elif command -v zypper &> /dev/null; then
+        manager="zypper"
+    elif command -v brew &> /dev/null; then
+        manager="brew"
+    fi
+
+    # Cache and return result
+    _FUCK_CACHED_PKG_MANAGER="$manager"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$manager"
+}
+
+_fuck_get_architecture() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [[ -n "${_FUCK_CACHED_ARCH:-}" ]]; then
+        printf '%s\n' "$_FUCK_CACHED_ARCH"
+        return 0
+    fi
+
+    local arch
+    arch=$(uname -m 2>/dev/null || printf 'unknown')
+    arch=$(printf '%s' "$arch" | tr -d '\r\n')
+
+    # Cache and return result
+    _FUCK_CACHED_ARCH="$arch"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$arch"
+}
+
+_fuck_get_kernel_version() {
+    _fuck_load_static_cache
+
+    # Return cached value if available
+    if [[ -n "${_FUCK_CACHED_KERNEL:-}" ]]; then
+        printf '%s\n' "$_FUCK_CACHED_KERNEL"
+        return 0
+    fi
+
+    local kernel
+    kernel=$(uname -sr 2>/dev/null || uname -s 2>/dev/null || printf 'unknown')
+    kernel=$(printf '%s' "$kernel" | tr -d '\r\n')
+
+    # Cache and return result
+    _FUCK_CACHED_KERNEL="$kernel"
+    _fuck_mark_static_cache_dirty
+    printf '%s\n' "$kernel"
+}
+
+_fuck_collect_tool_versions() {
+    local tools tool version result
+    tools="git docker npm kubectl curl wget"
+    result=""
+
+    for tool in $tools; do
+        version="not-installed"
+
+        if command -v "$tool" >/dev/null 2>&1; then
+            case "$tool" in
+                git|docker|curl|wget)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    ;;
+                npm)
+                    version=$("$tool" --version 2>/dev/null | head -n1)
+                    [[ -n "$version" ]] && version="npm $version"
+                    ;;
+                kubectl)
+                    version=$("$tool" version --client --short 2>/dev/null | head -n1)
+                    ;;
+            esac
+        fi
+
+        # Clean up version string
+        version=$(printf '%s' "${version:-unknown}" | tr '\r\n' '  ' | tr -s ' ' | sed -e 's/^ *//' -e 's/ *$//')
+        [[ -z "$version" ]] && version="unknown"
+
+        result="$result$tool:$version; "
+    done
+
+    # Remove trailing semicolon and space
+    result="${result%; }"
+    printf '%s' "$result"
+}
+
+_fuck_append_config_hint() {
+    local key="$1"
+    local comment="$2"
+    local sample="$3"
+    local quoted="${4:-1}"
+    [[ -f "$CONFIG_FILE" ]] || return
+    if grep -Eq "^\\s*#?\\s*export\\s+$key" "$CONFIG_FILE"; then
+        return
+    fi
+
+    local assignment
+    if [[ "$quoted" = "1" ]]; then
+        assignment="# export $key=\"$sample\""
+    else
+        assignment="# export $key=$sample"
+    fi
+
+    {
+        printf '\n'
+        printf '# %s\n' "$comment"
+        printf '%s\n' "$assignment"
+    } >> "$CONFIG_FILE"
+}
+
+_fuck_define_aliases() {
+    local default_alias="fuck"
+
+    if ! _fuck_truthy "${FUCK_DISABLE_DEFAULT_ALIAS:-0}"; then
+        alias "$default_alias"='_fuck_execute_prompt'
+    fi
+
+    if [[ -n "${FUCK_ALIAS:-}" ]] && [[ "$FUCK_ALIAS" != "$default_alias" ]]; then
+        alias "$FUCK_ALIAS"='_fuck_execute_prompt'
+    fi
+}
+
+_fuck_detect_dangerous_command() {
+    _fuck_security_evaluate_command "$1"
+}
+
+_fuck_local_system_prompt() {
+    local sysinfo="$1"
+    if [[ "$FUCKITS_LOCALE" = "zh" ]]; then
+        printf '你是一个专业的 shell 命令生成器。用户会用自然语言描述他们想要完成的任务。你的任务是生成直接可执行的 shell 命令来完成用户的目标。
+
+重要规则：
+1. 用户输入是自然语言描述意图，不是命令参数。例如"列出目录"意思是执行 ls 命令，而不是 ls "列出目录"
+2. 生成直接可执行的命令，不要生成带参数判断的脚本模板（如 if [[ $# -eq 0 ]）
+3. 对于简单任务直接返回单条命令，复杂任务可以是多行脚本
+4. 不要提供任何解释、注释、markdown 格式（比如 ```bash）或 shebang（例如 #!/bin/bash）
+
+示例：
+- 用户说"列出目录" → 输出: ls
+- 用户说"显示详细文件列表" → 输出: ls -la
+- 用户说"查找大于10MB的文件" → 输出: find . -type f -size +10M
+
+用户的系统信息是：%s' "$sysinfo"
+    else
+        printf 'You are an expert shell command generator. Users describe tasks in natural language. Your task is to generate directly executable shell commands to accomplish their goals.
+
+Important rules:
+1. User input is natural language intent, NOT command arguments. For example, "list directory" means run ls, not ls "list directory"
+2. Generate directly executable commands, not script templates with parameter handling (like if [[ $# -eq 0 ])
+3. For simple tasks return single commands, complex tasks can be multi-line scripts
+4. Do not provide any explanation, comments, markdown formatting (like ```bash), or a shebang (e.g., #!/bin/bash)
+
+Examples:
+- User says "list directory" → Output: ls
+- User says "show detailed file list" → Output: ls -la
+- User says "find files larger than 10MB" → Output: find . -type f -size +10M
+
+The user'"'"'s system info is: %s' "$sysinfo"
+    fi
+}
+
+_fuck_secure_config_file() {
+    if [[ -f "$CONFIG_FILE" ]]; then
+        chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    fi
+}
+
+_fuck_security_apply_mode() {
+    local mode="$1"
+    local severity="$2"
+
+    case "$mode" in
+        strict)
+            case "$severity" in
+                warn) severity="challenge" ;;
+                challenge) severity="block" ;;
+            esac
+            ;;
+    esac
+
+    printf '%s\n' "$severity"
+}
+
+_fuck_security_prompt_phrase() {
+    local phrase="$1"
+    local input=""
+
+    printf "%b> %b" "$C_BOLD" "$C_RESET" >&2
+
+    if [[ -r /dev/tty ]]; then
+        if ! IFS= read -r input < /dev/tty; then
+            printf "\n" >&2
+            return 1
+        fi
+    else
+        if ! IFS= read -r input; then
+            printf "\n" >&2
+            return 1
+        fi
+    fi
+
+    printf "\n" >&2
+    [ "$input" = "$phrase" ]
+}
+
+_fuck_security_promote() {
+    local current="$1"
+    local candidate="$2"
+    local current_val candidate_val
+
+    current_val=$(_fuck_security_level_value "$current")
+    candidate_val=$(_fuck_security_level_value "$candidate")
+
+    if [[ "$candidate_val" -gt "$current_val" ]]; then
+        printf '%s\n' "$candidate"
+    else
+        printf '%s\n' "$current"
+    fi
+}
+
+_fuck_should_use_local_api() {
+    if [[ -n "${FUCK_OPENAI_API_KEY:-}" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# --- 以下为共享工具函数（从 main.sh/zh_main.sh 提取） ---
+
+# 安全验证配置文件，防止代码注入
+# 参数：$1 - 要验证的文件路径
+# 返回：0 如果安全，1 如果不安全或出错
+_fuck_validate_config_file() {
+    local file="$1"
+
+    # 文件必须存在且可读
+    if [[ ! -f "$file" ]] || [[ ! -r "$file" ]]; then
+        return 1
+    fi
+
+    # 检查文件权限 - 必须由当前用户拥有
+    if [[ "$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file" 2>/dev/null)" != "$(id -u)" ]]; then
+        echo -e "${C_RED}Config file not owned by current user, refusing to source.${C_RESET}" >&2
+        return 1
+    fi
+
+    local line_num=0
+    local line
+
+    # 预定义正则表达式变量（zsh 兼容性：变量形式避免特殊字符解析问题）
+    local re_cmd_sub='\$\('
+    local re_backtick='`'
+    local re_arith='\$\(\('
+    local re_semi=';'
+    local re_and='&&'
+    local re_or='\|\|'
+    local re_pipe='\|'
+    local re_gt='>'
+    local re_lt='<'
+    local re_amp='&'
+    local re_esc='\\\$'
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line_num=$((line_num + 1))
+
+        # 跳过空行
+        if [[ -z "$line" ]] || [[ "$line" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # 跳过注释行（以 # 开头，可有前导空白）
+        if [[ "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+
+        # 检查危险的 shell 元字符和命令替换
+        # 拒绝：$(), ``, $((), ;, &&, ||, | (管道), >, <, &, 换行转义
+        if [[ "$line" =~ $re_cmd_sub ]] || \
+           [[ "$line" =~ $re_backtick ]] || \
+           [[ "$line" =~ $re_arith ]] || \
+           [[ "$line" =~ $re_semi ]] || \
+           [[ "$line" =~ $re_and ]] || \
+           [[ "$line" =~ $re_or ]] || \
+           [[ "$line" =~ $re_pipe ]] || \
+           [[ "$line" =~ $re_gt ]] || \
+           [[ "$line" =~ $re_lt ]] || \
+           [[ "$line" =~ $re_amp ]] || \
+           [[ "$line" =~ $re_esc ]]; then
+            _fuck_debug "Config validation failed at line $line_num: dangerous metacharacter detected"
+            echo -e "${C_RED}Unsafe config file: dangerous shell metacharacter at line $line_num${C_RESET}" >&2
+            return 1
+        fi
+
+        # 只允许：export FUCK_*=... 或 FUCK_*=...（可有前导空白）
+        # 也允许：export FUCKITS_LOCALE=...
+        if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?(FUCK_[A-Z_]+|FUCKITS_LOCALE)= ]]; then
+            continue
+        fi
+
+        # 拒绝其他任何内容
+        _fuck_debug "Config validation failed at line $line_num: unrecognized pattern"
+        echo -e "${C_RED}Unsafe config file: unrecognized pattern at line $line_num${C_RESET}" >&2
+        return 1
+    done < "$file"
+
+    return 0
+}
+
+# 验证后安全地加载配置文件
+# 参数：$1 - 要加载的文件路径
+# 返回：0 如果成功加载，1 如果验证失败或文件不存在
+_fuck_safe_source_config() {
+    local file="$1"
+
+    if [[ ! -f "$file" ]]; then
+        return 0  # 没有文件也没关系
+    fi
+
+    if _fuck_validate_config_file "$file"; then
+        # shellcheck disable=SC1090
+        source "$file"
+        return $?
+    else
+        echo -e "${C_YELLOW}Config file validation failed, skipping: $file${C_RESET}" >&2
+        return 1
+    fi
+}
+
+# 找用户 shell 配置文件的辅助函数
+_installer_detect_profile() {
+    if [[ -n "${SHELL:-}" ]] && echo "$SHELL" | grep -q "zsh"; then
+        echo "$HOME/.zshrc"
+    elif [[ -n "${SHELL:-}" ]] && echo "$SHELL" | grep -q "bash"; then
+        echo "$HOME/.bashrc"
+    elif [[ -f "$HOME/.profile" ]]; then
+        # 兼容 sh, ksh 等
+        echo "$HOME/.profile"
+    elif [[ -f "$HOME/.zshrc" ]]; then
+        # SHELL 变量没设置时的备用方案
+        echo "$HOME/.zshrc"
+    elif [[ -f "$HOME/.bashrc" ]]; then
+        # SHELL 变量没设置时的备用方案
+        echo "$HOME/.bashrc"
+    else
+        echo "unknown_profile"
+    fi
+}
+
+# 收集用户信息包括权限级别
+# 输出：用户信息字符串（如："User=john uid=1000 level=sudoer Groups=john adm sudo"）
+_fuck_collect_user_info() {
+    local current_user uid groups level
+    current_user="${USER:-}"
+
+    # 如果 USER 未设置则使用备用方法
+    if [[ -z "$current_user" ]]; then
+        current_user=$(whoami 2>/dev/null || printf 'unknown')
+    fi
+
+    # 如果 id 命令可用则获取 UID 和用户组
+    uid="unknown"
+    groups="unknown"
+    if command -v id >/dev/null 2>&1; then
+        uid=$(id -u "$current_user" 2>/dev/null || id -u 2>/dev/null || printf 'unknown')
+        groups=$(id -Gn "$current_user" 2>/dev/null || id -Gn 2>/dev/null || printf 'unknown')
+    fi
+
+    # 确定权限级别
+    level="user"
+    if [[ "$uid" = "0" ]]; then
+        level="root"
+    elif printf '%s' "$groups" | grep -Eq '(^|[[:space:]])(sudo|wheel|admin)([[:space:]]|$)'; then
+        level="sudoer"
+    fi
+
+    printf 'User=%s uid=%s level=%s Groups=%s' "$current_user" "$uid" "$level" "$groups"
+}
+
+# 从 JSON 文件中提取命令内容
+# 参数：$1 - JSON 文件路径
+# 返回：命令内容到 stdout
+_fuck_extract_command_from_json() {
+    local json_file="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$json_file" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+choices = data.get('choices') or []
+if not choices:
+    sys.exit(1)
+message = choices[0].get('message') or {}
+content = (message.get('content') or '').strip()
+if not content:
+    sys.exit(1)
+print(content)
+PY
+        return
+    fi
+
+    if command -v node >/dev/null 2>&1; then
+        node - "$json_file" <<'JS'
+const fs = require('fs');
+const path = process.argv[1];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+const choice = (data.choices && data.choices[0]) || {};
+const message = choice.message || {};
+const content = (message.content || '').trim();
+if (!content) {
+  process.exit(1);
+}
+console.log(content);
+JS
+        return
+    fi
+
+    echo -e "${C_RED}Cannot parse AI response: neither python3 nor node is available.${C_RESET}" >&2
+    return 1
+}
+
+# Spinner 加载动画
+# 参数：$1 - 进程 PID，$2 - 可选的前缀文本
+_fuck_spinner() {
+    local pid=$1
+    local prefix="${2:-}"
+    local delay=0.1
+    local -a frames=("|" "/" "-" "\\")
+    local frame_count=${#frames[@]}
+    local frame_idx=0
+    local has_prefix=0
+    if [[ -n "$prefix" ]]; then
+        has_prefix=1
+    fi
+
+    # 仅在 stderr 是终端时操作光标
+    if [[ -t 2 ]]; then
+        tput civis 2>/dev/null || printf "\033[?25l" >&2
+    fi
+
+    while kill -0 "$pid" 2>/dev/null; do
+        if [[ "$has_prefix" -eq 1 ]]; then
+            printf "\r%s%s" "$prefix" "${frames[$frame_idx]}"
+        else
+            printf " %s " "${frames[$frame_idx]}"
+            printf "\b\b\b"
+        fi
+        frame_idx=$(( (frame_idx + 1) % frame_count ))
+        sleep "$delay"
+    done
+
+    if [[ "$has_prefix" -eq 1 ]]; then
+        printf "\r%s" "$prefix"
+        tput el 2>/dev/null || printf "\033[K"
+    else
+        printf "   \b\b\b"
+    fi
+
+    if [[ -t 2 ]]; then
+        tput cnorm 2>/dev/null || printf "\033[?25h" >&2
+    fi
+}
+
+# 初始化历史文件
+# 参数：$1 - 历史文件路径（可选，默认 $INSTALL_DIR/history.json）
+_fuck_init_history_file() {
+    local history_file="${1:-$INSTALL_DIR/history.json}"
+
+    if [[ ! -f "$history_file" ]]; then
+        cat > "$history_file" <<'HISTORY_EOF'
+{
+  "version": "1.0.0",
+  "commands": [],
+  "favorites": []
+}
+HISTORY_EOF
+        chmod 600 "$history_file"
+    fi
+}
+
+# 记录命令执行到历史
+# 参数：$1 - 提示词，$2 - 命令，$3 - 退出码（可选），$4 - 耗时（可选）
+_fuck_log_history() {
+    local prompt="$1"
+    local command="$2"
+    local exit_code="${3:-0}"
+    local duration="${4:-0}"
+
+    local history_file="$INSTALL_DIR/history.json"
+
+    # 检查 jq 是否可用
+    if ! command -v jq &> /dev/null; then
+        return 1
+    fi
+
+    # 初始化历史文件
+    _fuck_init_history_file "$history_file"
+
+    # 生成唯一 ID
+    local cmd_id="cmd_$(date +%s)_$$"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown")
+
+    # 创建条目
+    local entry
+    entry=$(jq -n \
+        --arg id "$cmd_id" \
+        --arg timestamp "$timestamp" \
+        --arg prompt "$prompt" \
+        --arg command "$command" \
+        --argjson exit_code "$exit_code" \
+        --argjson duration "$duration" \
+        '{
+            id: $id,
+            timestamp: $timestamp,
+            prompt: $prompt,
+            command: $command,
+            exitCode: $exit_code,
+            duration: $duration
+        }' 2>/dev/null)
+
+    if [[ -z "$entry" ]]; then
+        return 1
+    fi
+
+    # 追加到历史并限制为 1000 条（避免竞态条件）
+    local temp_file="${history_file}.tmp"
+    if jq ".commands += [$entry] | .commands |= .[-1000:]" "$history_file" > "$temp_file" 2>/dev/null; then
+        command mv -f -- "$temp_file" "$history_file"
+        chmod 600 "$history_file"
+    else
+        rm -f "$temp_file"
+    fi
+}
+
+# --- 内联运行时共享函数结束 ---
 
 _fuck_validate_config_file() {
     local file="$1"
@@ -1231,19 +2070,22 @@ _fuck_write_core() {
     local target="$1"
     if [[ -n "${CORE_LOGIC:-}" ]]; then
         printf '%s\n' "$CORE_LOGIC" > "$target"
+    elif [[ "$target" == "${MAIN_SH:-}" ]] && [[ -r "${BASH_SOURCE[0]:-}" ]]; then
+        # 本地直接运行生成脚本安装时，CORE_LOGIC 不存在，复制当前脚本自身。
+        cp "${BASH_SOURCE[0]}" "$target"
     else
         # 安装上下文中 CORE_LOGIC 不可用，从 API 获取
         local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
         curl -sS --max-time 10 "${api_url%/}" > "$target" 2>/dev/null
     fi
-    if grep -q '2.1.68' "$target" 2>/dev/null; then
+    if grep -q '2.2.0' "$target" 2>/dev/null; then
         local _pkg
         for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
             if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
                 local _ver
                 _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
                 if [[ -n "$_ver" ]]; then
-                    sed -i.bak "s/2.1.68/${_ver}/g" "$target" && rm -f "${target}.bak"
+                    sed -i.bak "s/2.2.0/${_ver}/g" "$target" && rm -f "${target}.bak"
                     break
                 fi
             fi
@@ -1814,16 +2656,12 @@ _uninstall_script() {
 
     if [[ "$profile_file" != "unknown_profile" ]] && [[ -f "$profile_file" ]]; then
         if grep -qF "$source_line" "$profile_file"; then
-            # Use sed to remove the lines. Create a backup.
-            if sed --version >/dev/null 2>&1; then
-                # GNU sed (Linux)
-                sed -i.bak "\|$source_line\|d" "$profile_file"
-                sed -i.bak "\|# Added by fuckits installer\|d" "$profile_file"
-            else
-                # BSD/macOS sed
-                sed -i '' "\|$source_line\|d" "$profile_file"
-                sed -i '' "\|# Added by fuckits installer\|d" "$profile_file"
-            fi
+            # 使用 awk 按整行过滤，避免 GNU/BSD sed 分隔符差异。
+            local tmp_profile="${profile_file}.fuckits.tmp"
+            awk -v source_line="$source_line" \
+                '$0 != source_line && $0 != "# Added by fuckits installer"' \
+                "$profile_file" > "$tmp_profile"
+            mv "$tmp_profile" "$profile_file"
         fi
     else
         echo -e "${C_YELLOW}Could not find a shell profile file to modify. Your problem now.${C_RESET}"
@@ -2185,42 +3023,6 @@ _fuck_execute_prompt() {
 _fuck_define_aliases
 
 # --- 核心逻辑结束 ---
-
-# --- 核心逻辑 Heredoc 结束 ---
-
-_fuck_write_core() {
-    local target="$1"
-    printf '%s\n' "$CORE_LOGIC" > "$target"
-    # 运行时替换版本占位符（安装时从 package.json 注入）
-    if grep -q '2.1.68' "$target" 2>/dev/null; then
-        local _pkg
-        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
-            if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
-                local _ver
-                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
-                if [[ -n "$_ver" ]]; then
-                    sed -i.bak "s/2.1.68/${_ver}/g" "$target" && rm -f "${target}.bak"
-                    break
-                fi
-            fi
-        done
-    fi
-}
-
-# Helper to materialize the embedded core logic into a file (used for install/temp execution)
-
-# Helper to source the core logic into the current shell
-_fuck_source_core() {
-   local tmp_core
-   tmp_core=$(mktemp)
-   # 传递脚本所在目录，供 CORE_LOGIC 中 base64 解码定位 runtime-common.sh
-   export _FC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-   _fuck_write_core "$tmp_core"
-   # shellcheck disable=SC1090
-   source "$tmp_core"
-   rm -f "$tmp_core"
-}
-
 
 # --- 安装器函数（由外层脚本运行）---
 

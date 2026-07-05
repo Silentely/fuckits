@@ -309,7 +309,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 
 ### 部署后自检
 
-1. 在 Cloudflare Dashboard → Custom Domains 绑定你的域名，并确认 `/zh` 路径路由到同一个 Worker。
+1. 在 Cloudflare Dashboard → Custom Domains 绑定裸域，并确认 Worker 内部可以处理 `/zh` 路径。
 2. 运行 `curl -sS https://<你的域>/health | jq`，确认 `status: "ok"` 与 `services.apiKey: true` 返回正常。
 3. 使用 `curl -sS https://<你的域> | bash -s "echo ok"` 以及 `/zh` 版本做一次真实 round-trip。
 4. 最后再运行 `fuck --config`，把本地 CLI 的 `FUCK_API_ENDPOINT` 更新为新域。

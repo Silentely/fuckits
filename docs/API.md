@@ -207,17 +207,18 @@ Health check endpoint for monitoring and deployment verification.
 ```json
 {
   "status": "ok",
-  "version": "2.1.0",
+  "version": "2.2.0",
+  "buildTime": "2026-07-05T12:00:00Z",
   "timestamp": "2025-01-27T12:00:00.000Z",
   "services": {
     "apiKey": true,
     "adminKey": false,
     "kvStorage": true,
-    "aiCache": true
+    "aiCache": true,
+    "pollinations": true
   },
   "config": {
-    "model": "gpt-5-nano",
-    "sharedLimit": 200
+    "sharedLimit": 10
   },
   "stats": {
     "totalCalls": 42,
@@ -236,14 +237,15 @@ Health check endpoint for monitoring and deployment verification.
 **Fields:**
 - `status`: Always "ok" if worker is running
 - `version`: Current worker version
+- `buildTime`: Build timestamp injected by `npm run build`
 - `timestamp`: Current server time (ISO 8601)
 - `services`: Dependency services status
   - `apiKey`: Whether OPENAI_API_KEY is configured
   - `adminKey`: Whether ADMIN_ACCESS_KEY is configured
   - `kvStorage`: Whether KV storage is available for quota persistence
   - `aiCache`: Whether AI_CACHE KV namespace is configured
+  - `pollinations`: Whether POLLINATIONS_APP_KEY is configured
 - `config`: Current worker configuration
-  - `model`: AI model in use
   - `sharedLimit`: Daily quota limit for shared demo mode
 - `stats`: Daily usage statistics (excludes admin bypass requests, resets at midnight UTC)
   - `totalCalls`: Total API calls for the current day (non-admin only)

@@ -126,8 +126,9 @@ teardown() {
     echo 'export FUCK_API_ENDPOINT="$(rm -rf /tmp/evil)"' > "$TEST_INSTALL_DIR/config.sh"
 
     # 尝试加载配置应该失败（验证函数应该拒绝）
-    run -127 bash -c "source ./main.sh && _fuck_validate_config_file '$TEST_INSTALL_DIR/config.sh'"
-    [ "$status" -ne 0 ] || echo "$output" | grep -qi "unsafe\|injection\|rejected"
+    run bash -c "source ./main.sh && _fuck_validate_config_file '$TEST_INSTALL_DIR/config.sh'"
+    [ "$status" -ne 0 ]
+    echo "$output" | grep -qi "unsafe\|injection\|rejected"
 }
 
 # ==================== 卸载流程测试 ====================

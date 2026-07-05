@@ -5,6 +5,15 @@ All notable changes to fuckits will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.2.0
+- feat: unify bilingual CLI source in `fuckits.sh` and generate `main.sh` / `zh_main.sh` during build
+- feat: add CLI i18n translation system and `--lang` / `--locale` language switching
+- fix: inline runtime-common functions into generated installers so installed scripts work without repository files
+- fix: keep generated installers compatible with system Bash 3.2 and BSD/macOS uninstall behavior
+- test: add i18n and language switching coverage for Bash CLI
+- test: add build regression coverage for generated script syntax and literal carriage returns
+- docs: document bilingual installation and language switching
+
 ## v2.1.67
 - feat: auto-set FUCK_OPENAI_MODEL=openai during Pollinations OAuth
 

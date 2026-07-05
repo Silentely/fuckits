@@ -33,79 +33,117 @@ FUCKITS_CONSTANTS_DEFINED=1
 # 当前语言（构建时可覆盖默认值）
 _FUCKITS_LOCALE="${FUCKITS_LOCALE:-en}"
 
-# 翻译表（关联数组）
-declare -gA _I18N_TABLE=()
-
 # 初始化翻译表
 _i18n_init() {
     # 如果已初始化，跳过
-    [[ ${#_I18N_TABLE[@]} -gt 0 ]] && return 0
+    [[ "${_I18N_INITIALIZED:-0}" = "1" ]] && return 0
 
-    # --- 英文翻译 ---
-    _I18N_TABLE[msg.help.title]="AI natural language to shell command"
-    _I18N_TABLE[msg.help.usage]="Usage: fuck <your prompt>"
-    _I18N_TABLE[msg.help.commands]="Commands:"
-    _I18N_TABLE[msg.help.options]="Options:"
-    _I18N_TABLE[msg.help.examples]="Examples:"
-    _I18N_TABLE[msg.config.title]="Configuration"
-    _I18N_TABLE[msg.config.edit_with]="Edit with:"
-    _I18N_TABLE[msg.config.open_file]="Open this file in your favourite editor to customise fuckits."
-    _I18N_TABLE[msg.config.available_toggles]="Available toggles:"
-    _I18N_TABLE[msg.config.pro_tip]="Pro tip:"
-    _I18N_TABLE[msg.config.lock_info]="we lock CONFIG_FILE to chmod 600 so your API key stays local."
-    _I18N_TABLE[msg.error.api_key_not_set]="Local API key not configured. Set FUCK_OPENAI_API_KEY in ~/.fuck/config.sh."
-    _I18N_TABLE[msg.error.api_request_failed]="Local API request failed."
-    _I18N_TABLE[msg.error.parse_response_failed]="Unable to parse local model response."
-    _I18N_TABLE[msg.error.home_not_set]="Your HOME variable isn't set. I don't know where to install this shit. Set it yourself (e.g., export HOME=/root)."
-    _I18N_TABLE[msg.status.thinking]="Thinking... "
-    _I18N_TABLE[msg.status.using_local_key]="Using your local API key... "
-    _I18N_TABLE[msg.status.here_is_result]="Here is what I came up with:"
-    _I18N_TABLE[msg.security.potentially_dangerous]="Potentially dangerous command detected"
-    _I18N_TABLE[msg.security.high_risk]="High-risk command detected"
-    _I18N_TABLE[msg.security.blocked]="Command blocked by policy"
-    _I18N_TABLE[msg.security.confirm_risk]="I accept the risk"
-    _I18N_TABLE[msg.update.new_version]="New version available:"
-    _I18N_TABLE[msg.update.current]="current:"
-    _I18N_TABLE[msg.update.up_to_date]="is up to date."
-    _I18N_TABLE[msg.update.remote_version]="Remote version:"
-    _I18N_TABLE[msg.update.local_version]="Local version:"
-    _I18N_TABLE[msg.lang.current]="Current language:"
-    _I18N_TABLE[msg.lang.switched]="Language switched to:"
-    _I18N_TABLE[msg.lang.invalid]="Invalid language. Use 'en' or 'zh'."
-    _I18N_TABLE[msg.lang.detecting]="Detected system language:"
+    _I18N_KEYS='msg.help.title
+msg.help.usage
+msg.help.commands
+msg.help.options
+msg.help.examples
+msg.config.title
+msg.config.edit_with
+msg.config.open_file
+msg.config.available_toggles
+msg.config.pro_tip
+msg.config.lock_info
+msg.error.api_key_not_set
+msg.error.api_request_failed
+msg.error.parse_response_failed
+msg.error.home_not_set
+msg.status.thinking
+msg.status.using_local_key
+msg.status.here_is_result
+msg.security.potentially_dangerous
+msg.security.high_risk
+msg.security.blocked
+msg.security.confirm_risk
+msg.update.new_version
+msg.update.current
+msg.update.up_to_date
+msg.update.remote_version
+msg.update.local_version
+msg.lang.current
+msg.lang.switched
+msg.lang.invalid
+msg.lang.detecting'
+    _I18N_INITIALIZED=1
+}
 
-    # --- 中文翻译 ---
-    _I18N_TABLE[msg.help.title.zh]="AI 自然语言转 Shell 命令"
-    _I18N_TABLE[msg.help.usage.zh]="用法: fuck <你的需求>"
-    _I18N_TABLE[msg.help.commands.zh]="可用命令:"
-    _I18N_TABLE[msg.help.options.zh]="选项:"
-    _I18N_TABLE[msg.help.examples.zh]="示例:"
-    _I18N_TABLE[msg.config.title.zh]="配置"
-    _I18N_TABLE[msg.config.edit_with.zh]="可以使用："
-    _I18N_TABLE[msg.config.open_file.zh]="用任意编辑器打开该文件即可修改配置。"
-    _I18N_TABLE[msg.config.available_toggles.zh]="可用选项："
-    _I18N_TABLE[msg.config.pro_tip.zh]="安全说明："
-    _I18N_TABLE[msg.config.lock_info.zh]="配置文件会自动 chmod 600，防止 Key 泄露。"
-    _I18N_TABLE[msg.error.api_key_not_set.zh]="未配置本地 API Key，请在 ~/.fuck/config.sh 中设置 FUCK_OPENAI_API_KEY。"
-    _I18N_TABLE[msg.error.api_request_failed.zh]="本地 API 请求失败。"
-    _I18N_TABLE[msg.error.parse_response_failed.zh]="无法解析本地模型响应。"
-    _I18N_TABLE[msg.error.home_not_set.zh]="HOME 变量未设置，无法确定安装位置。请自行设置（如 export HOME=/root）。"
-    _I18N_TABLE[msg.status.thinking.zh]="思考中... "
-    _I18N_TABLE[msg.status.using_local_key.zh]="正在使用本地 API Key... "
-    _I18N_TABLE[msg.status.here_is_result.zh]="这是我想出来的命令："
-    _I18N_TABLE[msg.security.potentially_dangerous.zh]="检测到潜在风险"
-    _I18N_TABLE[msg.security.high_risk.zh]="高危命令，请再次确认"
-    _I18N_TABLE[msg.security.blocked.zh]="命令被安全策略阻止"
-    _I18N_TABLE[msg.security.confirm_risk.zh]="我确认承担风险"
-    _I18N_TABLE[msg.update.new_version.zh]="新版本可用："
-    _I18N_TABLE[msg.update.current.zh]="当前："
-    _I18N_TABLE[msg.update.up_to_date.zh]="已是最新。"
-    _I18N_TABLE[msg.update.remote_version.zh]="远程版本："
-    _I18N_TABLE[msg.update.local_version.zh]="本地版本："
-    _I18N_TABLE[msg.lang.current.zh]="当前语言："
-    _I18N_TABLE[msg.lang.switched.zh]="语言已切换为："
-    _I18N_TABLE[msg.lang.invalid.zh]="无效语言。请使用 'en' 或 'zh'。"
-    _I18N_TABLE[msg.lang.detecting.zh]="检测到系统语言："
+# 查询翻译文本；使用 case 保持 Bash 3.2 兼容，避免关联数组依赖。
+# Arguments: $1=翻译键
+_i18n_lookup() {
+    case "$1" in
+        msg.help.title) echo "AI natural language to shell command" ;;
+        msg.help.usage) echo "Usage: fuck <your prompt>" ;;
+        msg.help.commands) echo "Commands:" ;;
+        msg.help.options) echo "Options:" ;;
+        msg.help.examples) echo "Examples:" ;;
+        msg.config.title) echo "Configuration" ;;
+        msg.config.edit_with) echo "Edit with:" ;;
+        msg.config.open_file) echo "Open this file in your favourite editor to customise fuckits." ;;
+        msg.config.available_toggles) echo "Available toggles:" ;;
+        msg.config.pro_tip) echo "Pro tip:" ;;
+        msg.config.lock_info) echo "we lock CONFIG_FILE to chmod 600 so your API key stays local." ;;
+        msg.error.api_key_not_set) echo "Local API key not configured. Set FUCK_OPENAI_API_KEY in ~/.fuck/config.sh." ;;
+        msg.error.api_request_failed) echo "Local API request failed." ;;
+        msg.error.parse_response_failed) echo "Unable to parse local model response." ;;
+        msg.error.home_not_set) echo "Your HOME variable isn't set. I don't know where to install this shit. Set it yourself (e.g., export HOME=/root)." ;;
+        msg.status.thinking) echo "Thinking... " ;;
+        msg.status.using_local_key) echo "Using your local API key... " ;;
+        msg.status.here_is_result) echo "Here is what I came up with:" ;;
+        msg.security.potentially_dangerous) echo "Potentially dangerous command detected" ;;
+        msg.security.high_risk) echo "High-risk command detected" ;;
+        msg.security.blocked) echo "Command blocked by policy" ;;
+        msg.security.confirm_risk) echo "I accept the risk" ;;
+        msg.update.new_version) echo "New version available:" ;;
+        msg.update.current) echo "current:" ;;
+        msg.update.up_to_date) echo "is up to date." ;;
+        msg.update.remote_version) echo "Remote version:" ;;
+        msg.update.local_version) echo "Local version:" ;;
+        msg.lang.current) echo "Current language:" ;;
+        msg.lang.switched) echo "Language switched to:" ;;
+        msg.lang.invalid) echo "Invalid language. Use 'en' or 'zh'." ;;
+        msg.lang.detecting) echo "Detected system language:" ;;
+        msg.help.title.zh) echo "AI 自然语言转 Shell 命令" ;;
+        msg.help.usage.zh) echo "用法: fuck <你的需求>" ;;
+        msg.help.commands.zh) echo "可用命令:" ;;
+        msg.help.options.zh) echo "选项:" ;;
+        msg.help.examples.zh) echo "示例:" ;;
+        msg.config.title.zh) echo "配置" ;;
+        msg.config.edit_with.zh) echo "可以使用：" ;;
+        msg.config.open_file.zh) echo "用任意编辑器打开该文件即可修改配置。" ;;
+        msg.config.available_toggles.zh) echo "可用选项：" ;;
+        msg.config.pro_tip.zh) echo "安全说明：" ;;
+        msg.config.lock_info.zh) echo "配置文件会自动 chmod 600，防止 Key 泄露。" ;;
+        msg.error.api_key_not_set.zh) echo "未配置本地 API Key，请在 ~/.fuck/config.sh 中设置 FUCK_OPENAI_API_KEY。" ;;
+        msg.error.api_request_failed.zh) echo "本地 API 请求失败。" ;;
+        msg.error.parse_response_failed.zh) echo "无法解析本地模型响应。" ;;
+        msg.error.home_not_set.zh) echo "HOME 变量未设置，无法确定安装位置。请自行设置（如 export HOME=/root）。" ;;
+        msg.status.thinking.zh) echo "思考中... " ;;
+        msg.status.using_local_key.zh) echo "正在使用本地 API Key... " ;;
+        msg.status.here_is_result.zh) echo "这是我想出来的命令：" ;;
+        msg.security.potentially_dangerous.zh) echo "检测到潜在风险" ;;
+        msg.security.high_risk.zh) echo "高危命令，请再次确认" ;;
+        msg.security.blocked.zh) echo "命令被安全策略阻止" ;;
+        msg.security.confirm_risk.zh) echo "我确认承担风险" ;;
+        msg.update.new_version.zh) echo "新版本可用：" ;;
+        msg.update.current.zh) echo "当前：" ;;
+        msg.update.up_to_date.zh) echo "已是最新。" ;;
+        msg.update.remote_version.zh) echo "远程版本：" ;;
+        msg.update.local_version.zh) echo "本地版本：" ;;
+        msg.lang.current.zh) echo "当前语言：" ;;
+        msg.lang.switched.zh) echo "语言已切换为：" ;;
+        msg.lang.invalid.zh) echo "无效语言。请使用 'en' 或 'zh'。" ;;
+        msg.lang.detecting.zh) echo "检测到系统语言：" ;;
+        *) return 1 ;;
+    esac
+}
+
+_i18n_has_key() {
+    _i18n_lookup "$1" >/dev/null 2>&1
 }
 
 # 获取翻译文本
@@ -115,18 +153,16 @@ _i18n_get() {
     local key="$1"
 
     # 确保翻译表已初始化
-    [[ ${#_I18N_TABLE[@]} -eq 0 ]] && _i18n_init
+    [[ "${_I18N_INITIALIZED:-0}" != "1" ]] && _i18n_init
 
     # 先尝试获取当前语言的翻译
     local localized_key="${key}.${_FUCKITS_LOCALE}"
-    if [[ -n "${_I18N_TABLE[$localized_key]+x}" ]]; then
-        echo "${_I18N_TABLE[$localized_key]}"
+    if _i18n_lookup "$localized_key"; then
         return 0
     fi
 
     # 回退到基础键（英文）
-    if [[ -n "${_I18N_TABLE[$key]+x}" ]]; then
-        echo "${_I18N_TABLE[$key]}"
+    if _i18n_lookup "$key"; then
         return 0
     fi
 
@@ -1231,6 +1267,9 @@ _fuck_write_core() {
     local target="$1"
     if [[ -n "${CORE_LOGIC:-}" ]]; then
         printf '%s\n' "$CORE_LOGIC" > "$target"
+    elif [[ "$target" == "${MAIN_SH:-}" ]] && [[ -r "${BASH_SOURCE[0]:-}" ]]; then
+        # 本地直接运行生成脚本安装时，CORE_LOGIC 不存在，复制当前脚本自身。
+        cp "${BASH_SOURCE[0]}" "$target"
     else
         # 安装上下文中 CORE_LOGIC 不可用，从 API 获取
         local api_url="${FUCK_API_ENDPOINT:-${DEFAULT_API_ENDPOINT:-https://fuckits.25500552.xyz/}}"
@@ -1814,16 +1853,12 @@ _uninstall_script() {
 
     if [[ "$profile_file" != "unknown_profile" ]] && [[ -f "$profile_file" ]]; then
         if grep -qF "$source_line" "$profile_file"; then
-            # Use sed to remove the lines. Create a backup.
-            if sed --version >/dev/null 2>&1; then
-                # GNU sed (Linux)
-                sed -i.bak "\|$source_line\|d" "$profile_file"
-                sed -i.bak "\|# Added by fuckits installer\|d" "$profile_file"
-            else
-                # BSD/macOS sed
-                sed -i '' "\|$source_line\|d" "$profile_file"
-                sed -i '' "\|# Added by fuckits installer\|d" "$profile_file"
-            fi
+            # 使用 awk 按整行过滤，避免 GNU/BSD sed 分隔符差异。
+            local tmp_profile="${profile_file}.fuckits.tmp"
+            awk -v source_line="$source_line" \
+                '$0 != source_line && $0 != "# Added by fuckits installer"' \
+                "$profile_file" > "$tmp_profile"
+            mv "$tmp_profile" "$profile_file"
         fi
     else
         echo -e "${C_YELLOW}Could not find a shell profile file to modify. Your problem now.${C_RESET}"
@@ -2185,42 +2220,6 @@ _fuck_execute_prompt() {
 _fuck_define_aliases
 
 # --- 核心逻辑结束 ---
-
-# --- 核心逻辑 Heredoc 结束 ---
-
-_fuck_write_core() {
-    local target="$1"
-    printf '%s\n' "$CORE_LOGIC" > "$target"
-    # 运行时替换版本占位符（安装时从 package.json 注入）
-    if grep -q '__SCRIPT_VERSION__' "$target" 2>/dev/null; then
-        local _pkg
-        for _pkg in "$(dirname "$target")/../../package.json" "${_FC_SCRIPT_DIR:-}/../../package.json"; do
-            if [[ -f "$_pkg" ]] && command -v node > /dev/null 2>&1; then
-                local _ver
-                _ver=$(node -e "console.log(require('$_pkg').version)" 2>/dev/null) || true
-                if [[ -n "$_ver" ]]; then
-                    sed -i.bak "s/__SCRIPT_VERSION__/${_ver}/g" "$target" && rm -f "${target}.bak"
-                    break
-                fi
-            fi
-        done
-    fi
-}
-
-# Helper to materialize the embedded core logic into a file (used for install/temp execution)
-
-# Helper to source the core logic into the current shell
-_fuck_source_core() {
-   local tmp_core
-   tmp_core=$(mktemp)
-   # 传递脚本所在目录，供 CORE_LOGIC 中 base64 解码定位 runtime-common.sh
-   export _FC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-   _fuck_write_core "$tmp_core"
-   # shellcheck disable=SC1090
-   source "$tmp_core"
-   rm -f "$tmp_core"
-}
-
 
 # --- 安装器函数（由外层脚本运行）---
 

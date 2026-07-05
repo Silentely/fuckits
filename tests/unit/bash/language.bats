@@ -19,9 +19,9 @@ setup() {
     CONFIG_FILE="${BATS_TEST_TMPDIR}/config.sh"
     # 强制使用英文
     _FUCKITS_LOCALE="en"
-    # 清理翻译表
-    unset _I18N_TABLE
-    declare -gA _I18N_TABLE=()
+    # 清理 i18n 初始化状态
+    unset _I18N_INITIALIZED
+    unset _I18N_KEYS
 }
 
 # ==================== 语言初始化测试 ====================

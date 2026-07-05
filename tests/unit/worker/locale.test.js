@@ -18,7 +18,7 @@ describe('语言检测系统', () => {
 
       const body = await response.text();
       // 检查中文特征字符串
-      expect(body).toContain('FUCKITS_LOCALE="zh"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
     });
 
     it('访问根路径应该返回英文脚本', async () => {
@@ -30,7 +30,7 @@ describe('语言检测系统', () => {
       const body = await response.text();
 
       // 检查英文特征字符串
-      expect(body).toContain('FUCKITS_LOCALE="en"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
     });
   });
 
@@ -42,7 +42,7 @@ describe('语言检测系统', () => {
 
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain('FUCKITS_LOCALE="zh"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
     });
 
     it('?lang=en 参数应该返回英文脚本', async () => {
@@ -52,7 +52,7 @@ describe('语言检测系统', () => {
 
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain('FUCKITS_LOCALE="en"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
     });
   });
 
@@ -65,7 +65,7 @@ describe('语言检测系统', () => {
 
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain('FUCKITS_LOCALE="zh"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
     });
 
     it('Accept-Language: en-US 应该返回英文脚本', async () => {
@@ -76,7 +76,7 @@ describe('语言检测系统', () => {
 
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain('FUCKITS_LOCALE="en"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
     });
   });
 
@@ -88,7 +88,7 @@ describe('语言检测系统', () => {
 
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain('FUCKITS_LOCALE="en"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
     });
   });
 
@@ -101,7 +101,7 @@ describe('语言检测系统', () => {
       expect(response.status).toBe(200);
       const body = await response.text();
       // URL 路径的 /zh 应该优先
-      expect(body).toContain('FUCKITS_LOCALE="zh"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
     });
 
     it('query 参数优先级高于 Accept-Language', async () => {
@@ -113,7 +113,7 @@ describe('语言检测系统', () => {
       expect(response.status).toBe(200);
       const body = await response.text();
       // query 参数 lang=en 应该优先
-      expect(body).toContain('FUCKITS_LOCALE="en"');
+      expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
     });
   });
 });

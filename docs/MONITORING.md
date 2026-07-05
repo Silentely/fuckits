@@ -36,17 +36,18 @@ fuckits uses a multi-layered monitoring approach:
 ```json
 {
   "status": "ok",
-  "version": "2.1.0",
+  "version": "2.2.0",
+  "buildTime": "2026-07-05T12:00:00Z",
   "timestamp": "2025-01-27T12:00:00.000Z",
   "services": {
     "apiKey": true,
     "adminKey": false,
     "kvStorage": true,
-    "aiCache": true
+    "aiCache": true,
+    "pollinations": true
   },
   "config": {
-    "model": "gpt-5-nano",
-    "sharedLimit": 200
+    "sharedLimit": 10
   },
   "stats": {
     "totalCalls": 42,
@@ -65,14 +66,15 @@ fuckits uses a multi-layered monitoring approach:
 **Fields Explained:**
 - `status`: Worker running state ("ok")
 - `version`: Current version number
+- `buildTime`: Build timestamp injected by `npm run build`
 - `timestamp`: Server UTC time
 - `services`: Dependency status
   - `apiKey`: OpenAI API key configured
   - `adminKey`: Admin bypass key configured
   - `kvStorage`: KV storage available for quota persistence
   - `aiCache`: KV storage available for AI response caching (new in v2.1.0)
+  - `pollinations`: Pollinations App Key configured
 - `config`: Runtime configuration
-  - `model`: AI model in use
   - `sharedLimit`: Daily demo quota limit
 - `stats`: Daily usage statistics (excludes admin bypass requests)
   - `totalCalls`: Total API calls today (non-admin only)

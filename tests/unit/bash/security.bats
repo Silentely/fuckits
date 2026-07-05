@@ -9,6 +9,10 @@ load '../../helpers/bats-helpers'
 
 #
 setup() {
+    export TEST_HOME="${BATS_TEST_TMPDIR}/home"
+    export HOME="$TEST_HOME"
+    mkdir -p "$HOME"
+
     # Source main.sh for each test (guard blocks prevent redefinition)
     source ./main.sh
     # Set security mode
@@ -19,6 +23,7 @@ setup() {
 teardown() {
     unset FUCK_SECURITY_MODE
     unset FUCK_SECURITY_WHITELIST
+    rm -rf "$TEST_HOME"
 }
 
 # ====================  (8 ) ====================

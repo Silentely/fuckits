@@ -6,6 +6,10 @@
 load '../../helpers/bats-helpers'
 
 setup() {
+    export TEST_HOME="${BATS_TEST_TMPDIR}/home"
+    export HOME="$TEST_HOME"
+    mkdir -p "$HOME"
+
     source ./main.sh
     export FUCK_SECURITY_MODE="balanced"
     # source runtime-common.sh to get _fuck_should_use_pollinations_api
@@ -23,6 +27,7 @@ teardown() {
     unset FUCK_POLLINATIONS_CLIENT_ID
     # Remove test config file if we created one
     rm -f "$CONFIG_FILE"
+    rm -rf "$TEST_HOME"
 }
 
 # ==================== OAuth 状态查询 ====================

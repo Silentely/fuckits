@@ -169,17 +169,17 @@ _fuck_audit_log() {
     if [[ "${FUCK_AUDIT_LOG:-false}" != "true" ]]; then
         return 0
     fi
-    
+
     local event="$1"
     local command="$2"
     local exit_code="${3:--}"
     local timestamp
     timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')
     local log_file="${FUCK_AUDIT_LOG_FILE:-$INSTALL_DIR/.audit.log}"
-    
+
     # Ensure log directory exists
     mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
-    
+
     # Sanitize command for logging (normalize newlines, escape delimiter, limit length)
     local sanitized_cmd
     local raw_len=${#command}
@@ -187,10 +187,10 @@ _fuck_audit_log() {
     if [[ "$raw_len" -gt 200 ]]; then
         sanitized_cmd="${sanitized_cmd}..."
     fi
-    
+
     # Write to log file (format: timestamp|user|event|exit_code|command)
     printf '%s|%s|%s|%s|%s\n' "${timestamp}" "${USER:-unknown}" "${event}" "${exit_code}" "${sanitized_cmd}" >> "$log_file" 2>/dev/null || true
-    
+
     # Secure the log file
     chmod 600 "$log_file" 2>/dev/null || true
 }
@@ -808,4 +808,3 @@ _fuck_log_history() {
         rm -f "$temp_file"
     fi
 }
-

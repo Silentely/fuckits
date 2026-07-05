@@ -291,7 +291,7 @@ You should see `status: "ok"` and `services.apiKey: true`. The response also inc
 
 ### Post-deploy checklist
 
-1. Bind your custom domain + `/zh` path in the Cloudflare dashboard.
+1. Bind the bare custom domain in the Cloudflare dashboard, then verify the Worker routes `/zh` internally.
 2. Hit `https://<your-domain>/health` to ensure the Worker is alive and has secrets.
 3. Pipe both English and Chinese installers via `curl ... | bash -s "echo ok"` to test real usage.
 4. Update your local `~/.fuck/config.sh` so the CLI talks to your own Worker.

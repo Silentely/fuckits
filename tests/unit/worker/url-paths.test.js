@@ -14,7 +14,7 @@ describe('URL 路径边界情况', () => {
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain('FUCKITS_LOCALE="zh"');
+    expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
   });
 
   it('/ZH 大写应该返回中文脚本', async () => {
@@ -24,7 +24,7 @@ describe('URL 路径边界情况', () => {
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain('FUCKITS_LOCALE="zh"');
+    expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="zh"');
   });
 
   it('/en 路径应该返回英文脚本', async () => {
@@ -34,7 +34,7 @@ describe('URL 路径边界情况', () => {
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain('FUCKITS_LOCALE="en"');
+    expect(body).toContain('_FUCKITS_BUILD_DEFAULT_LOCALE="en"');
   });
 
   it('无效路径应该返回默认英文脚本', async () => {

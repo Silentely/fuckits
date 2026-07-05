@@ -140,7 +140,7 @@ export FUCK_SECURITY_MODE=strict
 4. **Confirmation prompt reads from /dev/tty**. In non-interactive contexts (pipes, scripts), set `FUCK_AUTO_EXEC=true`.
 5. **Config file is chmod 600**. Only the owning user can read it.
 6. **Security engine is regex-based**. Complex commands may trigger false positives on the challenge tier.
-7. **Version injection**: `SCRIPT_VERSION` is injected at build time from `package.json`. The placeholder `__SCRIPT_VERSION__` is replaced during `npm run build`.
+7. **Version injection**: `SCRIPT_VERSION` is injected at build time from `VERSION`. The placeholder `__SCRIPT_VERSION__` is replaced during `npm run build`.
 
 ## Examples
 

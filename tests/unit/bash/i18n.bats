@@ -13,38 +13,39 @@ setup() {
     source ./fuckits.sh
     # 强制使用英文以保持测试一致性
     _FUCKITS_LOCALE="en"
-    # 清理翻译表（确保每个测试独立运行）
-    unset _I18N_TABLE
-    declare -gA _I18N_TABLE=()
+    # 清理 i18n 初始化状态（确保每个测试独立运行）
+    unset _I18N_INITIALIZED
+    unset _I18N_KEYS
 }
 
 # ==================== 翻译表初始化测试 ====================
 
 @test "i18n: 初始化翻译表" {
     _i18n_init
-    [[ ${#_I18N_TABLE[@]} -gt 0 ]]
+    [[ "${_I18N_INITIALIZED}" == "1" ]]
+    [[ -n "${_I18N_KEYS}" ]]
 }
 
 @test "i18n: 翻译表包含英文键" {
     _i18n_init
-    [[ -n "${_I18N_TABLE[msg.help.title]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.error.api_key_not_set]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.security.blocked]+x}" ]]
+    _i18n_has_key "msg.help.title"
+    _i18n_has_key "msg.error.api_key_not_set"
+    _i18n_has_key "msg.security.blocked"
 }
 
 @test "i18n: 翻译表包含中文键" {
     _i18n_init
-    [[ -n "${_I18N_TABLE[msg.help.title.zh]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.error.api_key_not_set.zh]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.security.blocked.zh]+x}" ]]
+    _i18n_has_key "msg.help.title.zh"
+    _i18n_has_key "msg.error.api_key_not_set.zh"
+    _i18n_has_key "msg.security.blocked.zh"
 }
 
 @test "i18n: 重复初始化不会重复添加" {
     _i18n_init
-    local count1=${#_I18N_TABLE[@]}
+    local keys1="${_I18N_KEYS}"
     _i18n_init
-    local count2=${#_I18N_TABLE[@]}
-    [[ "$count1" -eq "$count2" ]]
+    local keys2="${_I18N_KEYS}"
+    [[ "$keys1" == "$keys2" ]]
 }
 
 # ==================== 翻译获取测试 ====================
@@ -148,29 +149,30 @@ setup() {
     _i18n_init
     # 验证每个英文键都有对应的中文键
     local missing=0
-    for key in "${!_I18N_TABLE[@]}"; do
-        if [[ "$key" != *.zh ]] && [[ -z "${_I18N_TABLE[${key}.zh]+x}" ]]; then
+    while IFS= read -r key; do
+        [[ -z "$key" ]] && continue
+        if ! _i18n_has_key "${key}.zh"; then
             echo "Missing zh translation for: $key"
             ((missing++))
         fi
-    done
+    done <<< "$_I18N_KEYS"
     [[ $missing -eq 0 ]]
 }
 
 @test "i18n: 关键错误消息翻译存在" {
     _i18n_init
     # 验证关键错误消息的翻译
-    [[ -n "${_I18N_TABLE[msg.error.api_key_not_set]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.error.api_key_not_set.zh]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.error.home_not_set]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.error.home_not_set.zh]+x}" ]]
+    _i18n_has_key "msg.error.api_key_not_set"
+    _i18n_has_key "msg.error.api_key_not_set.zh"
+    _i18n_has_key "msg.error.home_not_set"
+    _i18n_has_key "msg.error.home_not_set.zh"
 }
 
 @test "i18n: 关键安全消息翻译存在" {
     _i18n_init
     # 验证关键安全消息的翻译
-    [[ -n "${_I18N_TABLE[msg.security.blocked]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.security.blocked.zh]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.security.high_risk]+x}" ]]
-    [[ -n "${_I18N_TABLE[msg.security.high_risk.zh]+x}" ]]
+    _i18n_has_key "msg.security.blocked"
+    _i18n_has_key "msg.security.blocked.zh"
+    _i18n_has_key "msg.security.high_risk"
+    _i18n_has_key "msg.security.high_risk.zh"
 }
