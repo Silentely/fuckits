@@ -64,8 +64,13 @@ except Exception as e:
 
 # 在读取 fuckits.sh 之后，注入语言设置
 def inject_locale(content, locale):
-    """注入默认语言设置"""
-    return content.replace('__BUILD_DEFAULT_LOCALE__', locale)
+    """注入默认语言设置（只替换赋值语句，不替换条件检查）"""
+    # 只替换赋值语句中的占位符，不替换条件检查中的
+    return re.sub(
+        r'(_FUCKITS_BUILD_DEFAULT_LOCALE=)"__BUILD_DEFAULT_LOCALE__"',
+        f'\\1"{locale}"',
+        content
+    )
 
 def inject_version(content, script_name):
     """注入脚本版本号"""

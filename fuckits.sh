@@ -211,27 +211,29 @@ _fuck_lang_ensure_config_exists() {
 
 # 初始化语言（自动检测 + 配置覆盖）
 _fuck_init_locale() {
-    # 构建时注入的默认语言（优先级最低）
-    if [[ "$_FUCKITS_BUILD_DEFAULT_LOCALE" != "__BUILD_DEFAULT_LOCALE__" ]]; then
-        _FUCKITS_LOCALE="$_FUCKITS_BUILD_DEFAULT_LOCALE"
-    fi
-
     # 优先级：环境变量 > 配置文件 > 构建默认语言 > 系统检测
+
+    # 1. 首先检查环境变量
     if [[ -n "${FUCKITS_LOCALE:-}" ]]; then
-        # 环境变量已设置，直接使用
         _FUCKITS_LOCALE="$FUCKITS_LOCALE"
+    # 2. 然后检查配置文件
     elif [[ -n "${CONFIG_FILE:-}" ]] && [[ -f "$CONFIG_FILE" ]] && grep -q "^export FUCKITS_LOCALE=" "$CONFIG_FILE" 2>/dev/null; then
-        # 从配置文件读取
         local config_locale
         config_locale=$(grep "^export FUCKITS_LOCALE=" "$CONFIG_FILE" | tail -n 1 | cut -d'"' -f2)
         _FUCKITS_LOCALE="$config_locale"
-    elif [[ "$_FUCKITS_BUILD_DEFAULT_LOCALE" == "__BUILD_DEFAULT_LOCALE__" ]]; then
-        # 自动检测系统语言
+    # 3. 然后使用构建时注入的默认语言
+    elif [[ "$_FUCKITS_BUILD_DEFAULT_LOCALE" != "__BUILD_DEFAULT_LOCALE__" ]]; then
+        _FUCKITS_LOCALE="$_FUCKITS_BUILD_DEFAULT_LOCALE"
+    # 4. 最后自动检测系统语言
+    else
         _FUCKITS_LOCALE=$(_i18n_detect_locale)
     fi
 
     export FUCKITS_LOCALE="$_FUCKITS_LOCALE"
 }
+
+# 初始化语言设置（在脚本加载时自动执行）
+_fuck_init_locale
 
 # 处理 --lang 命令
 # Arguments: $1=语言代码（可选）
