@@ -6,27 +6,27 @@
 
 set -euo pipefail
 
+# --- 构建时注入的默认语言 ---
+# 构建脚本会替换这个值
+_FUCKITS_BUILD_DEFAULT_LOCALE="__BUILD_DEFAULT_LOCALE__"
+
 # --- 防止 readonly 变量重复定义 ---
-# 此守卫允许脚本被多次 source（例如在测试中）
-if [[ -z "${FUCKITS_CONSTANTS_DEFINED:-}" ]]; then
-    # 标记常量已定义（export 使子 shell 可见）
-    export FUCKITS_CONSTANTS_DEFINED=1
+# 此守卫允许脚本被多次 source；子进程可能继承标记但不会继承普通变量。
+FUCKITS_CONSTANTS_DEFINED=1
 
-    # --- 颜色定义 ---
-    readonly C_RESET='\033[0m'
-    readonly C_RED_BOLD='\033[1;31m'
-    readonly C_RED='\033[0;31m'
-    readonly C_GREEN='\033[0;32m'
-    readonly C_YELLOW='\033[0;33m'
-    readonly C_CYAN='\033[0;36m'
-    readonly C_BOLD='\033[1m'
-    readonly C_DIM='\033[2m'
+# --- 颜色定义 ---
+[[ -z "${C_RESET+x}" ]] && readonly C_RESET='\033[0m'
+[[ -z "${C_RED_BOLD+x}" ]] && readonly C_RED_BOLD='\033[1;31m'
+[[ -z "${C_RED+x}" ]] && readonly C_RED='\033[0;31m'
+[[ -z "${C_GREEN+x}" ]] && readonly C_GREEN='\033[0;32m'
+[[ -z "${C_YELLOW+x}" ]] && readonly C_YELLOW='\033[0;33m'
+[[ -z "${C_CYAN+x}" ]] && readonly C_CYAN='\033[0;36m'
+[[ -z "${C_BOLD+x}" ]] && readonly C_BOLD='\033[1m'
+[[ -z "${C_DIM+x}" ]] && readonly C_DIM='\033[2m'
 
-    # --- FUCK! ---
-    readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
-    readonly FCKN="${C_RED}F*CKING${C_RESET}"
-
-fi  # readonly 常量守卫结束
+# --- FUCK! ---
+[[ -z "${FUCK+x}" ]] && readonly FUCK="${C_RED_BOLD}FUCK!${C_RESET}"
+[[ -z "${FCKN+x}" ]] && readonly FCKN="${C_RED}F*CKING${C_RESET}"
 
 # --- i18n 国际化系统 ---
 
@@ -211,7 +211,12 @@ _fuck_lang_ensure_config_exists() {
 
 # 初始化语言（自动检测 + 配置覆盖）
 _fuck_init_locale() {
-    # 优先级：环境变量 > 配置文件 > 系统检测
+    # 构建时注入的默认语言（优先级最低）
+    if [[ "$_FUCKITS_BUILD_DEFAULT_LOCALE" != "__BUILD_DEFAULT_LOCALE__" ]]; then
+        _FUCKITS_LOCALE="$_FUCKITS_BUILD_DEFAULT_LOCALE"
+    fi
+
+    # 优先级：环境变量 > 配置文件 > 构建默认语言 > 系统检测
     if [[ -n "${FUCKITS_LOCALE:-}" ]]; then
         # 环境变量已设置，直接使用
         _FUCKITS_LOCALE="$FUCKITS_LOCALE"
@@ -220,7 +225,7 @@ _fuck_init_locale() {
         local config_locale
         config_locale=$(grep "^export FUCKITS_LOCALE=" "$CONFIG_FILE" | tail -n 1 | cut -d'"' -f2)
         _FUCKITS_LOCALE="$config_locale"
-    else
+    elif [[ "$_FUCKITS_BUILD_DEFAULT_LOCALE" == "__BUILD_DEFAULT_LOCALE__" ]]; then
         # 自动检测系统语言
         _FUCKITS_LOCALE=$(_i18n_detect_locale)
     fi

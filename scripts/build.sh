@@ -1,13 +1,14 @@
 #!/bin/bash
 #
 # Build script for fuckits (Cloudflare Worker)
-# This script embeds main.sh and zh_main.sh into worker.js as base64 strings
+# This script generates main.sh and zh_main.sh from fuckits.sh, then embeds them
+# into worker.js as base64 strings.
 #
 
 set -euo pipefail
 
 # Ensure we're in the project root
-if [[ ! -f "worker.js" ]] || [[ ! -f "main.sh" ]]; then
+if [[ ! -f "worker.js" ]] || [[ ! -f "fuckits.sh" ]]; then
     echo -e "\033[0;31mError: This script must be run from the project root\033[0m"
     exit 1
 fi
@@ -22,13 +23,8 @@ readonly C_RESET='\033[0m'
 echo -e "${C_CYAN}🔨 Building fuckits worker...${C_RESET}"
 
 # Check if required files exist
-if [[ ! -f "main.sh" ]]; then
-    echo -e "${C_RED}Error: main.sh not found${C_RESET}"
-    exit 1
-fi
-
-if [[ ! -f "zh_main.sh" ]]; then
-    echo -e "${C_RED}Error: zh_main.sh not found${C_RESET}"
+if [[ ! -f "fuckits.sh" ]]; then
+    echo -e "${C_RED}Error: fuckits.sh not found${C_RESET}"
     exit 1
 fi
 
@@ -44,33 +40,6 @@ if ! command -v python3 > /dev/null; then
     exit 1
 fi
 
-# Encode runtime-common.sh into main.sh and zh_main.sh (update _FC_RT_COMMON_B64)
-echo -e "${C_YELLOW}📦 Encoding runtime-common.sh into shell scripts...${C_RESET}"
-python3 -c "
-import base64, re, sys
-try:
-    with open('scripts/runtime-common.sh', 'rb') as f:
-        b64 = base64.b64encode(f.read()).decode()
-    for script in ['main.sh', 'zh_main.sh']:
-        with open(script) as f:
-            text = f.read()
-        pattern = r'(_FC_RT_COMMON_B64=\")([^\"]+)(\")'
-        if re.search(pattern, text):
-            text = re.sub(pattern, lambda m: m.group(1) + b64 + m.group(3), text, count=1)
-            with open(script, 'w') as f:
-                f.write(text)
-            print(f'  {script}: _FC_RT_COMMON_B64 updated ({len(b64)} chars)')
-        else:
-            print(f'  {script}: _FC_RT_COMMON_B64 not found, skipped', file=sys.stderr)
-except Exception as e:
-    print(f'Error encoding runtime-common.sh: {e}', file=sys.stderr)
-    sys.exit(1)
-"
-if [[ $? -ne 0 ]]; then
-    echo -e "${C_RED}❌ Failed to encode runtime-common.sh${C_RESET}"
-    exit 1
-fi
-
 # Create backup
 echo -e "${C_YELLOW}📦 Creating backup of worker.js...${C_RESET}"
 cp worker.js worker.js.backup
@@ -79,23 +48,10 @@ cp worker.js worker.js.backup
 # (avoids macOS/Linux base64 command differences and sed separator issues)
 python3 - <<'PY'
 import base64
-import json
 import os
 import re
 import sys
 from pathlib import Path
-
-# Read and encode scripts using Python base64 (cross-platform consistent)
-try:
-    b64_en = base64.b64encode(Path('main.sh').read_bytes()).decode()
-    b64_zh = base64.b64encode(Path('zh_main.sh').read_bytes()).decode()
-except Exception as e:
-    print(f"Error encoding scripts: {e}", file=sys.stderr)
-    sys.exit(1)
-
-if not b64_en or not b64_zh:
-    print("Error: Base64 content not provided", file=sys.stderr)
-    sys.exit(1)
 
 # Read version from VERSION file (single source of truth)
 try:
@@ -106,21 +62,54 @@ except Exception as e:
     print(f"Error reading VERSION file: {e}", file=sys.stderr)
     sys.exit(1)
 
-# Replace __SCRIPT_VERSION__ placeholder in shell scripts before encoding
-def inject_version(b64_content, script_name):
-    try:
-        text = base64.b64decode(b64_content).decode('utf-8')
-        if '__SCRIPT_VERSION__' in text:
-            text = text.replace('__SCRIPT_VERSION__', version)
-            print(f"  {script_name}: injected version {version}")
-            return base64.b64encode(text.encode('utf-8')).decode()
-        return b64_content
-    except Exception as e:
-        print(f"Warning: Failed to inject version in {script_name}: {e}", file=sys.stderr)
-        return b64_content
+# 在读取 fuckits.sh 之后，注入语言设置
+def inject_locale(content, locale):
+    """注入默认语言设置"""
+    return content.replace('__BUILD_DEFAULT_LOCALE__', locale)
 
-b64_en = inject_version(b64_en, 'main.sh')
-b64_zh = inject_version(b64_zh, 'zh_main.sh')
+def inject_version(content, script_name):
+    """注入脚本版本号"""
+    original = content
+    content = content.replace(
+        'SCRIPT_VERSION="${SCRIPT_VERSION:-__SCRIPT_VERSION__}"',
+        f"SCRIPT_VERSION='{version}'",
+    )
+    content = content.replace('__SCRIPT_VERSION__', version)
+    if content != original:
+        print(f"  {script_name}: injected version {version}")
+    return content
+
+# 读取 fuckits.sh 作为源码
+try:
+    source_content = Path('fuckits.sh').read_text(encoding='utf-8')
+except Exception as e:
+    print(f"Error reading fuckits.sh: {e}", file=sys.stderr)
+    sys.exit(1)
+
+# 生成英文版（默认语言为英文）
+en_content = inject_locale(source_content, 'en')
+en_content = inject_version(en_content, 'main.sh')
+
+# 生成中文版（默认语言为中文）
+zh_content = inject_locale(source_content, 'zh')
+zh_content = inject_version(zh_content, 'zh_main.sh')
+
+try:
+    Path('main.sh').write_text(en_content, encoding='utf-8')
+    Path('zh_main.sh').write_text(zh_content, encoding='utf-8')
+    os.chmod('main.sh', 0o755)
+    os.chmod('zh_main.sh', 0o755)
+except Exception as e:
+    print(f"Error writing generated shell scripts: {e}", file=sys.stderr)
+    sys.exit(1)
+
+# 使用 Python base64 编码，保证 macOS/Linux 行为一致
+b64_en = base64.b64encode(en_content.encode('utf-8')).decode()
+b64_zh = base64.b64encode(zh_content.encode('utf-8')).decode()
+
+if not b64_en or not b64_zh:
+    print("Error: Base64 content not provided", file=sys.stderr)
+    sys.exit(1)
 
 # Read worker.js
 try:
