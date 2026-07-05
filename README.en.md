@@ -232,6 +232,25 @@ This method won't install any files on your system; the command is executed dire
 
 ---
 
+## Language Switching
+
+fuckits supports Chinese and English bilingual, can automatically detect system language, and can also be switched manually:
+
+```bash
+# View current language
+fuck --lang
+
+# Switch to Chinese
+fuck --lang zh
+
+# Switch to English
+fuck --lang en
+```
+
+Language settings are persisted to the configuration file `~/.fuck/config.sh`.
+
+---
+
 ## How It Works
 
 1.  You type `fuck <your prompt>` in your terminal.

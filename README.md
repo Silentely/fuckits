@@ -250,6 +250,25 @@ curl -sS https://fuckits.25500552.xyz | bash -s "find all files larger than 10MB
 
 ---
 
+## 语言切换
+
+fuckits 支持中英文双语，可自动检测系统语言，也可手动切换：
+
+```bash
+# 查看当前语言
+fuck --lang
+
+# 切换到中文
+fuck --lang zh
+
+# 切换到英文
+fuck --lang en
+```
+
+语言设置会持久化到配置文件 `~/.fuck/config.sh`。
+
+---
+
 ## 工作原理
 
 1.  你在终端输入 `fuck <你的需求>`。
