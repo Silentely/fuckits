@@ -126,15 +126,16 @@ teardown() {
 # ==================== zh_main.sh 测试 ====================
 
 @test "zh_main Help: fuck --help should display Chinese usage information" {
-    # 在子进程中 source zh_main.sh，传 --help 参数走 execute 路径
-    # 避免与 main.sh 的 readonly 变量冲突
+    # source 只负责加载函数；显式设置中文后调用入口函数，避免 readonly 变量冲突
     run bash -c '
         export HOME="'"$TEST_HOME"'"
-        source ./zh_main.sh --help
+        source ./zh_main.sh
+        _FUCKITS_LOCALE="zh"
+        _fuck_execute_prompt --help
     '
     [ "$status" -eq 0 ]
-    # 应包含中文
-    [[ "${output}" == *"可用命令"* ]] || [[ "${output}" == *"帮助"* ]]
+    # 当前 i18n 帮助标题应使用中文翻译
+    [[ "${output}" == *"AI 自然语言转 Shell 命令"* ]]
 }
 
 @test "zh_main Update: should fail when not installed" {

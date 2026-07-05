@@ -81,6 +81,22 @@ setup() {
     [[ "$result" == *"AI 自然语言"* ]]
 }
 
+@test "Routing: 'fuck --lang' should show current language" {
+    _i18n_init
+    _FUCKITS_LOCALE="en"
+    run _fuck_execute_prompt "--lang"
+    [[ "$status" -eq 0 ]]
+    [[ "$output" == *"en"* ]] || [[ "$output" == *"zh"* ]]
+}
+
+@test "Routing: 'fuck --lang zh' should switch to Chinese" {
+    _i18n_init
+    run _fuck_execute_prompt "--lang" "zh"
+    [[ "$status" -eq 0 ]]
+    [[ "$output" == *"zh"* ]]
+    grep -q '^export FUCKITS_LOCALE="zh"$' "$CONFIG_FILE"
+}
+
 @test "language: 切换语言会持久化到配置文件" {
     _i18n_init
     _fuck_handle_lang_command "zh"
