@@ -250,7 +250,7 @@ Cloudflare Workers
 ## 测试与质量
 
 ### 当前状态
-- 自动化测试：`tests/integration/build-deploy.bats`（23 个测试）覆盖构建和部署流程
+- 自动化测试：`tests/integration/build-deploy.bats`（25 个测试）覆盖构建和部署流程
 - 手动验证：用于一键部署的交互式流程
 
 ### 测试方法

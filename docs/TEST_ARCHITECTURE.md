@@ -36,17 +36,23 @@
 fuckits/
 ├── tests/                          # 测试根目录
 │   ├── unit/                       # 单元测试
-│   │   ├── worker/                 # Worker 单元测试（14 个文件）
+│   │   ├── worker/                 # Worker 单元测试（16 个文件 / 151 tests）
 │   │   │   ├── quota.test.js      # 配额管理测试
 │   │   │   ├── locale.test.js     # 语言检测测试
 │   │   │   ├── handlers.test.js   # 请求处理测试
-│   │   │   └── ...                # 共 14 个测试文件
-│   │   └── bash/                   # Bash 脚本单元测试
-│   │       ├── security.bats       # 安全引擎测试（39 tests）
-│   │       └── history.bats        # 命令历史与收藏测试（18 tests）
-│   ├── integration/                # 集成测试
-│   │   ├── build-deploy.bats      # 构建部署流程测试（23 tests）
-│   │   └── e2e.bats               # 端到端用户流程测试（20 tests）
+│   │   │   ├── agent-discovery.test.js # robots/sitemap/.well-known 等
+│   │   │   ├── security-utils.test.js  # 安全工具函数
+│   │   │   └── ...                # 共 16 个测试文件
+│   │   └── bash/                   # Bash 脚本单元测试（7 个文件）
+│   │       ├── security.bats       # 安全引擎测试（27 tests）
+│   │       ├── history.bats        # 命令历史与收藏测试（21 tests）
+│   │       ├── history-extended.bats
+│   │       ├── i18n.bats / language.bats
+│   │       ├── oauth.bats
+│   │       └── help-update.bats
+│   ├── integration/                # 集成测试（48 tests）
+│   │   ├── build-deploy.bats      # 构建部署流程测试（25 tests）
+│   │   └── e2e.bats               # 端到端用户流程测试（23 tests）
 │   ├── security/                   # 安全测试
 │   │   └── fuzzing.bats           # 模糊测试（17 tests）
 │   ├── performance/                # 性能测试

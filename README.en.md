@@ -21,7 +21,7 @@ This repository (maintained by Silentely) is a derivative of [faithleysath/fucki
 * **Full bilingual toolchain** – English `main.sh`, Chinese `zh_main.sh`, and locale-aware Worker responses are embedded via `npm run build`, ensuring both installers stay in sync.
 * **Config UX upgrades** – `fuck --config` scaffolds `~/.fuck/config.sh`, locks it to `chmod 600`, and lists every toggle (API endpoint, alias, auto-exec, timeout, admin key, etc.) so power users can tweak safely.
 * **Automated setup/deploy scripts** – `npm run setup` and `npm run one-click-deploy` walk through Cloudflare login, secret provisioning (including the new admin key), builds, and deployment, reducing manual drift.
-* **Documentation & roadmap polish** – README/DEPLOY/SUMMARY/CLAUDE.md highlight the fork status, credits, Amber rewrite roadmap, and the expanded environment-variable matrix to simplify reuse for other forks.
+* **Documentation & roadmap polish** – README/DEPLOY/CLAUDE.md highlight the fork status, credits, Amber rewrite roadmap, and the expanded environment-variable matrix to simplify reuse for other forks.
 
 
 
@@ -119,8 +119,8 @@ fuck find all files larger than 10MB in the current directory
 # Install git (auto-detects apt/yum/brew, etc.)
 fuck install git
 
-# Uninstall git (also auto-detects)
-fuck --uninstall git
+# Uninstall git (also auto-detects; do not use --uninstall — that removes fuckits itself)
+fuck uninstall git
 ```
 
 ### Help
@@ -307,7 +307,7 @@ You should see `status: "ok"` and `services.apiKey: true`. The response also inc
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | Point to your self-hosted worker |
 | `FUCK_OPENAI_API_KEY` | empty | Local OpenAI-compatible key (recommended, bypasses the shared quota) |
 | `FUCK_ADMIN_KEY` | empty | Maintainer-issued bypass token (Worker must define `ADMIN_ACCESS_KEY`) |
-| `FUCK_OPENAI_MODEL` | `gpt-5-nano` | Override the model when you use your own key |
+| `FUCK_OPENAI_MODEL` | empty (upstream default with local key; config hint example `gpt-4o-mini`) | Override the model when you use your own key (Pollinations OAuth sets `openai`) |
 | `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | Custom API base for proxies/alt providers |
 | `FUCK_ALIAS` | `fuck` | Extra alias (without removing the default) |
 | `FUCK_AUTO_EXEC` | `false` | Skip confirmations (dangerous but handy for automation) |

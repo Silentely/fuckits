@@ -116,6 +116,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-07-11 | 文档同步 | 对照代码校正测试计数、wrangler compatibility_date、配置项与 README 误导示例；当前测试清点 340（151 JS + 189 Bash） |
 | 2026-07-01 | Pollinations OAuth 集成 | 新增 `fuck --oauth` 命令，支持 Device Flow 授权；用户可通过 Pollinations 账号授权后使用自己的 Pollen 余额；支持 status/logout 子命令；新增 14 个 bats 测试；测试总数 285 个（151 JS + 134 Bash） |
 | 2026-05-06 | 版本管理系统 + 安装优化 | 新增 VERSION 文件作为单一版本来源；`fuck version` 子命令；安装前版本对比（本地 vs 远程）；更新时先删旧脚本再重装（保留配置）；health 端点增加 buildTime 字段；修复 stdout 输出污染 bug；部署输出敏感信息过滤；pre-commit hook 自动递增版本号；测试总数 228 个（119 JS + 109 Bash） |
 | 2026-05-03 | 文档同步与质量修正 | 更新 TEST_ARCHITECTURE.md 目录结构与实际文件一致；修正 tests/CLAUDE.md 中 R2 遗留代码说明；修正 CONTRIBUTING.md 测试命令写法；确认共享配额默认值（代码回退=10，生产环境=200） |
@@ -169,7 +170,7 @@ fuckits 采用前后端分离架构：
 - **安全引擎**：三级安全检测（block/challenge/warn），保护用户免受危险命令影响
 - **系统缓存**：静态系统信息持久化缓存，减少重复检测开销
 - **双模密钥**：优先本地密钥（`FUCK_OPENAI_API_KEY`），回退共享 Worker
-- **全自动测试**：228 个测试（119 个 JS + 109 个 Bash）确保代码质量
+- **全自动测试**：340 个测试（151 个 JS + 189 个 Bash，含 security/fuzzing）确保代码质量
 
 ---
 
@@ -289,7 +290,7 @@ npm run dev
 - **Bash/Shell**：bats-core（Bash Automated Testing System）
 
 ### 测试覆盖
-**JavaScript 测试（109 个）**：
+**JavaScript 测试（151 个，16 个文件）**：
 - handlers.test.js: HTTP 请求处理（14 个）
 - locale.test.js: 中英文双语支持（9 个）
 - quota.test.js: 配额管理系统（6 个）
@@ -303,15 +304,21 @@ npm run dev
 - quota-edge-cases.test.js: 配额边界条件（3 个）
 - sysinfo.test.js: 系统信息处理（3 个）
 - concurrent-requests.test.js: 并发请求（1 个）
-- cache.test.js: AI 响应缓存系统（9 个）
-- security-utils.test.js: 安全工具函数 sanitizeCommand/timingSafeEqual/createErrorResponse/generateRequestId（26 个）
+- cache.test.js: AI 响应缓存系统（8 个）
+- security-utils.test.js: 安全工具函数 sanitizeCommand/timingSafeEqual/createErrorResponse/generateRequestId/checkCommandSafety（36 个）
+- agent-discovery.test.js: robots/sitemap/.well-known/MCP 等 Agent 发现端点（32 个）
 
-**Bash 测试（109 个）**：
-- unit/bash/security.bats: 39 个（32 规则 + 3 模式 + 3 白名单 + 1 结构分析）
-- unit/bash/history.bats: 18 个（命令历史与收藏管理）
+**Bash 测试（189 个，10 个文件；`npm test` 默认跑 unit+integration 共 172 个）**：
+- unit/bash/security.bats: 27 个（安全规则与模式）
+- unit/bash/history.bats: 21 个（命令历史与收藏管理）
 - unit/bash/history-extended.bats: 18 个（history_replay + favorite_run + favorite_delete）
-- integration/build-deploy.bats: 23 个（构建部署流程）
-- integration/e2e.bats: 20 个（端到端用户流程）
+- unit/bash/i18n.bats: 20 个（双语 i18n）
+- unit/bash/language.bats: 16 个（语言检测与 `--lang` 切换）
+- unit/bash/oauth.bats: 13 个（Pollinations OAuth）
+- unit/bash/help-update.bats: 9 个（帮助与更新）
+- integration/build-deploy.bats: 25 个（构建部署流程）
+- integration/e2e.bats: 23 个（端到端用户流程）
+- security/fuzzing.bats: 17 个（模糊测试；`npm run test:security`）
 
 ### CI/CD 集成
 GitHub Actions 在每次 push/PR 时自动运行所有测试，失败则阻止部署。
@@ -409,7 +416,7 @@ Cloudflare Worker 主文件（约 1764 行，含嵌入的 base64 脚本），处
 - `resolveSharedLimit()` - 限额解析
 - `resolveQuotaStore()` - 配额存储选择
 - `sanitizeCommand()` - 命令清理与安全过滤
-- `checkCommandSafety()` - 命令安全检查（内置 7 条 Block 规则）
+- `checkCommandSafety()` - 命令安全检查（内置 6 条 Block 规则，与 CLI Block 规则对齐）
 - `normalizeCacheInput()` - 缓存输入规范化
 - `generateCacheKey()` - SHA-256 缓存键生成
 - `getCachedResponse()` / `setCachedResponse()` - KV 缓存读写
@@ -451,9 +458,9 @@ Cloudflare Worker 主文件（约 1764 行，含嵌入的 base64 脚本），处
 Cloudflare Workers 配置文件：
 - Worker 名称：`fuckits`
 - 路由配置：`fuckits.25500552.xyz`（自定义域名）
-- 兼容日期：2025-10-26
+- 兼容日期：2026-06-01
 - 环境变量：`OPENAI_API_MODEL`, `OPENAI_API_BASE`
-- KV 命名空间：`AI_CACHE`（用于缓存 AI 响应）
+- KV 命名空间：`AI_CACHE`（用于缓存 AI 响应）；配额可选 `QUOTA_KV` 绑定
 - 环境配置：staging（gpt-3.5-turbo）和 production（gpt-5-nano）
 
 ### package.json
@@ -461,7 +468,7 @@ Cloudflare Workers 配置文件：
 - 版本：2.2.0
 - 主要依赖：wrangler ^3.80.0, vitest ^1.0.0, miniflare ^3.0.0
 - 开发依赖：bats, bats-support, bats-assert, undici
-- 测试脚本：test, test:js, test:bash, test:coverage, test:security, test:fuzzing, test:performance, test:e2e, test:all
+- 测试脚本：test, test:js, test:bash, test:js:coverage, test:security, test:fuzzing, test:performance, test:e2e, test:all
 
 ---
 
@@ -484,14 +491,16 @@ Cloudflare Workers 配置文件：
 - `FUCK_SECURITY_MODE` - 安全引擎模式：strict/balanced/off
 - `FUCK_SECURITY_WHITELIST` - 逗号分隔的白名单命令模式
 - `FUCK_SECURITY_CHALLENGE_TEXT` - 高风险命令确认短语
+- `FUCK_POLLINATIONS_CLIENT_ID` - 可选 Pollinations App Key（OAuth 归因；未设置时使用内置默认）
 
 ### Worker 环境变量
 通过 `wrangler secret put` 设置：
 - `OPENAI_API_KEY` - OpenAI API 密钥（必需）
 - `OPENAI_API_MODEL` - AI 模型（可选，默认 gpt-5-nano）
 - `OPENAI_API_BASE` - API 基础 URL（可选，默认 OpenAI 官方）
-- `SHARED_DAILY_LIMIT` - 共享演示模式每日限额（可选，默认 10）
+- `SHARED_DAILY_LIMIT` - 共享演示模式每日限额（可选，代码回退默认 10）
 - `ADMIN_ACCESS_KEY` - 管理员免限额密钥，需与 CLI `FUCK_ADMIN_KEY` 一致
+- `POLLINATIONS_APP_KEY` - 可选 Pollinations App Key（health 的 `services.pollinations` 状态）
 
 ---
 
@@ -504,10 +513,10 @@ Cloudflare Workers 配置文件：
   - fuckits.sh: ~2414 行（统一源码）
   - main.sh: ~3217 行（构建产物）
   - zh_main.sh: ~3217 行（构建产物）
-  - scripts: ~1290 行（含 build 与 runtime-common）
-  - tests: ~3100 行（unit + integration + security + performance）
-- **测试用例**：16 个 JS 测试文件 + 6 个 Bash 测试文件
-- **测试通过率**：100%
+  - scripts: ~1660 行（含 build、runtime-common、gen-changelog 等）
+  - tests: ~5500 行（unit + integration + security + performance + helpers）
+- **测试用例**：16 个 JS 测试文件 + 10 个 Bash 测试文件（另有 performance 基准 9 个）
+- **测试通过率**：以本地 `npm test` / `npm run test:security` 为准
 - **支持语言**：中文、英文
 - **支持平台**：macOS, Linux (apt/yum/dnf/pacman/zypper/brew)
 - **支持 Shell**：bash, zsh, sh

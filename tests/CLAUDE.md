@@ -8,6 +8,7 @@
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-07-11 | 文档同步 | 按当前仓库重新清点测试：JS 151（16 文件，含 agent-discovery/security-utils 扩展）、Bash 189（10 文件，含 i18n/language/oauth/help-update）；修正 `npm run test:coverage` 为 `test:js:coverage`；`npm test` 默认跑 unit+integration（不含 security/fuzzing） |
 | 2026-05-05 | 功能修复 + 测试补全 | 修复 fuzzing.bats 依赖路径（test_helper/common-setup → helpers/bats-helpers）；修复 fuzzing 并发测试 bug；新增 security-utils.test.js（26 tests: sanitizeCommand/timingSafeEqual/createErrorResponse/generateRequestId）；新增 history-extended.bats（18 tests: history_replay/favorite_run/favorite_delete）；worker.js 导出安全关键函数供测试；测试总数 215 个（109 JS + 106 Bash） |
 | 2026-05-03 22:11:39 | 架构增量扫描 | 验证测试结构完整性；发现 security/fuzzing.bats 依赖缺失的 test_helper/common-setup；确认 171 个测试（83 JS + 88 Bash） |
 | 2026-02-03 | R2 回退完成 | 回退 Task 1.3 R2 迁移,删除 r2-integration.test.js (18 tests),恢复 build-deploy.bats 中 7 个 base64 验证测试,测试总数调整为 171 个（83 JS + 88 Bash），100% 通过率 |
@@ -39,10 +40,14 @@ tests 目录包含项目的完整测试套件，负责验证 Worker 后端和 Sh
 tests/
 ├── unit/                    # 单元测试
 │   ├── bash/               # Shell 脚本测试
-│   │   ├── security.bats   # 32 条安全规则测试 (39 tests)
-│   │   ├── history.bats    # 命令历史与收藏测试 (18 tests)
-│   │   └── history-extended.bats # history_replay + favorite 扩展测试 (18 tests)
-│   └── worker/             # Worker 功能测试
+│   │   ├── security.bats   # 安全引擎测试 (27 tests)
+│   │   ├── history.bats    # 命令历史与收藏测试 (21 tests)
+│   │   ├── history-extended.bats # history_replay + favorite 扩展 (18 tests)
+│   │   ├── i18n.bats       # 双语 i18n (20 tests)
+│   │   ├── language.bats   # 语言检测与 --lang (16 tests)
+│   │   ├── oauth.bats      # Pollinations OAuth (13 tests)
+│   │   └── help-update.bats # 帮助与更新 (9 tests)
+│   └── worker/             # Worker 功能测试（16 文件 / 151 tests）
 │       ├── handlers.test.js       # 请求处理测试 (14 tests)
 │       ├── locale.test.js         # 中英文语言测试 (9 tests)
 │       ├── quota.test.js          # 配额管理测试 (6 tests)
@@ -56,17 +61,18 @@ tests/
 │       ├── quota-edge-cases.test.js # 配额边界条件 (3 tests)
 │       ├── sysinfo.test.js        # 系统信息处理 (3 tests)
 │       ├── concurrent-requests.test.js # 并发请求 (1 test)
-│       ├── cache.test.js          # AI 响应缓存 (9 tests)
-│       └── security-utils.test.js # 安全工具函数 (26 tests)
-├── integration/            # 集成测试 (43 tests)
-│   ├── build-deploy.bats  # 构建部署流程 (23 tests)
-│   └── e2e.bats           # 端到端用户流程 (20 tests)
+│       ├── cache.test.js          # AI 响应缓存 (8 tests)
+│       ├── security-utils.test.js # 安全工具函数 (36 tests)
+│       └── agent-discovery.test.js # Agent 发现端点 (32 tests)
+├── integration/            # 集成测试 (48 tests)
+│   ├── build-deploy.bats  # 构建部署流程 (25 tests)
+│   └── e2e.bats           # 端到端用户流程 (23 tests)
 ├── security/               # 安全测试
 │   └── fuzzing.bats       # 模糊测试 (17 tests)
 ├── performance/            # 性能测试
 │   └── quota-benchmark.test.js # 配额性能基准 (9 tests)
 ├── e2e/                    # 真实部署测试
-│   └── real-deployment.test.sh # 生产环境验证 (10 tests)
+│   └── real-deployment.test.sh # 生产环境验证
 ├── fixtures/               # 测试数据
 │   └── mock-responses.json
 └── helpers/                # 测试辅助工具
@@ -91,7 +97,7 @@ npm run test:js
 npm run test:bash
 
 # 生成覆盖率报告
-npm run test:coverage
+npm run test:js:coverage
 
 # 运行安全测试
 npm run test:security
@@ -114,7 +120,7 @@ npm run test:e2e
 
 **路径**：`tests/unit/bash/security.bats`
 **行数**：约 223 行
-**职责**：测试 main.sh 中的 32 条安全规则
+**职责**：测试 CLI 安全引擎（代码中 32 条规则：8 Block + 20 Challenge + 4 Warn；本文件 27 个用例）
 
 **测试覆盖**：
 - **Block 级别（8 条）**：绝对禁止的危险命令
@@ -124,13 +130,13 @@ npm run test:e2e
   - `rm -rf .*` - 递归删除隐藏/系统文件
   - `dd if=... of=/dev/...` - 原始磁盘写入
   - `mkfs` - 文件系统格式化
-  - `fdisk` - 分区操作
+  - `fdisk` / 分区擦除类命令
   - `:(){ :|:& };:` - Fork 炸弹
 
-- **Challenge 级别（9 条）**：需要二次确认的高风险命令
+- **Challenge 级别（20 条）**：需要二次确认的高风险命令
   - `curl | bash` / `wget | sh` - 远程脚本执行
   - `source https://` - 远程文件导入
-  - `eval` - 显式动态执行
+  - `eval` / `exec` - 显式动态执行
   - `$(...)` / `` `...` `` - 命令替换
   - `bash -c` - 嵌套 shell 调用
   - `python -c` - 内联解释器执行
@@ -295,11 +301,11 @@ npm run test:e2e
 
 ## 测试覆盖率
 
-### 当前状态（2026-05-03）
+### 当前状态（2026-07-11）
 
-**总体**：228/228 测试通过 (100%)
+**总体**：340 个自动化用例（151 JS unit + 189 Bash，含 security/fuzzing）；`npm test` 默认跑 151 JS + 172 Bash（unit+integration）
 
-**JavaScript 测试**：109 个（15 个测试文件）
+**JavaScript 测试**：151 个（16 个测试文件）
 - handlers.test.js: 14 个
 - locale.test.js: 9 个
 - quota.test.js: 6 个
@@ -313,20 +319,26 @@ npm run test:e2e
 - quota-edge-cases.test.js: 3 个
 - sysinfo.test.js: 3 个
 - concurrent-requests.test.js: 1 个
-- cache.test.js: 9 个
+- cache.test.js: 8 个
+- security-utils.test.js: 36 个
+- agent-discovery.test.js: 32 个
 
-**Bash 测试**：106 个
-- unit/bash/security.bats: 39 个（32 规则 + 3 模式 + 3 白名单 + 1 结构分析）
-- unit/bash/history.bats: 18 个（历史记录与收藏管理）
-- unit/bash/history-extended.bats: 18 个（history_replay + favorite_run + favorite_delete）
-- integration/build-deploy.bats: 23 个（构建部署流程）
-- integration/e2e.bats: 20 个（端到端用户流程）
+**Bash 测试**：189 个（10 个文件）
+- unit/bash/security.bats: 27 个
+- unit/bash/history.bats: 21 个
+- unit/bash/history-extended.bats: 18 个
+- unit/bash/i18n.bats: 20 个
+- unit/bash/language.bats: 16 个
+- unit/bash/oauth.bats: 13 个
+- unit/bash/help-update.bats: 9 个
+- integration/build-deploy.bats: 25 个
+- integration/e2e.bats: 23 个
+- security/fuzzing.bats: 17 个（`npm run test:security` / `test:fuzzing`）
 
 **代码覆盖率**：
-- worker.js: 目标 80%+
-- main.sh security engine: 100%
-- main.sh history functions: 100%
-- 构建脚本: 手动验证
+- worker.js: 目标 80%+（`npm run test:js:coverage`）
+- CLI 安全引擎 / 历史 / i18n / OAuth: 由对应 bats 覆盖
+- 构建脚本: integration/build-deploy.bats + 手动验证
 
 ---
 
@@ -418,8 +430,8 @@ steps:
 - 检查：jq 在 PATH 中可用
 
 **问题：fuzzing.bats 失败**
-- 确认：`tests/test_helper/common-setup` 文件存在
-- 临时方案：使用 `npm run test:bash` 运行其他 bash 测试
+- 确认：`tests/helpers/bats-helpers.bash` 可被正确 source
+- 临时方案：使用 `npm run test:bash` 运行 unit/integration bash 测试
 
 **问题：CI 测试通过但本地失败**
 - 检查：Node.js 版本一致（20.x）
@@ -433,8 +445,12 @@ steps:
 tests/
 ├── unit/
 │   ├── bash/
-│   │   ├── security.bats                # 32 条安全规则测试（39 tests）
-│   │   └── history.bats                 # 命令历史与收藏测试（18 tests, 334 行）
+│   │   ├── security.bats                # 安全引擎测试（27 tests）
+│   │   ├── history.bats                 # 命令历史与收藏（21 tests）
+│   │   ├── history-extended.bats        # history_replay / favorite 扩展（18 tests）
+│   │   ├── i18n.bats / language.bats    # 双语与语言切换
+│   │   ├── oauth.bats                   # Pollinations OAuth
+│   │   └── help-update.bats             # 帮助与更新
 │   └── worker/
 │       ├── handlers.test.js             # 请求处理测试（14 tests）
 │       ├── locale.test.js               # 多语言测试（9 tests）
@@ -445,6 +461,8 @@ tests/
 │       ├── user-agent.test.js           # UA 检测（5 tests）
 │       ├── url-paths.test.js            # URL 路径（5 tests）
 │       ├── post-requests.test.js        # POST 请求（6 tests）
+│       ├── agent-discovery.test.js      # Agent 发现端点（32 tests）
+│       ├── security-utils.test.js       # 安全工具函数（36 tests）
 │       ├── ip-address.test.js           # IP 处理（3 tests）
 │       ├── quota-edge-cases.test.js     # 配额边界（3 tests）
 │       ├── sysinfo.test.js              # 系统信息（3 tests）

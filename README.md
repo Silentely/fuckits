@@ -21,7 +21,7 @@
 * **全量双语 CLI + Worker**：英文 `main.sh` / 中文 `zh_main.sh` 以及 Worker 端 locale 自适应，脚本构建流程（`npm run build`）自动将两种安装脚本打包进 Worker。
 * **可视化配置能力**：`fuck --config` 会生成示例文件、自动 `chmod 600`，并罗列所有可切换的旗标（API 端点、Alias、Auto-Exec、Timeout、Admin Key 等）。
 * **一键部署/Setup 流程**：`npm run setup` / `npm run one-click-deploy` 覆盖登录、Secret 写入（包括新增管理员密钥）、构建与部署，用脚本化方式保证步骤统一。
-* **安全提示与文档体系**：README / DEPLOY / SUMMARY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格，方便 fork 二开的后续协作。
+* **安全提示与文档体系**：README / DEPLOY / CLAUDE.md 等文档全部补充演示配额、原项目致谢、环境变量表格，方便 fork 二开的后续协作。
 
 **我他妈忘了那条命令了。**
 
@@ -88,7 +88,7 @@ curl -sS https://fuckits.25500552.xyz/zh | bash
 ```
 
 > [!NOTE]
-> `fuckits.25500552.xyz` 通过 Works 自定义域映射到你部署的 Worker。按照本文档或 [DEPLOY.md](./docs/DEPLOY.md#简体中文) 中的步骤重新部署后，域名会自动指向你的实例，中文脚本使用 `/zh` 路径。
+> `fuckits.25500552.xyz` 通过 Workers 自定义域映射到你部署的 Worker。按照本文档或 [DEPLOY.md](./docs/DEPLOY.md#简体中文) 中的步骤重新部署后，域名会自动指向你的实例，中文脚本使用 `/zh` 路径。
 > 自行部署时请在 `~/.fuck/config.sh` 中把 `FUCK_API_ENDPOINT` 改成你自己的域名，避免所有请求仍指向默认演示服务。
 
 > [!WARNING]
@@ -129,8 +129,8 @@ fuck find all files larger than 10MB in the current directory
 # 安装 git (自动识别 apt/yum/brew 等)
 fuck install git
 
-# 卸载 git (同样会自动识别)
-fuck --uninstall git
+# 卸载 git (同样会自动识别；注意：不要写成 --uninstall，那是卸载 fuckits 本身)
+fuck uninstall git
 ```
 
 ### 查看帮助
@@ -325,7 +325,7 @@ curl -sS https://fuckits.25500552.xyz/health | jq
 | `FUCK_API_ENDPOINT` | `https://fuckits.25500552.xyz/` | 自建或自定义 Worker 地址 |
 | `FUCK_OPENAI_API_KEY` | 空 | 本地 OpenAI/兼容 Key（推荐，绕过共享配额） |
 | `FUCK_ADMIN_KEY` | 空 | 管理员免额度密钥（需 Worker 同步配置 `ADMIN_ACCESS_KEY`） |
-| `FUCK_OPENAI_MODEL` | `gpt-5-nano` | 自定义模型（仅在本地 Key 模式下生效） |
+| `FUCK_OPENAI_MODEL` | 空（本地 Key 时由上游默认；配置提示示例为 `gpt-4o-mini`） | 自定义模型（仅在本地 Key 模式下生效；Pollinations OAuth 会写入 `openai`） |
 | `FUCK_OPENAI_API_BASE` | `https://api.openai.com/v1` | 指向自建代理或第三方服务 |
 | `FUCK_ALIAS` | `fuck` | 额外别名（不会影响默认别名，除非关闭） |
 | `FUCK_AUTO_EXEC` | `false` | 自动执行命令，跳过确认（危险操作请慎用） |

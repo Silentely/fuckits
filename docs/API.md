@@ -141,11 +141,13 @@ or
   "message": "Shared demo quota exceeded (max 10 calls per day).",
   "hint": "Configure FUCK_OPENAI_API_KEY in ~/.fuck/config.sh to use your own key.",
   "remaining": 0,
-  "limit": 200,
+  "limit": 10,
   "timestamp": "2025-01-27T12:00:00.000Z",
   "requestId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
+
+> **Note:** `message` and `limit` both reflect `resolveSharedLimit()` (code default **10**, override via `SHARED_DAILY_LIMIT`). Production deployments may set a higher limit (e.g. 200).
 
 **500 Internal Server Error:**
 ```json
@@ -330,9 +332,9 @@ curl -X POST https://fuckits.25500552.xyz \
 ### Shared Demo Mode
 
 Default behavior when `FUCK_OPENAI_API_KEY` is not configured:
-- Limit: 200 requests per day per IP
+- Limit: `SHARED_DAILY_LIMIT` if set, otherwise code default **10** requests per day per IP (production may configure a higher value such as 200)
 - Resets: Daily at UTC midnight
-- Storage: Cloudflare KV (persistent) or in-memory (fallback)
+- Storage: Cloudflare KV via `QUOTA_KV` (or `QUOTA_KV_BINDING`) when bound; otherwise in-memory fallback
 
 ### Local API Key Mode
 
